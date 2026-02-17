@@ -117,7 +117,7 @@ public class FollowControllerTest {
                                 .build();
                 followRepository.save(follow);
 
-                mockMvc.perform(post("/api/users/" + userB.getId() + "/unfollow"))
+                mockMvc.perform(delete("/api/users/" + userB.getId() + "/follow"))
                                 .andExpect(status().isOk());
 
                 assert (!followRepository.existsByFollowerIdAndFollowingId(userA.getId(), userB.getId()));
@@ -134,7 +134,7 @@ public class FollowControllerTest {
 
                 mockMvc.perform(get("/api/users/" + userA.getId() + "/following"))
                                 .andExpect(status().isOk())
-                                .andExpect(jsonPath("$[0].username").value("userB"));
+                                .andExpect(jsonPath("$.content[0].username").value("userB"));
         }
 
         @Test
@@ -148,6 +148,6 @@ public class FollowControllerTest {
 
                 mockMvc.perform(get("/api/users/" + userB.getId() + "/followers"))
                                 .andExpect(status().isOk())
-                                .andExpect(jsonPath("$[0].username").value("userA"));
+                                .andExpect(jsonPath("$.content[0].username").value("userA"));
         }
 }

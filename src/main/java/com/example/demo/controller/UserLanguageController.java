@@ -21,43 +21,62 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class UserLanguageController {
 
-    private final ProfileRepository profileRepository;
-    private final LanguageRepository languageRepository;
-    private final UserLanguageRepository userLanguageRepository;
+        private final ProfileRepository profileRepository;
+        private final LanguageRepository languageRepository;
+        private final UserLanguageRepository userLanguageRepository;
 
-    @PutMapping("/me/languages")
-    @Transactional
-    public ResponseEntity<List<UserLanguageDTO>> updateUserLanguages(
-            Authentication authentication,
-            @RequestBody List<UserLanguageDTO> languages) {
+        @GetMapping("/me/languages")
+        public ResponseEntity<List<UserLanguageDTO>> getUserLanguages(Authentication authentication) {
+                Profile profile = profileRepository.findByEmail(authentication.getName())
+                                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Profile profile = profileRepository.findByEmail(authentication.getName())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                List<UserLanguageDTO> languages = profile.getLanguages().stream()
+                                .map(ul -> UserLanguageDTO.builder()
+                                                .code(ul.getLanguage().getCode())
+                                                .name(ul.getLanguage().getName())
+                                                .flagEmoji(ul.getLanguage().getFlagEmoji())
+                                                .proficiency(ul.getProficiency())
+                                                .isLearning(ul.isLearning())
+                                                .build())
+                                .collect(Collectors.toList());
 
-        // Clear existing languages
-        userLanguageRepository.deleteByProfileId(profile.getId());
+                return ResponseEntity.ok(languages);
+        }
 
-        // Add new languages
-        List<UserLanguage> newLanguages = languages.stream().map(dto -> {
-            Language lang = languageRepository.findByCode(dto.getCode())
-                    .orElseThrow(() -> new RuntimeException("Language not found: " + dto.getCode()));
+        @PutMapping("/me/languages")
+        @Transactional
+        public ResponseEntity<List<UserLanguageDTO>> updateUserLanguages(
+                        Authentication authentication,
+                        @RequestBody List<UserLanguageDTO> languages) {
 
-            return UserLanguage.builder()
-                    .profile(profile)
-                    .language(lang)
-                    .proficiency(dto.getProficiency())
-                    .isLearning(dto.isLearning())
-                    .build();
-        }).collect(Collectors.toList());
+                Profile profile = profileRepository.findByEmail(authentication.getName())
+                                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        List<UserLanguage> saved = userLanguageRepository.saveAll(newLanguages);
+                // Clear existing languages
+                userLanguageRepository.deleteByProfileId(profile.getId());
 
-        return ResponseEntity.ok(saved.stream().map(ul -> UserLanguageDTO.builder()
-                .code(ul.getLanguage().getCode())
-                .name(ul.getLanguage().getName())
-                .flagEmoji(ul.getLanguage().getFlagEmoji())
-                .proficiency(ul.getProficiency())
-                .isLearning(ul.isLearning())
-                .build()).collect(Collectors.toList()));
-    }
+                // Add new languages
+                List<UserLanguage> newLanguages = languages.stream().map(dto -> {
+                        Language lang = languageRepository.findByCode(dto.getCode())
+                                        .orElseThrow(() -> new RuntimeException(
+                                                        "Language not found: " + dto.getCode()));
+
+                        return UserLanguage.builder()
+                                        .profile(profile)
+                                        .language(lang)
+                                        .proficiency(dto.getProficiency())
+                                        .isLearning(dto.isLearning())
+                                        .build();
+                }).collect(Collectors.toList());
+
+                List<UserLanguage> saved = userLanguageRepository.saveAll(newLanguages);
+
+                return ResponseEntity.ok(saved.stream().map(ul -> UserLanguageDTO.builder()
+                                .code(ul.getLanguage().getCode())
+                                .name(ul.getLanguage().getName())
+                                .flagEmoji(ul.getLanguage().getFlagEmoji())
+                                .proficiency(ul.getProficiency())
+                                .isLearning(ul.isLearning())
+                                .build()).collect(Collectors.toList()));
+        }
 }

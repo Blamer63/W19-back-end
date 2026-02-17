@@ -107,6 +107,21 @@ public class PostService {
                 postRepository.delete(post);
         }
 
+        @Transactional(readOnly = true)
+        public Page<PostResponse> getPostsByUser(UUID userId, String currentUserEmail, Pageable pageable) {
+                Profile currentUser = profileRepository.findByEmail(currentUserEmail)
+                                .orElseThrow(() -> new RuntimeException("User not found"));
+
+                if (!profileRepository.existsById(userId)) {
+                        throw new RuntimeException("User not found");
+                }
+
+                Page<Post> posts = postRepository.findByAuthorIdAndStatus(userId,
+                                com.example.demo.enums.PostStatus.APPROVED, pageable);
+
+                return posts.map(post -> mapToResponse(post, currentUser, null, null));
+        }
+
         private PostResponse mapToResponse(Post post, Profile currentUser, Double lat, Double lon) {
                 String distance = "Unknown";
                 if (lat != null && lon != null && post.getLatitude() != null && post.getLongitude() != null) {

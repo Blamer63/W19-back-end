@@ -1,10 +1,13 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.ProfileResponse;
 import com.example.demo.entity.Profile;
 import com.example.demo.entity.UserFollow;
 import com.example.demo.repository.FollowRepository;
 import com.example.demo.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +19,7 @@ public class FollowService {
 
     private final FollowRepository followRepository;
     private final ProfileRepository profileRepository;
+    private final ProfileService profileService;
 
     @Transactional
     public void followUser(UUID followingId, String followerEmail) {
@@ -50,16 +54,14 @@ public class FollowService {
     }
 
     @Transactional(readOnly = true)
-    public java.util.List<Profile> getFollowers(UUID userId) {
-        return followRepository.findByFollowingId(userId).stream()
-                .map(UserFollow::getFollower)
-                .collect(java.util.stream.Collectors.toList());
+    public Page<ProfileResponse> getFollowers(UUID userId, Pageable pageable) {
+        return followRepository.findByFollowingId(userId, pageable)
+                .map(follow -> profileService.mapToResponse(follow.getFollower()));
     }
 
     @Transactional(readOnly = true)
-    public java.util.List<Profile> getFollowing(UUID userId) {
-        return followRepository.findByFollowerId(userId).stream()
-                .map(UserFollow::getFollowing)
-                .collect(java.util.stream.Collectors.toList());
+    public Page<ProfileResponse> getFollowing(UUID userId, Pageable pageable) {
+        return followRepository.findByFollowerId(userId, pageable)
+                .map(follow -> profileService.mapToResponse(follow.getFollowing()));
     }
 }

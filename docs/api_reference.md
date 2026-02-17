@@ -15,6 +15,7 @@
 4. [Posts & Content](#posts--content)
 5. [Learning Core](#learning-core)
 6. [Discovery](#discovery)
+7. [Meetups](#meetups)
 
 ---
 
@@ -83,6 +84,63 @@ Get current user's profile.
 ### GET /users/me/settings
 ### PATCH /users/me/settings
 
+### GET /users/{id}
+Get a user's public profile.
+
+**Response:**
+```json
+{
+  "id": "uuid",
+  "username": "johndoe",
+  "display_name": "John Doe",
+  "avatar_url": "https://...",
+  "bio": "Language enthusiast",
+  "location": "Sydney, Australia",
+  "followers_count": 42,
+  "following_count": 18,
+  "posts_count": 156,
+  "is_following": false,
+  "is_followed_by": false,
+  "languages": [
+    {
+      "code": "en",
+      "name": "English",
+      "flag_emoji": "🇬🇧",
+      "proficiency": "NATIVE",
+      "is_learning": false
+    }
+  ]
+}
+```
+
+### GET /users/{id}/posts
+Get posts by a specific user.
+
+**Query Parameters:**
+- `page` (default: 0)
+- `size` (default: 10)
+
+**Response:** Paginated `PostResponse` (same structure as feed)
+
+### PATCH /users/me/privacy
+Update privacy settings.
+
+**Request:**
+```json
+{
+  "show_activity": false,
+  "show_saved_words": true
+}
+```
+
+**Response:**
+```json
+{
+  "show_activity": false,
+  "show_saved_words": true
+}
+```
+
 ### PUT /users/me/languages
 Update user languages (native/learning).
 ```json
@@ -92,23 +150,53 @@ Update user languages (native/learning).
 ]
 ```
 
-### POST /users/{id}/follow
-### DELETE /users/{id}/follow
-
-### POST /users/{id}/block
-### DELETE /users/{id}/block
-
-### POST /users/{id}/follow
+### POST /follow
 Follow a user.
 
-### POST /users/{id}/unfollow
-Unfollow a user (also DELETE /users/{id}/follow).
+**Request:**
+```json
+{ "following_id": "uuid" }
+```
 
-### GET /users/{id}/followers
-List followers.
+### DELETE /follow
+Unfollow a user.
 
-### GET /users/{id}/following
-List following.
+**Request:**
+```json
+{ "following_id": "uuid" }
+```
+
+### GET /follow/followers
+List followers (paginated).
+
+**Query Parameters:**
+- `page` (default: 0)
+- `size` (default: 20)
+
+**Response:**
+```json
+{
+  "content": [
+    {
+      "id": "uuid",
+      "username": "follower1",
+      "display_name": "Follower Name",
+      "avatar_url": "https://..."
+    }
+  ],
+  "totalElements": 42,
+  "totalPages": 3
+}
+```
+
+### GET /follow/following
+List following (paginated).
+
+**Query Parameters:**
+- `page` (default: 0)
+- `size` (default: 20)
+
+**Response:** Same structure as followers
 
 ---
 
@@ -243,4 +331,170 @@ Authorization: Bearer <jwt_token>
 - Current user is excluded from results
 - Users without location data are excluded
 - Distance calculated using Haversine formula
+
+---
+
+## Meetups
+
+### GET /api/meetups
+List meetups with optional filters.
+
+**Authentication:** Required (JWT)
+
+**Query Parameters:**
+- `language` (optional): Filter by language code
+- `latitude` (optional): User's latitude for geospatial search
+- `longitude` (optional): User's longitude for geospatial search
+- `radius_km` (optional): Search radius in kilometers (requires lat/long)
+- `page` (optional, default: 0): Page number
+- `size` (optional, default: 10): Page size
+
+**Response:** `200 OK`
+```json
+{
+  "meetups": [
+    {
+      "id": "uuid",
+      "organizer": {
+        "id": "uuid",
+        "display_name": "John Doe",
+        "avatar_url": "https://..."
+      },
+      "title": "Spanish Conversation Practice",
+      "description": "Casual meetup for intermediate learners",
+      "language": {
+        "code": "es",
+        "name": "Spanish",
+        "flag_emoji": "🇪🇸"
+      },
+      "meetup_date": "2026-01-20T18:00:00",
+      "location": "Central Park Cafe",
+      "latitude": -33.8688,
+      "longitude": 151.2093,
+      "max_attendees": 10,
+      "attendee_count": 5,
+      "is_attending": false,
+      "is_organizer": false,
+      "status": "UPCOMING",
+      "created_at": "2026-01-10T12:00:00"
+    }
+  ],
+  "total_pages": 1,
+  "total_elements": 1,
+  "current_page": 0
+}
+```
+
+### POST /api/meetups
+Create a new meetup.
+
+**Authentication:** Required (JWT)
+
+**Request Body:**
+```json
+{
+  "title": "Spanish Conversation Practice",
+  "description": "Casual meetup for intermediate learners",
+  "language_code": "es",
+  "meetup_date": "2026-01-20T18:00:00",
+  "location": "Central Park Cafe",
+  "latitude": -33.8688,
+  "longitude": 151.2093,
+  "max_attendees": 10
+}
+```
+
+**Response:** `201 Created`
+```json
+{
+  "id": "uuid",
+  "organizer": { ... },
+  "title": "Spanish Conversation Practice",
+  "attendee_count": 1,
+  "is_attending": true,
+  "is_organizer": true,
+  ...
+}
+```
+
+**Notes:**
+- Organizer is automatically added as first attendee
+- `meetup_date` must be in the future
+
+### GET /api/meetups/{id}
+Get meetup details.
+
+**Authentication:** Required (JWT)
+
+**Response:** `200 OK` (same structure as list response)
+
+### PUT /api/meetups/{id}
+Update a meetup (organizer only).
+
+**Authentication:** Required (JWT)
+
+**Request Body:** (all fields optional)
+```json
+{
+  "title": "Updated Title",
+  "description": "Updated description",
+  "language_code": "ja",
+  "meetup_date": "2026-01-21T18:00:00",
+  "location": "New Location",
+  "latitude": -33.8700,
+  "longitude": 151.2100,
+  "max_attendees": 15
+}
+```
+
+**Response:** `200 OK`
+
+**Error:** `400 Bad Request` if not organizer
+
+### DELETE /api/meetups/{id}
+Delete a meetup (organizer only).
+
+**Authentication:** Required (JWT)
+
+**Response:** `204 No Content`
+
+**Error:** `400 Bad Request` if not organizer
+
+### POST /api/meetups/{id}/join
+Join a meetup.
+
+**Authentication:** Required (JWT)
+
+**Response:** `200 OK`
+
+**Errors:**
+- `400 Bad Request`: Already joined, meetup full, or meetup is in the past
+
+### POST /api/meetups/{id}/leave
+Leave a meetup.
+
+**Authentication:** Required (JWT)
+
+**Response:** `200 OK`
+
+**Error:** `400 Bad Request` if user is the organizer (must delete instead)
+
+### GET /api/meetups/{id}/attendees
+List all attendees of a meetup.
+
+**Authentication:** Required (JWT)
+
+**Response:** `200 OK`
+```json
+{
+  "attendees": [
+    {
+      "id": "uuid",
+      "display_name": "John Doe",
+      "avatar_url": "https://...",
+      "joined_at": "2026-01-10T12:30:00Z"
+    }
+  ]
+}
+```
 

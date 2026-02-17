@@ -4,13 +4,17 @@ import com.example.demo.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Instant;
+
+@Entity
+@Table(name = "meetup_attendees", uniqueConstraints = {
+        @UniqueConstraint(columnNames = { "meetup_id", "attendee_id" })
+})
 @Getter
 @Setter
-@Entity
-@Table(name = "meetup_attendees")
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class MeetupAttendee extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -19,7 +23,9 @@ public class MeetupAttendee extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "attendee_id", nullable = false)
-    private Profile profile;
+    private Profile attendee;
 
-    private String status; // CONFIRMED, MAYBE, DECLINED
+    @Column(name = "joined_at", nullable = false)
+    @Builder.Default
+    private Instant joinedAt = Instant.now();
 }

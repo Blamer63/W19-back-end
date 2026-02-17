@@ -17,10 +17,16 @@
 *   `PATCH /users/me`
 *   `GET /users/me/settings`
 *   `PATCH /users/me/settings`
+*   `PATCH /users/me/privacy`
 *   `GET /users/{id}`
-*   `POST /users/{id}/follow`
-*   `DELETE /users/{id}/follow`
+*   `GET /users/{id}/posts`
+*   `POST /users/{id}/block`
+*   `DELETE /users/{id}/block`
 *   `GET /users/me/languages`
+*   `POST /follow`
+*   `DELETE /follow`
+*   `GET /follow/followers`
+*   `GET /follow/following`
 
 ## 3. Languages
 *   `GET /languages`

@@ -45,6 +45,25 @@ public class Profile extends BaseEntity {
     @Column(name = "show_location")
     private Boolean showLocation;
 
+    @Column(name = "location")
+    private String location;
+
+    @Column(name = "show_activity")
+    @Builder.Default
+    private boolean showActivity = true;
+
+    @Column(name = "show_saved_words")
+    @Builder.Default
+    private boolean showSavedWords = false;
+
+    @Column(name = "followers_count")
+    @Builder.Default
+    private Integer followersCount = 0;
+
+    @Column(name = "following_count")
+    @Builder.Default
+    private Integer followingCount = 0;
+
     @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<UserLanguage> languages = new ArrayList<>();

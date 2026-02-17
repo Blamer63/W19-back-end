@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
@@ -15,40 +15,57 @@ import java.util.UUID;
 @AllArgsConstructor
 public class MeetupResponse {
 
+    @JsonProperty("id")
     private UUID id;
 
+    @JsonProperty("organizer")
+    private MeetupOrganizerInfo organizer;
+
+    @JsonProperty("title")
     private String title;
 
+    @JsonProperty("description")
     private String description;
 
-    @JsonProperty("meetup_date")
-    private Instant meetupDate;
+    @JsonProperty("language")
+    private LanguageInfo language;
 
+    @JsonProperty("meetup_date")
+    private LocalDateTime meetupDate;
+
+    @JsonProperty("location")
     private String location;
 
+    @JsonProperty("latitude")
     private Double latitude;
 
+    @JsonProperty("longitude")
     private Double longitude;
-
-    @JsonProperty("language_code")
-    private String languageCode;
 
     @JsonProperty("max_attendees")
     private Integer maxAttendees;
 
     @JsonProperty("attendee_count")
-    private Integer attendeeCount;
+    private Long attendeeCount;
 
+    @JsonProperty("is_attending")
+    private Boolean isAttending;
+
+    @JsonProperty("is_organizer")
+    private Boolean isOrganizer;
+
+    @JsonProperty("status")
     private String status;
 
-    @JsonProperty("organizer")
-    private OrganizerInfo organizer;
+    @JsonProperty("created_at")
+    private LocalDateTime createdAt;
 
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class OrganizerInfo {
+    public static class MeetupOrganizerInfo {
+        @JsonProperty("id")
         private UUID id;
 
         @JsonProperty("display_name")
