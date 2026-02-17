@@ -42,6 +42,9 @@ public class Profile extends BaseEntity {
     private Double latitude;
     private Double longitude;
 
+    @Column(name = "show_location")
+    private Boolean showLocation;
+
     @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<UserLanguage> languages = new ArrayList<>();

@@ -15,76 +15,90 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class LearnerService {
 
-    private final ProfileRepository profileRepository;
+        private final ProfileRepository profileRepository;
 
-    public List<LearnerResponse> findNearbyLearners(
-            Double latitude,
-            Double longitude,
-            Double radiusKm,
-            String languageCode,
-            String currentUserEmail) {
+        public List<LearnerResponse> findNearbyLearners(
+                        Double latitude,
+                        Double longitude,
+                        Double radiusKm,
+                        String languageCode,
+                        String currentUserEmail) {
 
-        List<Profile> nearbyProfiles = profileRepository.findNearbyProfiles(latitude, longitude, radiusKm);
+                Profile currentUser = profileRepository.findByEmail(currentUserEmail)
+                                .orElseThrow(() -> new RuntimeException("User not found: " + currentUserEmail));
 
-        return nearbyProfiles.stream()
-                .filter(profile -> !profile.getEmail().equals(currentUserEmail)) // Exclude current user
-                .filter(profile -> languageCode == null || hasLanguage(profile, languageCode)) // Filter by language if
-                                                                                               // provided
-                .map(profile -> mapToLearnerResponse(profile, latitude, longitude))
-                .sorted((a, b) -> Double.compare(a.getDistanceKm(), b.getDistanceKm())) // Sort by distance
-                .collect(Collectors.toList());
-    }
+                List<Profile> nearbyProfiles = profileRepository.findNearbyProfiles(
+                                currentUser.getId(),
+                                latitude,
+                                longitude,
+                                radiusKm);
 
-    private boolean hasLanguage(Profile profile, String languageCode) {
-        return profile.getLanguages().stream()
-                .anyMatch(ul -> ul.getLanguage().getCode().equals(languageCode));
-    }
+                return nearbyProfiles.stream()
+                                // .filter(profile -> !profile.getEmail().equals(currentUserEmail)) // Handled
+                                // by DB query
+                                .filter(profile -> languageCode == null || hasLanguage(profile, languageCode)) // Filter
+                                                                                                               // by
+                                                                                                               // language
+                                                                                                               // if
+                                                                                                               // provided
+                                .map(profile -> mapToLearnerResponse(profile, latitude, longitude))
+                                .sorted((a, b) -> Double.compare(a.getDistanceKm(), b.getDistanceKm())) // Sort by
+                                                                                                        // distance
+                                .collect(Collectors.toList());
+        }
 
-    private LearnerResponse mapToLearnerResponse(Profile profile, Double queryLat, Double queryLon) {
-        double distance = calculateDistance(queryLat, queryLon, profile.getLatitude(), profile.getLongitude());
+        private boolean hasLanguage(Profile profile, String languageCode) {
+                return profile.getLanguages().stream()
+                                .anyMatch(ul -> ul.getLanguage().getCode().equals(languageCode));
+        }
 
-        List<LanguageInfo> languages = profile.getLanguages().stream()
-                .map(this::mapToLanguageInfo)
-                .collect(Collectors.toList());
+        private LearnerResponse mapToLearnerResponse(Profile profile, Double queryLat, Double queryLon) {
+                double distance = calculateDistance(queryLat, queryLon, profile.getLatitude(), profile.getLongitude());
 
-        return LearnerResponse.builder()
-                .id(profile.getId())
-                .displayName(profile.getDisplayName())
-                .avatarUrl(profile.getAvatarUrl())
-                .latitude(profile.getLatitude())
-                .longitude(profile.getLongitude())
-                .distanceKm(Math.round(distance * 100.0) / 100.0) // Round to 2 decimal places
-                .languages(languages)
-                .build();
-    }
+                List<LanguageInfo> languages = profile.getLanguages().stream()
+                                .map(this::mapToLanguageInfo)
+                                .collect(Collectors.toList());
 
-    private LanguageInfo mapToLanguageInfo(UserLanguage userLanguage) {
-        return LanguageInfo.builder()
-                .code(userLanguage.getLanguage().getCode())
-                .name(userLanguage.getLanguage().getName())
-                .flagEmoji(userLanguage.getLanguage().getFlagEmoji())
-                .proficiency(userLanguage.getProficiency() != null ? userLanguage.getProficiency().name() : null)
-                .isLearning(userLanguage.isLearning())
-                .build();
-    }
+                return LearnerResponse.builder()
+                                .id(profile.getId())
+                                .displayName(profile.getDisplayName())
+                                .avatarUrl(profile.getAvatarUrl())
+                                .latitude(profile.getLatitude())
+                                .longitude(profile.getLongitude())
+                                .distanceKm(Math.round(distance * 100.0) / 100.0) // Round to 2 decimal places
+                                .languages(languages)
+                                .build();
+        }
 
-    /**
-     * Calculate distance between two points using Haversine formula
-     * 
-     * @return distance in kilometers
-     */
-    private double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2) {
-        final int EARTH_RADIUS_KM = 6371;
+        private LanguageInfo mapToLanguageInfo(UserLanguage userLanguage) {
+                return LanguageInfo.builder()
+                                .code(userLanguage.getLanguage().getCode())
+                                .name(userLanguage.getLanguage().getName())
+                                .flagEmoji(userLanguage.getLanguage().getFlagEmoji())
+                                .proficiency(userLanguage.getProficiency() != null
+                                                ? userLanguage.getProficiency().name()
+                                                : null)
+                                .isLearning(userLanguage.isLearning())
+                                .build();
+        }
 
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLon = Math.toRadians(lon2 - lon1);
+        /**
+         * Calculate distance between two points using Haversine formula
+         * 
+         * @return distance in kilometers
+         */
+        private double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2) {
+                final int EARTH_RADIUS_KM = 6371;
 
-        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
-                        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                double dLat = Math.toRadians(lat2 - lat1);
+                double dLon = Math.toRadians(lon2 - lon1);
 
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                                                Math.sin(dLon / 2) * Math.sin(dLon / 2);
 
-        return EARTH_RADIUS_KM * c;
-    }
+                double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+                return EARTH_RADIUS_KM * c;
+        }
 }

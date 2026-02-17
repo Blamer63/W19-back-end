@@ -1,7 +1,7 @@
 # API Reference - W19 Backend
 
 **Base URL:** `http://localhost:8081/api`  
-**Last Updated:** 2026-01-12
+**Last Updated:** 2026-01-21
 
 > **Note:** All JSON fields are **`snake_case`**.
 
@@ -193,6 +193,7 @@ Get learning statistics (XP, streaks, etc).
 
 ### GET /api/learners/nearby
 Find nearby language learners based on geolocation.
+**Note:** Only users with `show_location=true` enabled in their settings will be visible. The requesting user is excluded from results.
 
 **Authentication:** Required (JWT)
 
