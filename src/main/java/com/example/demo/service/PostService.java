@@ -25,7 +25,6 @@ public class PostService {
         private final ProfileRepository profileRepository;
         private final PostReactionRepository postReactionRepository;
         private final PostCommentRepository postCommentRepository;
-        private final LanguageRepository languageRepository;
 
         @Transactional(readOnly = true)
         public Page<PostResponse> getFeed(String language, Pageable pageable, Double lat, Double lon,

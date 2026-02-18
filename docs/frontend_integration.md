@@ -140,53 +140,33 @@ const logout = async () => {
   localStorage.clear();
 };
 ```
+| Feature | Frontend | Backend | Endpoint | Status |
+|---------|----------|---------|----------|--------|
+| **Authentication** | ✅ | ✅ | `POST /api/auth/login` | ✅ Working |
+| **User Profile** | ✅ | ✅ | `GET /api/users/me` | ✅ Working |
+| **Posts/Feed** | ✅ | ✅ | `GET /api/posts` | ✅ Working |
+| **Learning - Words** | ✅ | ✅ | `GET /api/words` | ✅ Working |
+| **Learning - Stats** | ✅ | ✅ | `GET /api/learn/stats` | ✅ Working |
+| **Nearby Learners** | ✅ | ✅ | `GET /api/learners/nearby` | ✅ Working |
+| **Meetups System** | ✅ | ✅ | `POST/GET/PUT/DELETE /api/meetups` | ✅ Working |
 
 ---
 
-## 2. Users & Profiles
+## 🟡 Frontend Ready, Awaiting Full Testing
 
-### Get Current User
-**Endpoint:** `GET /users/me`  
-**Auth:** Required
-
-**Response:**
-```typescript
-interface ProfileResponse {
-  id: string;
-  username: string;
-  email: string;
-  display_name: string;
-  avatar_url: string | null;
-  bio: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  created_at: string; // ISO 8601
-  languages: UserLanguage[];
-  roles: string[];
-  followers_count: number;
-  following_count: number;
-  posts_count: number;
-}
-
-interface UserLanguage {
-  code: string;
-  name: string;
-  flag_emoji: string;
-  proficiency: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'NATIVE';
-  is_learning: boolean;
-}
-```
-
-**Example:**
-```typescript
-const getCurrentUser = async () => {
-  const token = localStorage.getItem('access_token');
-  const response = await fetch('http://localhost:8081/api/users/me', {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
-  return await response.json();
-};
-```
+| Feature | Frontend | Endpoint | Notes |
+|---------|----------|----------|-------|
+| **Post Reactions** | ✅ | `POST/DELETE /posts/{id}/reactions` | Need to test like/unlike |
+| **Comments** | ✅ | `GET/POST /posts/{id}/comments` | Need to test create/list |
+| **Learning Sessions** | ✅ | `POST /api/learn/sessions/start` | Need to add words first |
+| **Submit Answer** | ✅ | `POST /api/learn/sessions/{id}/submit` | Requires active session |
+| **Complete Session** | ✅ | `POST /api/learn/sessions/{id}/complete` | Requires active session |
+| **Session History** | ✅ | `GET /api/learn/sessions` | Need sessions first |
+| **User Settings** | ✅ | `GET/PATCH /users/me/settings` | Untested |
+| **Languages List** | ✅ | `GET /languages` | Untested |
+| **Post Translation** | ✅ | `GET /posts/{id}/translations` | Untested |
+| **Reports** | ✅ | `POST /posts/{id}/reports` | Untested |
+| **Follow System** | ✅ | `POST/DELETE /users/{id}/follow` | Untested |
 
 ---
 
@@ -405,169 +385,27 @@ const getUserLanguages = async () => {
 ### Get User Settings
 **Endpoint:** `GET /users/me/settings`  
 **Auth:** Required
+## ✅ Frontend Service Paths (Updated to Match Backend Contract)
 
-**Response:**
-```typescript
-interface UserSettings {
-  notification_prefs: {
-    push_enabled: boolean;
-    email_enabled: boolean;
-    like_notifications: boolean;
-    comment_notifications: boolean;
-    meetup_notifications: boolean;
-  };
-  privacy_settings: {
-    show_location: boolean;
-    allow_messages: 'everyone' | 'following' | 'none';
-  };
-  theme: 'light' | 'dark' | 'system';
-}
-```
+| Service | Frontend Path | Matches Contract |
+|---------|---------------|------------------|
+| Words CRUD | `/api/words` | ✅ |
+| Learning Stats | `/api/learn/stats` | ✅ |
+| Start Session | `/api/learn/sessions/start` | ✅ |
+| Submit Result | `/api/learn/sessions/{id}/submit` | ✅ |
+| Complete Session | `/api/learn/sessions/{id}/complete` | ✅ |
+| Session History | `/api/learn/sessions` | ✅ |
 
 ---
 
-### Update User Settings
-**Endpoint:** `PATCH /users/me/settings`  
-**Auth:** Required
+## ❌ Not Yet Implemented (Backend Needed)
 
-**Request:** (partial updates supported)
-```typescript
-await fetch('http://localhost:8081/api/users/me/settings', {
-  method: 'PATCH',
-  headers: {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    notification_prefs: { email_enabled: false }
-  })
-});
-```
+### 2. **AI Object Scanner**
+Frontend Location: `src/pages/ScannerPage.tsx`
 
----
-
-### Block User
-**Endpoint:** `POST /users/{userId}/block`  
-**Auth:** Required
-
-**Response:** `200 OK`
-
----
-
-### Unblock User
-**Endpoint:** `DELETE /users/{userId}/block`  
-**Auth:** Required
-
-**Response:** `200 OK`
-
----
-
-## 3. Languages
-
-### Get All Languages
-**Endpoint:** `GET /languages`
-
-**Response:**
-```typescript
-interface LanguagesResponse {
-  languages: Array<{
-    code: string;
-    name: string;
-    native_name: string;
-    flag_emoji: string;
-  }>;
-}
-```
-
-**Example:**
-```typescript
-const getLanguages = async () => {
-  const response = await fetch('http://localhost:8081/api/languages');
-  return await response.json();
-};
-```
-
----
-
-### Update User Languages
-**Endpoint:** `PUT /users/me/languages`  
-**Auth:** Required
-
-**Request:** (full replacement)
-```typescript
-await fetch('http://localhost:8081/api/users/me/languages', {
-  method: 'PUT',
-  headers: {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify([
-    { code: 'en', proficiency: 'NATIVE', is_learning: false },
-    { code: 'es', proficiency: 'BEGINNER', is_learning: true }
-  ])
-});
-```
-
----
-
-## 4. Posts & Content
-
-### Get Feed
-**Endpoint:** `GET /posts`  
-**Auth:** Required
-
-**Query Parameters:**
-- `page` (default: 0)
-- `size` (default: 20)
-- `language` (optional: filter by language code or "all")
-- `latitude` (optional: for distance calculation)
-- `longitude` (optional: for distance calculation)
-
-**Response:**
-```typescript
-interface PostResponse {
-  id: string;
-  content: string;
-  original_language: string;
-  image_url: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  location: string; // "Nearby" or "Unknown"
-  distance: string; // "5.2 km" or "Unknown"
-  created_at: string;
-  author: {
-    id: string;
-    username: string;
-    display_name: string;
-    avatar_url: string | null;
-    language: string;
-    flag_emoji: string;
-  };
-  reactions: {
-    likes: number;
-    comments: number;
-  };
-  user_reaction: 'LIKE' | 'LOVE' | 'HELPFUL' | 'FUNNY' | null;
-}
-```
-
-**Example:**
-```typescript
-const getFeed = async (page = 0, language = 'all') => {
-  const token = localStorage.getItem('access_token');
-  const response = await fetch(
-    `http://localhost:8081/api/posts?page=${page}&size=20&language=${language}`,
-    { headers: { 'Authorization': `Bearer ${token}` } }
-  );
-  return await response.json();
-};
-```
-
----
-
-### Create Post
-**Endpoint:** `POST /posts`  
-**Auth:** Required
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/scanner/analyze` | POST | Upload image for AI analysis |
 
 **Request:**
 ```typescript
