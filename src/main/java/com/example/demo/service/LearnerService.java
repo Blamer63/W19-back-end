@@ -59,6 +59,10 @@ public class LearnerService {
                                 .map(this::mapToLanguageInfo)
                                 .collect(Collectors.toList());
 
+                List<LanguageInfo> learningLanguages = languages.stream()
+                                .filter(l -> l.getIsLearning() != null && l.getIsLearning())
+                                .collect(Collectors.toList());
+
                 return LearnerResponse.builder()
                                 .id(profile.getId())
                                 .displayName(profile.getDisplayName())
@@ -67,6 +71,7 @@ public class LearnerService {
                                 .longitude(profile.getLongitude())
                                 .distanceKm(Math.round(distance * 100.0) / 100.0) // Round to 2 decimal places
                                 .languages(languages)
+                                .learningLanguages(learningLanguages)
                                 .build();
         }
 

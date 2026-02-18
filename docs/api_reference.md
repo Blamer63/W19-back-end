@@ -16,6 +16,8 @@
 5. [Learning Core](#learning-core)
 6. [Discovery](#discovery)
 7. [Meetups](#meetups)
+8. [Places](#places)
+9. [Messaging & Chat](#messaging--chat)
 
 ---
 
@@ -304,6 +306,15 @@ Find nearby language learners based on geolocation.
       "distance_km": 1.23,
       "languages": [
         {
+          "code": "en",
+          "name": "English",
+          "flag_emoji": "🇺🇸",
+          "proficiency": "NATIVE",
+          "is_learning": false
+        }
+      ],
+      "learning_languages": [
+        {
           "code": "es",
           "name": "Spanish",
           "flag_emoji": "🇪🇸",
@@ -498,3 +509,125 @@ List all attendees of a meetup.
 }
 ```
 
+
+---
+
+## Places
+
+### GET /places/autocomplete
+Search for places using Google Places Autocomplete (New) API.
+
+**Query Parameters:**
+- `input` (required): Search query string (e.g., "UOW Library")
+
+**Response:**
+```json
+{
+  "suggestions": [
+    {
+      "placePrediction": {
+        "placeId": "ChIJ...",
+        "text": { "text": "University of Wollongong Library, Wollongong NSW" },
+        "structuredFormat": {
+          "mainText": { "text": "University of Wollongong Library" },
+          "secondaryText": { "text": "Wollongong NSW, Australia" }
+        }
+      }
+    }
+  ]
+}
+```
+
+### GET /places/{placeId}
+Get place details (location, address).
+
+**Path Variables:**
+- `placeId` (required): Google Place ID.
+
+**Response:**
+```json
+{
+  "location": {
+    "latitude": -34.406,
+    "longitude": 150.878
+  },
+  "displayName": {
+    "text": "University of Wollongong Library"
+  },
+  "formattedAddress": "Northfields Ave, Wollongong NSW 2522"
+}
+
+---
+
+## Messaging & Chat
+
+### GET /conversations
+List user's active conversations.
+
+**Query Parameters:**
+- `page` (default: 0)
+- `size` (default: 20)
+
+**Response:**
+```json
+{
+  "content": [
+    {
+      "id": "uuid",
+      "recipient": {
+        "id": "uuid",
+        "display_name": "Jane Doe",
+        "avatar_url": "https://..."
+      },
+      "last_message_preview": "Hey, how are you?",
+      "last_message_at": "2026-02-18T12:00:00Z"
+    }
+  ],
+  "totalElements": 5
+}
+```
+
+### POST /conversations
+Initiate a new conversation or send a message to a recipient.
+
+**Request Body:**
+```json
+{
+  "recipient_id": "uuid",
+  "content": "Hello!"
+}
+```
+
+**Response:** `200 OK` (MessageResponse)
+
+### GET /conversations/{id}/messages
+Get message history for a conversation.
+
+**Query Parameters:**
+- `page` index
+- `size` count
+
+**Response:**
+```json
+{
+  "content": [
+    {
+      "id": "uuid",
+      "conversation_id": "uuid",
+      "sender_id": "uuid",
+      "content": "Hello!",
+      "is_read": false,
+      "created_at": "2026-02-18T12:00:00Z"
+    }
+  ]
+}
+```
+
+### POST /conversations/{id}/messages
+Reply to an existing conversation.
+
+**Request Body:**
+```json
+{ "content": "Hello back!" }
+```
+```

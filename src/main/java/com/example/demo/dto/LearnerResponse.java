@@ -35,4 +35,7 @@ public class LearnerResponse {
 
     @JsonProperty("languages")
     private List<LanguageInfo> languages;
+
+    @JsonProperty("learning_languages")
+    private List<LanguageInfo> learningLanguages;
 }

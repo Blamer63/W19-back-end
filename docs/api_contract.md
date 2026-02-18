@@ -60,7 +60,22 @@
 ### Stats
 *   `GET /api/stats`
 
-## 6. Pending / Future
-*   Messaging / Chat
-*   Meetups
+## 6. Messaging & Chat
+*   `GET /conversations`
+*   `POST /conversations` (Start new)
+*   `GET /conversations/{id}/messages` (History)
+*   `POST /conversations/{id}/messages` (Reply)
+
+## 7. Meetups
+*   `GET /api/meetups`
+*   `POST /api/meetups`
+*   `GET /api/meetups/{id}`
+*   `PUT /api/meetups/{id}`
+*   `DELETE /api/meetups/{id}`
+*   `POST /api/meetups/{id}/join`
+*   `POST /api/meetups/{id}/leave`
+*   `GET /api/meetups/{id}/attendees`
+
+## 8. Pending / Future
 *   Notifications
+*   Moderation Dashboard
