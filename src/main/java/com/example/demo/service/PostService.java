@@ -25,7 +25,6 @@ public class PostService {
         private final ProfileRepository profileRepository;
         private final PostReactionRepository postReactionRepository;
         private final PostCommentRepository postCommentRepository;
-        private final LanguageRepository languageRepository;
 
         @Transactional(readOnly = true)
         public Page<PostResponse> getFeed(String language, Pageable pageable, Double lat, Double lon,
@@ -33,14 +32,37 @@ public class PostService {
                 Profile currentUser = profileRepository.findByEmail(currentUserEmail)
                                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+                // TEMPORARY: Show all posts for debugging
+                // TODO: Re-enable status filtering after fixing post statuses in database
+                /*
+                 * java.util.List<com.example.demo.enums.PostStatus> visibleStatuses =
+                 * java.util.Arrays.asList(
+                 * com.example.demo.enums.PostStatus.ACTIVE,
+                 * com.example.demo.enums.PostStatus.APPROVED
+                 * );
+                 */
+
                 Page<Post> posts;
                 if (language != null && !language.equalsIgnoreCase("all")) {
                         posts = postRepository.findByOriginalLanguage(language, pageable);
+                        // posts = postRepository.findByOriginalLanguageAndStatusIn(language,
+                        // visibleStatuses, pageable);
                 } else {
                         posts = postRepository.findAll(pageable);
+                        // posts = postRepository.findByStatusIn(visibleStatuses, pageable);
                 }
 
-                return posts.map(post -> mapToResponse(post, currentUser, lat, lon));
+                log.info("DEBUG: Found {} posts in database for user {}", posts.getTotalElements(), currentUserEmail);
+                log.info("DEBUG: Language filter: {}", language);
+
+                try {
+                        Page<PostResponse> response = posts.map(post -> mapToResponse(post, currentUser, lat, lon));
+                        log.info("DEBUG: Successfully mapped {} posts", response.getNumberOfElements());
+                        return response;
+                } catch (Exception e) {
+                        log.error("DEBUG: Error mapping posts to response", e);
+                        throw e;
+                }
         }
 
         @Transactional
@@ -84,49 +106,6 @@ public class PostService {
                 postRepository.delete(post);
         }
 
-        private PostResponse mapToResponse(Post post, Profile currentUser, Double lat, Double lon) {
-                String distance = "Unknown";
-                if (lat != null && lon != null && post.getLatitude() != null && post.getLongitude() != null) {
-                        double d = calculateDistance(lat, lon, post.getLatitude(), post.getLongitude());
-                        distance = String.format("%.1f km", d);
-                }
-
-                String userReaction = postReactionRepository.findByPostIdAndProfileId(post.getId(), currentUser.getId())
-                                .map(reaction -> reaction.getType().name())
-                                .orElse(null);
-
-                Language langInfo = post.getOriginalLanguage() != null
-                                ? languageRepository.findById(post.getOriginalLanguage()).orElse(null)
-                                : null;
-
-                return PostResponse.builder()
-                                .id(post.getId())
-                                .author(PostResponse.AuthorDto.builder()
-                                                .id(post.getAuthor().getId())
-                                                .username(post.getAuthor().getUsername())
-                                                .displayName(post.getAuthor().getDisplayName())
-                                                .avatarUrl(post.getAuthor().getAvatarUrl())
-                                                .language(langInfo != null ? langInfo.getName() : "Unknown")
-                                                .flagEmoji(langInfo != null ? langInfo.getFlagEmoji() : "🌍")
-                                                .build())
-                                .content(post.getContent())
-                                .originalLanguage(post.getOriginalLanguage())
-                                .imageUrl(post.getImageUrl())
-                                .latitude(post.getLatitude())
-                                .longitude(post.getLongitude())
-                                .location(post.getLatitude() != null ? "Nearby" : "Unknown")
-                                .distance(distance)
-                                .reactions(PostResponse.PostReactionsSummary.builder()
-                                                .likes(postReactionRepository.countByPostId(post.getId()))
-                                                .comments(postCommentRepository.countByPostId(post.getId()))
-                                                .build())
-                                .userReaction(userReaction)
-                                .createdAt(post.getCreatedAt() != null
-                                                ? post.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant()
-                                                : java.time.Instant.now())
-                                .build();
-        }
-
         @Transactional(readOnly = true)
         public Page<PostResponse> getPostsByUser(UUID userId, String currentUserEmail, Pageable pageable) {
                 Profile currentUser = profileRepository.findByEmail(currentUserEmail)
@@ -140,28 +119,6 @@ public class PostService {
                                 com.example.demo.enums.PostStatus.APPROVED, pageable);
 
                 return posts.map(post -> mapToResponse(post, currentUser, null, null));
-
-        @Transactional(readOnly = true)
-        public PostResponse getPost(UUID postId, String currentUserEmail) {
-                Profile currentUser = profileRepository.findByEmail(currentUserEmail)
-                                .orElseThrow(() -> new RuntimeException("User not found"));
-
-                Post post = postRepository.findById(postId)
-                                .orElseThrow(() -> new RuntimeException("Post not found"));
-
-                return mapToResponse(post, currentUser, null, null);
-        }
-
-        @Transactional
-        public void deletePost(UUID postId, String currentUserEmail) {
-                Post post = postRepository.findById(postId)
-                                .orElseThrow(() -> new RuntimeException("Post not found"));
-
-                if (!post.getAuthor().getEmail().equals(currentUserEmail)) {
-                        throw new RuntimeException("Unauthorized to delete this post");
-                }
-
-                postRepository.delete(post);
         }
 
         private PostResponse mapToResponse(Post post, Profile currentUser, Double lat, Double lon) {

@@ -90,6 +90,7 @@ public class LearnerControllerTest {
                                 .email("test@example.com")
                                 .passwordHash("hashed_password")
                                 .displayName("Test User")
+                                .showLocation(true)
                                 .latitude(-33.8688) // Sydney
                                 .longitude(151.2093)
                                 .build();
@@ -120,6 +121,7 @@ public class LearnerControllerTest {
                                 .email("nearby@example.com")
                                 .passwordHash("hash")
                                 .displayName("Nearby User")
+                                .showLocation(true)
                                 .latitude(-33.8700) // Very close to Sydney
                                 .longitude(151.2100)
                                 .build();
@@ -154,6 +156,7 @@ public class LearnerControllerTest {
                                 .email("nearby@example.com")
                                 .passwordHash("hash")
                                 .displayName("Nearby User")
+                                .showLocation(true)
                                 .latitude(-33.8700)
                                 .longitude(151.2100)
                                 .build();
@@ -165,6 +168,7 @@ public class LearnerControllerTest {
                                 .email("far@example.com")
                                 .passwordHash("hash")
                                 .displayName("Far User")
+                                .showLocation(true)
                                 .latitude(-33.9200) // Further from Sydney
                                 .longitude(151.2500)
                                 .build();
@@ -190,6 +194,7 @@ public class LearnerControllerTest {
                                 .email("spanish@example.com")
                                 .passwordHash("hash")
                                 .displayName("Spanish Learner")
+                                .showLocation(true)
                                 .latitude(-33.8700)
                                 .longitude(151.2100)
                                 .build();
@@ -208,6 +213,7 @@ public class LearnerControllerTest {
                                 .email("japanese@example.com")
                                 .passwordHash("hash")
                                 .displayName("Japanese Learner")
+                                .showLocation(true)
                                 .latitude(-33.8700)
                                 .longitude(151.2100)
                                 .build();
@@ -349,6 +355,7 @@ public class LearnerControllerTest {
                                 .email("closer@example.com")
                                 .passwordHash("hash")
                                 .displayName("Closer User")
+                                .showLocation(true)
                                 .latitude(-33.8690) // Very close
                                 .longitude(151.2095)
                                 .build();
@@ -359,6 +366,7 @@ public class LearnerControllerTest {
                                 .email("farther@example.com")
                                 .passwordHash("hash")
                                 .displayName("Farther User")
+                                .showLocation(true)
                                 .latitude(-33.8750) // A bit farther
                                 .longitude(151.2150)
                                 .build();

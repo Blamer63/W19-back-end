@@ -1,7 +1,7 @@
 # API Reference - W19 Backend
 
 **Base URL:** `http://localhost:8081/api`  
-**Last Updated:** 2026-01-12
+**Last Updated:** 2026-01-21
 
 > **Note:** All JSON fields are **`snake_case`**.
 
@@ -84,6 +84,63 @@ Get current user's profile.
 ### GET /users/me/settings
 ### PATCH /users/me/settings
 
+### GET /users/{id}
+Get a user's public profile.
+
+**Response:**
+```json
+{
+  "id": "uuid",
+  "username": "johndoe",
+  "display_name": "John Doe",
+  "avatar_url": "https://...",
+  "bio": "Language enthusiast",
+  "location": "Sydney, Australia",
+  "followers_count": 42,
+  "following_count": 18,
+  "posts_count": 156,
+  "is_following": false,
+  "is_followed_by": false,
+  "languages": [
+    {
+      "code": "en",
+      "name": "English",
+      "flag_emoji": "🇬🇧",
+      "proficiency": "NATIVE",
+      "is_learning": false
+    }
+  ]
+}
+```
+
+### GET /users/{id}/posts
+Get posts by a specific user.
+
+**Query Parameters:**
+- `page` (default: 0)
+- `size` (default: 10)
+
+**Response:** Paginated `PostResponse` (same structure as feed)
+
+### PATCH /users/me/privacy
+Update privacy settings.
+
+**Request:**
+```json
+{
+  "show_activity": false,
+  "show_saved_words": true
+}
+```
+
+**Response:**
+```json
+{
+  "show_activity": false,
+  "show_saved_words": true
+}
+```
+
 ### PUT /users/me/languages
 Update user languages (native/learning).
 ```json
@@ -93,23 +150,53 @@ Update user languages (native/learning).
 ]
 ```
 
-### POST /users/{id}/follow
-### DELETE /users/{id}/follow
-
-### POST /users/{id}/block
-### DELETE /users/{id}/block
-
-### POST /users/{id}/follow
+### POST /follow
 Follow a user.
 
-### POST /users/{id}/unfollow
-Unfollow a user (also DELETE /users/{id}/follow).
+**Request:**
+```json
+{ "following_id": "uuid" }
+```
 
-### GET /users/{id}/followers
-List followers.
+### DELETE /follow
+Unfollow a user.
 
-### GET /users/{id}/following
-List following.
+**Request:**
+```json
+{ "following_id": "uuid" }
+```
+
+### GET /follow/followers
+List followers (paginated).
+
+**Query Parameters:**
+- `page` (default: 0)
+- `size` (default: 20)
+
+**Response:**
+```json
+{
+  "content": [
+    {
+      "id": "uuid",
+      "username": "follower1",
+      "display_name": "Follower Name",
+      "avatar_url": "https://..."
+    }
+  ],
+  "totalElements": 42,
+  "totalPages": 3
+}
+```
+
+### GET /follow/following
+List following (paginated).
+
+**Query Parameters:**
+- `page` (default: 0)
+- `size` (default: 20)
+
+**Response:** Same structure as followers
 
 ---
 
@@ -194,6 +281,7 @@ Get learning statistics (XP, streaks, etc).
 
 ### GET /api/learners/nearby
 Find nearby language learners based on geolocation.
+**Note:** Only users with `show_location=true` enabled in their settings will be visible. The requesting user is excluded from results.
 
 **Authentication:** Required (JWT)
 

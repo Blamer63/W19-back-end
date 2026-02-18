@@ -1,20 +1,22 @@
-# Frontend-Backend Feature Implementation Status
+# Frontend Integration Guide - Current Implementation
 
-**Last Updated:** 2026-01-10
+**Last Updated:** 2026-01-21  
+**Base URL:** `http://localhost:8081/api`  
+**Auth:** Bearer Token (JWT)
 
-This document tracks which frontend features have backend API support and which are pending implementation.
+> **IMPORTANT:** All JSON responses now use `snake_case` field names to match the API contract.
 
 ---
 
-## ✅ Fully Implemented & Verified (2026-01-10)
+## Table of Contents
 
 1. [Authentication](#1-authentication) - 4 endpoints ✅
-2. [Users & Profiles](#2-users--profiles) - 13 endpoints ✅
+2. [Users & Profiles](#2-users--profiles) - 16 endpoints ✅
 3. [Languages](#3-languages) - 2 endpoints ✅
 4. [Posts & Content](#4-posts--content) - 9 endpoints ⚠️
-5. [Social Features](#5-social-features) - 2 endpoints ✅
+5. [Social Features](#5-social-features) - 4 endpoints ✅
 
-**Total Implemented:** 30 endpoints
+**Total Implemented:** 35 endpoints
 
 ---
 
@@ -172,7 +174,23 @@ const logout = async () => {
 **Endpoint:** `GET /users/{userId}`  
 **Auth:** Required
 
-**Response:** Same as `ProfileResponse` above
+**Response:**
+```typescript
+interface PublicUserProfileDto {
+  id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+  bio: string | null;
+  location: string | null;
+  followers_count: number;
+  following_count: number;
+  posts_count: number;
+  is_following: boolean;  // Does current user follow this user?
+  is_followed_by: boolean;  // Does this user follow current user?
+  languages: UserLanguage[];
+}
+```
 
 **Example:**
 ```typescript
@@ -180,6 +198,62 @@ const getUserProfile = async (userId: string) => {
   const token = localStorage.getItem('access_token');
   const response = await fetch(`http://localhost:8081/api/users/${userId}`, {
     headers: { 'Authorization': `Bearer ${token}` }
+  });
+  return await response.json();
+};
+```
+
+---
+
+### Get User Posts
+**Endpoint:** `GET /users/{userId}/posts`  
+**Auth:** Required
+
+**Query Parameters:**
+- `page` (default: 0)
+- `size` (default: 10)
+
+**Response:** Paginated `PostResponse` (same structure as feed)
+
+**Example:**
+```typescript
+const getUserPosts = async (userId: string, page = 0) => {
+  const token = localStorage.getItem('access_token');
+  const response = await fetch(
+    `http://localhost:8081/api/users/${userId}/posts?page=${page}&size=10`,
+    { headers: { 'Authorization': `Bearer ${token}` } }
+  );
+  return await response.json();
+};
+```
+
+---
+
+### Update Privacy Settings
+**Endpoint:** `PATCH /users/me/privacy`  
+**Auth:** Required
+
+**Request:**
+```typescript
+interface PrivacySettingsDto {
+  show_activity?: boolean;  // Show learning activity on profile
+  show_saved_words?: boolean;  // Show saved words count
+}
+```
+
+**Response:** Updated `PrivacySettingsDto`
+
+**Example:**
+```typescript
+const updatePrivacy = async (settings: PrivacySettingsDto) => {
+  const token = localStorage.getItem('access_token');
+  const response = await fetch('http://localhost:8081/api/users/me/privacy', {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(settings)
   });
   return await response.json();
 };
@@ -334,146 +408,379 @@ Frontend Location: `src/pages/ScannerPage.tsx`
 | `/api/scanner/analyze` | POST | Upload image for AI analysis |
 
 **Request:**
-```json
-{
-  "image": "base64_encoded_image",
-  "source_language": "auto",
-  "target_language": "en"
+```typescript
+interface CreatePostRequest {
+  content: string;
+  original_language: string;
+  latitude?: number;
+  longitude?: number;
+  image_url?: string;
 }
+```
+
+**Response:** `201 Created` (PostResponse)
+
+---
+
+### Get Single Post
+**Endpoint:** `GET /posts/{postId}`  
+**Auth:** Required
+
+**Response:** PostResponse
+
+---
+
+### Delete Post
+**Endpoint:** `DELETE /posts/{postId}`  
+**Auth:** Required
+
+**Response:** `204 No Content`
+
+---
+
+### Translate Post
+**Endpoint:** `POST /posts/{postId}/translations`  
+**Auth:** Required
+
+**Request:**
+```typescript
+{ target_language: string }
 ```
 
 **Response:**
-```json
+```typescript
 {
-  "objects": [
-    {
-      "label": "apple",
-      "translation": "manzana",
-      "confidence": 0.95,
-      "bounding_box": { "x": 10, "y": 20, "width": 100, "height": 100 }
-    }
-  ]
+  language_code: string;
+  translated_content: string;
 }
 ```
 
-**External APIs Needed:** Google Cloud Vision, Google Translate/DeepL
+---
+
+### Report Post
+**Endpoint:** `POST /posts/{postId}/reports`  
+**Auth:** Required
+
+**Request:**
+```typescript
+{
+  reason: 'SPAM' | 'HARASSMENT' | 'HATE_SPEECH' | 'INAPPROPRIATE_CONTENT' | 'OTHER';
+  description?: string;
+}
+```
+
+**Response:** `200 OK`
 
 ---
 
-### 3. **Messaging/Chat System**
-Frontend Location: `src/pages/MessagesPage.tsx`
+### Get Comments
+**Endpoint:** `GET /posts/{postId}/comments`  
+**Auth:** Required
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/conversations` | GET | List user's conversations |
-| `/api/conversations` | POST | Start new conversation |
-| `/api/conversations/{id}` | GET | Get conversation details |
-| `/api/conversations/{id}/messages` | GET | Get messages (paginated) |
-| `/api/conversations/{id}/messages` | POST | Send message |
-| `/api/conversations/{id}/messages/{msgId}/translate` | GET | Translate message |
+**Query Parameters:**
+- `page` (default: 0)
+- `size` (default: 10)
 
-**WebSocket:** `ws://api/messages` for real-time messaging
-
-
-
-### 5. **Notifications**
-Frontend: Not yet implemented
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/notifications` | GET | List notifications |
-| `/api/notifications/{id}/read` | POST | Mark as read |
-| `/api/notifications/read-all` | POST | Mark all as read |
-
-**WebSocket:** `ws://api/notifications` for real-time push
+**Response:**
+```typescript
+interface CommentResponse {
+  id: string;
+  content: string;
+  created_at: string;
+  author: {
+    id: string;
+    username: string;
+    display_name: string;
+    avatar_url: string | null;
+  };
+}
+```
 
 ---
 
-### 6. **User Block System**
-Frontend: Not yet implemented
+### Add Comment
+**Endpoint:** `POST /posts/{postId}/comments`  
+**Auth:** Required
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/users/{id}/block` | POST | Block a user |
-| `/api/users/{id}/block` | DELETE | Unblock a user |
+**Request:**
+```typescript
+{ content: string }
+```
 
----
-
-## 📋 Implementation Priority Recommendation
-
-### Phase 1 (Core) - ✅ COMPLETED
-1. ~~Authentication~~
-2. ~~Comments~~
-3. ~~Follow/Unfollow~~
-4. ~~Learning Sessions~~
-5. ~~Reports~~
-6. ~~User Settings~~
-7. ~~Post Translation~~
-
-### Phase 2 (Discovery) - ✅ COMPLETED
-1. ~~Nearby Learners~~
-2. ~~Meetups System~~
-
-### Phase 3 (Communication)
-1. Messaging System
-2. Notifications
-
-### Phase 4 (AI Features)
-1. AI Object Scanner
+**Response:** `201 Created` (CommentResponse)
 
 ---
 
-## 🔗 API Endpoint Summary
+### Delete Comment
+**Endpoint:** `DELETE /posts/{postId}/comments/{commentId}`  
+**Auth:** Required
 
-### Authentication (`/api/auth`)
-- `POST /auth/register` - Register new user
-- `POST /auth/login` - Login and get tokens
-- `POST /auth/refresh` - Refresh access token
-- `POST /auth/logout` - Logout (client-side)
-
-### Users (`/api/users`)
-- `GET /users/me` - Get current user profile
-- `PATCH /users/me` - Update profile
-- `GET /users/me/settings` - Get settings
-- `PATCH /users/me/settings` - Update settings
-- `GET /users/{id}` - Get user by ID
-- `POST /users/{id}/follow` - Follow user
-- `DELETE /users/{id}/follow` - Unfollow user
-- `GET /users/{id}/followers` - List followers
-- `GET /users/{id}/following` - List following
-- `GET /users/me/languages` - Get user languages
-
-### Languages
-- `GET /languages` - List all supported languages
-
-### Posts (`/api/posts`)
-- `GET /posts` - Get feed (paginated)
-- `POST /posts` - Create post
-- `GET /posts/{id}` - Get single post
-- `DELETE /posts/{id}` - Delete post
-- `GET /posts/{id}/translations?target_language=xx` - Get translation
-- `POST /posts/{id}/reactions` - Add reaction
-- `DELETE /posts/{id}/reactions` - Remove reaction
-- `GET /posts/{id}/comments` - List comments
-- `POST /posts/{id}/comments` - Add comment
-- `DELETE /posts/{id}/comments/{commentId}` - Delete comment
-- `POST /posts/{id}/reports` - Report post
-
-### Learning (`/api/words`, `/api/learn`, `/api/stats`)
-- `GET /api/words` - List saved words
-- `POST /api/words` - Save new word
-- `PATCH /api/words/{id}` - Update word
-- `DELETE /api/words/{id}` - Delete word
-- `POST /api/learn/sessions/start` - Start practice session
-- `POST /api/learn/sessions/{id}/submit` - Submit answer
-- `POST /api/learn/sessions/{id}/complete` - Complete session
-- `GET /api/learn/sessions` - Session history
-- `GET /api/stats` - Learning statistics
+**Response:** `204 No Content`
 
 ---
 
-## 🔗 Related Documentation
+### React to Post
+**Endpoint:** `POST /posts/{postId}/reactions`  
+**Auth:** Required
 
-- [API Contract](./api_contract.md)
-- [Database Schema](./database-schema.sql)
-- [Learn API Contract](./api_reference.md)
+**Request:**
+```typescript
+{ reaction: 'LIKE' | 'LOVE' | 'HELPFUL' | 'FUNNY' }
+```
+
+**Response:**
+```typescript
+{
+  post_id: string;
+  profile_id: string;
+  reaction: string;
+}
+```
+
+---
+
+### Remove Reaction
+**Endpoint:** `DELETE /posts/{postId}/reactions`  
+**Auth:** Required
+
+**Response:** PostReactionResponse
+
+---
+
+## 5. Social Features
+
+### Follow User
+**Endpoint:** `POST /follow`  
+**Auth:** Required
+
+**Request:**
+```typescript
+{ following_id: string }  // UUID of user to follow
+```
+
+**Response:** `200 OK`
+
+**Example:**
+```typescript
+const followUser = async (userId: string) => {
+  const token = localStorage.getItem('access_token');
+  await fetch('http://localhost:8081/api/follow', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ following_id: userId })
+  });
+};
+```
+
+---
+
+### Unfollow User
+**Endpoint:** `DELETE /follow`  
+**Auth:** Required
+
+**Request:**
+```typescript
+{ following_id: string }  // UUID of user to unfollow
+```
+
+**Response:** `200 OK`
+
+**Example:**
+```typescript
+const unfollowUser = async (userId: string) => {
+  const token = localStorage.getItem('access_token');
+  await fetch('http://localhost:8081/api/follow', {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ following_id: userId })
+  });
+};
+```
+
+---
+
+### Get Followers
+**Endpoint:** `GET /follow/followers`  
+**Auth:** Required
+
+**Query Parameters:**
+- `page` (default: 0)
+- `size` (default: 20)
+
+**Response:**
+```typescript
+interface PagedFollowerResponse {
+  content: FollowerDto[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
+
+interface FollowerDto {
+  id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+}
+```
+
+**Example:**
+```typescript
+const getFollowers = async (page = 0) => {
+  const token = localStorage.getItem('access_token');
+  const response = await fetch(
+    `http://localhost:8081/api/follow/followers?page=${page}&size=20`,
+    { headers: { 'Authorization': `Bearer ${token}` } }
+  );
+  return await response.json();
+};
+```
+
+---
+
+### Get Following
+**Endpoint:** `GET /follow/following`  
+**Auth:** Required
+
+**Query Parameters:**
+- `page` (default: 0)
+- `size` (default: 20)
+
+**Response:** Same as `PagedFollowerResponse` above
+
+**Example:**
+```typescript
+const getFollowing = async (page = 0) => {
+  const token = localStorage.getItem('access_token');
+  const response = await fetch(
+    `http://localhost:8081/api/follow/following?page=${page}&size=20`,
+    { headers: { 'Authorization': `Bearer ${token}` } }
+  );
+  return await response.json();
+};
+```
+
+---
+
+## Complete React Example
+
+```typescript
+import { useState, useEffect } from 'react';
+
+const API_BASE = 'http://localhost:8081/api';
+
+// Auth helper
+const getAuthHeaders = () => ({
+  'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+  'Content-Type': 'application/json'
+});
+
+// Login and store tokens
+export const login = async (email: string, password: string) => {
+  const response = await fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+  const data = await response.json();
+  localStorage.setItem('access_token', data.access_token);
+  localStorage.setItem('refresh_token', data.refresh_token);
+  return data;
+};
+
+// Feed component
+export function Feed() {
+  const [posts, setPosts] = useState([]);
+  const [page, setPage] = useState(0);
+
+  useEffect(() => {
+    loadFeed();
+  }, [page]);
+
+  const loadFeed = async () => {
+    const response = await fetch(
+      `${API_BASE}/posts?page=${page}&size=20`,
+      { headers: getAuthHeaders() }
+    );
+    const data = await response.json();
+    setPosts(data.content);
+  };
+
+  const reactToPost = async (postId: string, reaction: string) => {
+    await fetch(`${API_BASE}/posts/${postId}/reactions`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ reaction })
+    });
+    loadFeed(); // Refresh
+  };
+
+  return (
+    <div>
+      {posts.map(post => (
+        <div key={post.id}>
+          <h3>{post.author.display_name}</h3>
+          <p>{post.content}</p>
+          <button onClick={() => reactToPost(post.id, 'LIKE')}>
+            Like ({post.reactions.likes})
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+---
+
+## Missing Endpoints (Not Yet Implemented)
+
+### Section 2: Users
+- None - All user endpoints implemented ✅
+
+### Section 4: Posts
+- `PATCH /posts/{post_id}` - Update post
+- `GET /posts/{post_id}/translations` - List translations
+- `POST /comments/{comment_id}/reports` - Report comment (separate endpoint)
+
+### Section 5-9: Not Implemented
+- Learning (Words, Practice, Goals)
+- Messaging (Conversations, Messages)
+- Meetups (Events, RSVPs)
+- Moderation (Admin endpoints)
+- Notifications
+
+---
+
+## Testing Checklist
+
+- [x] Authentication flow (register, login, refresh, logout)
+- [x] Get current user profile
+- [x] User settings (get/update)
+- [x] User blocking
+- [x] Language management
+- [x] Post feed with pagination
+- [x] Create/delete posts
+- [x] Post reactions
+- [x] Comments (get/add/delete)
+- [x] Post translations
+- [x] Content reporting
+- [x] Follow/unfollow users
+- [x] All responses use snake_case
+
+---
+
+## Notes
+
+- **Field Naming:** All JSON responses use `snake_case` (e.g., `user_id`, `display_name`, `created_at`)
+- **Pagination:** Standard Spring Data pagination with `content`, `totalPages`, `totalElements`
+- **Auth:** JWT tokens expire after configured time (default 1 hour)
+- **Refresh Tokens:** Automatically rotated on each refresh
+- **CORS:** Configured for development (all origins allowed)
