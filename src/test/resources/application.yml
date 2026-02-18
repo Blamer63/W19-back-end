@@ -15,7 +15,7 @@ spring:
 
 app:
   jwt:
-    secret: "v9y$B&E)H@McQfTjWnZr4u7x!A%C*F-JaNdRgUkXp2s5v8y/B?E(G+KbPeShVmYp"
+    secret: "test-secret-for-integration-tests-only-do-not-use-in-prod"
     expiration-ms: 3600000 # 1 hour
   google:
     places-key: "test-api-key-not-used-in-tests"

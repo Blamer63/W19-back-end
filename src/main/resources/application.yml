@@ -16,7 +16,7 @@ spring:
 
 app:
   jwt:
-    secret: "v9y$B&E)H@McQfTjWnZr4u7x!A%C*F-JaNdRgUkXp2s5v8y/B?E(G+KbPeShVmYp"
+    secret: ${JWT_SECRET}
     expiration-ms: 3600000 # 1 hour
   google:
-    places-key: ${GOOGLE_PLACES_KEY:AIzaSyD19Bltu_h2nKQW4lqnQipQ9WIcINU9dfA}
+    places-key: ${GOOGLE_PLACES_KEY}

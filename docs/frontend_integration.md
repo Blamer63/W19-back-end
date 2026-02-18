@@ -147,8 +147,13 @@ const logout = async () => {
 | **Posts/Feed** | ✅ | ✅ | `GET /api/posts` | ✅ Working |
 | **Learning - Words** | ✅ | ✅ | `GET /api/words` | ✅ Working |
 | **Learning - Stats** | ✅ | ✅ | `GET /api/learn/stats` | ✅ Working |
-| **Nearby Learners** | ✅ | ✅ | `GET /api/learners/nearby` | ✅ Working |
-| **Meetups System** | ✅ | ✅ | `POST/GET/PUT/DELETE /api/meetups` | ✅ Working |
+| **Nearby Learners** | ✅ | ✅ | `GET /api/learners/nearby` | ✅ Working (inc. `learning_languages`) |
+| **Chat Feature** | ✅ | ✅ | `/api/conversations` | ✅ REST API Done (WS Pending) |
+
+---
+
+## 💬 Chat API Integration
+For detailed documentation on the Chat feature, see: **[Chat Integration Guide](./chat_integration_guide.md)**
 
 ---
 

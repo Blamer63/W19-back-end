@@ -78,3 +78,18 @@ The learning module (`api/learn`) is designed around "Sessions":
 2. **Interact**: Submit answers one by one or in batch.
 3. **Complete**: Finalize the session and calculate XP/Score.
 
+### Messaging & Chat
+The Chat module provides a REST-based foundation for real-time communication:
+- **Conversation Management**: Automatically finds existing conversations between users or creates a new one upon the first message.
+- **Mutable Participant Lists**: Fixed a critical JPA issue where `Arrays.asList()` (fixed-size) prevented saving new conversations. Switched to `new ArrayList<>(Arrays.asList(...))` for mutability.
+- **REST Fallback**: While WebSockets are the goal, the REST API provides robust endpoints for message history and background state sync.
+- **Deduplication**: `ConversationRepository.findBetweenUsers` ensuring only one conversation exists between any two users.
+
+---
+
+## 7. Global Error Handling
+A centralized `GlobalExceptionHandler` ensures consistent error responses:
+- `ResourceNotFoundException` -> 404 Not Found
+- `MethodArgumentNotValidException` -> 400 Bad Request
+- General `RuntimeException` -> 400 Bad Request (masked where necessary for security)
+

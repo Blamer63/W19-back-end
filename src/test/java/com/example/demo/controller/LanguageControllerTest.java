@@ -26,6 +26,17 @@ public class LanguageControllerTest {
         @Autowired
         private LanguageRepository languageRepository;
 
+        @org.junit.jupiter.api.BeforeEach
+        void setUp() {
+                if (languageRepository.count() == 0) {
+                        languageRepository.save(Language.builder()
+                                        .code("en")
+                                        .name("English")
+                                        .flagEmoji("🇺🇸")
+                                        .build());
+                }
+        }
+
         @Test
         @WithMockUser
         void getAllLanguages_Success() throws Exception {
