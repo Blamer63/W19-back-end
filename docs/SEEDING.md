@@ -47,6 +47,8 @@ All accounts use the password: **`demo123`**
 | Linh Nguyen | `linh@locale.app` | Vietnamese (native), learning English | Hanoi, Vietnam |
 | Wei Chen | `wei@locale.app` | Chinese (native) | Beijing, China |
 
+> **Note:** There is also a `demo@locale.app` / `demo123` account created via app registration (not part of `seed.sql`).
+
 ---
 
 ## What Gets Seeded

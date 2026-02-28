@@ -7,27 +7,27 @@ INSERT INTO languages (code, name, native_name, flag_emoji) VALUES
 ON CONFLICT (code) DO NOTHING;
 
 -- STEP 2: Insert Profiles (Users)
--- Password for all is "demo123" (using bcrypt hash: $2a$10$ug/Ttw0rUHF2XMvexo3LUuaBMuU/exNThldLGGFyAotbPAD/jdZTqu )
+-- Password for all is "demo123" (using bcrypt hash: $2a$10$iKzCALp4y42N789dPARY4uaZ5RWA3xHH3P8N7eBq8i.uuiS53DHJYe )
 -- We use fixed UUIDs so we can reference them in posts and meetups
 
 -- Minso (Korean)
 INSERT INTO profiles (id, username, email, password_hash, display_name, location, latitude, longitude, bio, show_activity, show_saved_words, created_at, updated_at) VALUES 
-('10000000-0000-0000-0000-000000000001', 'minso_k', 'minso@locale.app', '$2a$10$ug/Ttw0rUHF2XMvexo3LUuaBMuU/exNThldLGGFyAotbPAD/jdZTqu', 'Minso Kim', 'Seoul, South Korea', 37.5665, 126.9780, 'Hello! I am looking to practice my English.', true, false, NOW(), NOW())
+('10000000-0000-0000-0000-000000000001', 'minso_k', 'minso@locale.app', '$2a$10$iKzCALp4y42N789dPARY4uaZ5RWA3xHH3P8N7eBq8i.uuiS53DHJYe', 'Minso Kim', 'Seoul, South Korea', 37.5665, 126.9780, 'Hello! I am looking to practice my English.', true, false, NOW(), NOW())
 ON CONFLICT (email) DO NOTHING;
 
 -- Emma (English)
 INSERT INTO profiles (id, username, email, password_hash, display_name, location, latitude, longitude, bio, show_activity, show_saved_words, created_at, updated_at) VALUES 
-('10000000-0000-0000-0000-000000000002', 'emma_uk', 'emma@locale.app', '$2a$10$ug/Ttw0rUHF2XMvexo3LUuaBMuU/exNThldLGGFyAotbPAD/jdZTqu', 'Emma Smith', 'London, UK', 51.5074, -0.1278, 'Learning Korean and Chinese!', true, false, NOW(), NOW())
+('10000000-0000-0000-0000-000000000002', 'emma_uk', 'emma@locale.app', '$2a$10$iKzCALp4y42N789dPARY4uaZ5RWA3xHH3P8N7eBq8i.uuiS53DHJYe', 'Emma Smith', 'London, UK', 51.5074, -0.1278, 'Learning Korean and Chinese!', true, false, NOW(), NOW())
 ON CONFLICT (email) DO NOTHING;
 
 -- Linh (Vietnamese)
 INSERT INTO profiles (id, username, email, password_hash, display_name, location, latitude, longitude, bio, show_activity, show_saved_words, created_at, updated_at) VALUES 
-('10000000-0000-0000-0000-000000000003', 'linh_vn', 'linh@locale.app', '$2a$10$ug/Ttw0rUHF2XMvexo3LUuaBMuU/exNThldLGGFyAotbPAD/jdZTqu', 'Linh Nguyen', 'Hanoi, Vietnam', 21.0285, 105.8542, 'Native Vietnamese, improving my English.', true, false, NOW(), NOW())
+('10000000-0000-0000-0000-000000000003', 'linh_vn', 'linh@locale.app', '$2a$10$iKzCALp4y42N789dPARY4uaZ5RWA3xHH3P8N7eBq8i.uuiS53DHJYe', 'Linh Nguyen', 'Hanoi, Vietnam', 21.0285, 105.8542, 'Native Vietnamese, improving my English.', true, false, NOW(), NOW())
 ON CONFLICT (email) DO NOTHING;
 
 -- Wei (Chinese)
 INSERT INTO profiles (id, username, email, password_hash, display_name, location, latitude, longitude, bio, show_activity, show_saved_words, created_at, updated_at) VALUES 
-('10000000-0000-0000-0000-000000000004', 'wei_cn', 'wei@locale.app', '$2a$10$ug/Ttw0rUHF2XMvexo3LUuaBMuU/exNThldLGGFyAotbPAD/jdZTqu', 'Wei Chen', 'Beijing, China', 39.9042, 116.4074, 'Always happy to chat and practice languages.', true, false, NOW(), NOW())
+('10000000-0000-0000-0000-000000000004', 'wei_cn', 'wei@locale.app', '$2a$10$iKzCALp4y42N789dPARY4uaZ5RWA3xHH3P8N7eBq8i.uuiS53DHJYe', 'Wei Chen', 'Beijing, China', 39.9042, 116.4074, 'Always happy to chat and practice languages.', true, false, NOW(), NOW())
 ON CONFLICT (email) DO NOTHING;
 
 
