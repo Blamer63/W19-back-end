@@ -26,7 +26,7 @@ public interface ProfileRepository extends JpaRepository<Profile, java.util.UUID
 
         @org.springframework.data.jpa.repository.Query("SELECT p FROM Profile p WHERE " +
                         "p.id != :excludedId AND " +
-                        "p.showLocation = true AND " +
+                        "(p.showLocation IS NULL OR p.showLocation = true) AND " +
                         "p.latitude IS NOT NULL AND p.longitude IS NOT NULL AND " +
                         "(6371 * acos(cos(radians(:latitude)) * cos(radians(p.latitude)) * " +
                         "cos(radians(p.longitude) - radians(:longitude)) + " +
@@ -39,4 +39,8 @@ public interface ProfileRepository extends JpaRepository<Profile, java.util.UUID
                         @org.springframework.data.repository.query.Param("latitude") Double latitude,
                         @org.springframework.data.repository.query.Param("longitude") Double longitude,
                         @org.springframework.data.repository.query.Param("radiusKm") Double radiusKm);
+
+        @org.springframework.data.jpa.repository.Query("SELECT p FROM Profile p WHERE p.id != :excludedId ORDER BY p.createdAt DESC")
+        java.util.List<Profile> findAllLearnersExcept(
+                        @org.springframework.data.repository.query.Param("excludedId") java.util.UUID excludedId);
 }

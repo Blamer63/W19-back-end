@@ -27,23 +27,27 @@ public class LearnerService {
                 Profile currentUser = profileRepository.findByEmail(currentUserEmail)
                                 .orElseThrow(() -> new RuntimeException("User not found: " + currentUserEmail));
 
-                List<Profile> nearbyProfiles = profileRepository.findNearbyProfiles(
-                                currentUser.getId(),
-                                latitude,
-                                longitude,
-                                radiusKm);
+                List<Profile> profiles;
+                boolean hasLocation = latitude != null && longitude != null;
 
-                return nearbyProfiles.stream()
-                                // .filter(profile -> !profile.getEmail().equals(currentUserEmail)) // Handled
-                                // by DB query
-                                .filter(profile -> languageCode == null || hasLanguage(profile, languageCode)) // Filter
-                                                                                                               // by
-                                                                                                               // language
-                                                                                                               // if
-                                                                                                               // provided
-                                .map(profile -> mapToLearnerResponse(profile, latitude, longitude))
-                                .sorted((a, b) -> Double.compare(a.getDistanceKm(), b.getDistanceKm())) // Sort by
-                                                                                                        // distance
+                if (hasLocation) {
+                        profiles = profileRepository.findNearbyProfiles(
+                                        currentUser.getId(),
+                                        latitude,
+                                        longitude,
+                                        radiusKm);
+                } else {
+                        // No location provided — return all learners globally
+                        profiles = profileRepository.findAllLearnersExcept(currentUser.getId());
+                }
+
+                final Double queryLat = latitude != null ? latitude : 0.0;
+                final Double queryLon = longitude != null ? longitude : 0.0;
+
+                return profiles.stream()
+                                .filter(profile -> languageCode == null || hasLanguage(profile, languageCode))
+                                .map(profile -> mapToLearnerResponse(profile, queryLat, queryLon))
+                                .sorted((a, b) -> Double.compare(a.getDistanceKm(), b.getDistanceKm()))
                                 .collect(Collectors.toList());
         }
 
