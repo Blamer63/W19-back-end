@@ -3,6 +3,8 @@ package com.example.demo.service;
 import com.example.demo.dto.ProfileResponse;
 import com.example.demo.dto.UserLanguageDTO;
 import com.example.demo.entity.Profile;
+import com.example.demo.repository.FollowRepository;
+import com.example.demo.repository.PostRepository;
 import com.example.demo.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,6 +18,8 @@ import java.util.stream.Collectors;
 public class ProfileService {
 
         private final ProfileRepository profileRepository;
+        private final PostRepository postRepository;
+        private final FollowRepository followRepository;
 
         @Transactional(readOnly = true)
         public List<ProfileResponse> searchProfiles(String nativeLanguage, String learningLanguage) {
@@ -50,6 +54,9 @@ public class ProfileService {
                                 .roles(profile.getRoles().stream()
                                                 .map(role -> role.getRole().name())
                                                 .collect(Collectors.toList()))
+                                .postsCount(postRepository.countByAuthorId(profile.getId()))
+                                .followingCount(followRepository.countByFollowerId(profile.getId()))
+                                .followersCount(followRepository.countByFollowingId(profile.getId()))
                                 .build();
         }
 }

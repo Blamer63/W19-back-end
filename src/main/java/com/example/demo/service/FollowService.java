@@ -43,6 +43,12 @@ public class FollowService {
                 .build();
 
         followRepository.save(follow);
+
+        // Update denormalised counts
+        follower.setFollowingCount((follower.getFollowingCount() != null ? follower.getFollowingCount() : 0) + 1);
+        following.setFollowersCount((following.getFollowersCount() != null ? following.getFollowersCount() : 0) + 1);
+        profileRepository.save(follower);
+        profileRepository.save(following);
     }
 
     @Transactional
@@ -50,7 +56,20 @@ public class FollowService {
         Profile follower = profileRepository.findByEmail(followerEmail)
                 .orElseThrow(() -> new RuntimeException("Current user not found"));
 
+        boolean existed = followRepository.existsByFollowerIdAndFollowingId(follower.getId(), followingId);
         followRepository.deleteByFollowerIdAndFollowingId(follower.getId(), followingId);
+
+        if (existed) {
+            Profile following = profileRepository.findById(followingId).orElse(null);
+            follower.setFollowingCount(
+                    Math.max(0, (follower.getFollowingCount() != null ? follower.getFollowingCount() : 0) - 1));
+            profileRepository.save(follower);
+            if (following != null) {
+                following.setFollowersCount(
+                        Math.max(0, (following.getFollowersCount() != null ? following.getFollowersCount() : 0) - 1));
+                profileRepository.save(following);
+            }
+        }
     }
 
     @Transactional(readOnly = true)
