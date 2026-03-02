@@ -22,6 +22,8 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
 
     long countByAuthorIdAndStatus(UUID authorId, PostStatus status);
 
+    Page<Post> findByAuthorId(UUID authorId, Pageable pageable);
+
     Page<Post> findByAuthorIdAndStatus(UUID authorId, PostStatus status, Pageable pageable);
 
 }

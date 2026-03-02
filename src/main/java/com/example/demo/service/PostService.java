@@ -115,8 +115,7 @@ public class PostService {
                         throw new RuntimeException("User not found");
                 }
 
-                Page<Post> posts = postRepository.findByAuthorIdAndStatus(userId,
-                                com.example.demo.enums.PostStatus.APPROVED, pageable);
+                Page<Post> posts = postRepository.findByAuthorId(userId, pageable);
 
                 return posts.map(post -> mapToResponse(post, currentUser, null, null));
         }
