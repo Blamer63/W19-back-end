@@ -131,7 +131,7 @@ public class LearnerControllerTest {
                 UserLanguage userLang = new UserLanguage();
                 userLang.setProfile(nearbyUser);
                 userLang.setLanguage(spanish);
-                userLang.setProficiency(ProficiencyLevel.B1);
+                userLang.setProficiency(ProficiencyLevel.BEGINNER);
                 userLang.setLearning(true);
                 userLanguageRepository.save(userLang);
 
@@ -203,7 +203,7 @@ public class LearnerControllerTest {
                 UserLanguage spanishUserLang = new UserLanguage();
                 spanishUserLang.setProfile(spanishLearner);
                 spanishUserLang.setLanguage(spanish);
-                spanishUserLang.setProficiency(ProficiencyLevel.A1);
+                spanishUserLang.setProficiency(ProficiencyLevel.BEGINNER);
                 spanishUserLang.setLearning(true);
                 userLanguageRepository.save(spanishUserLang);
 
@@ -222,7 +222,7 @@ public class LearnerControllerTest {
                 UserLanguage japaneseUserLang = new UserLanguage();
                 japaneseUserLang.setProfile(japaneseLearner);
                 japaneseUserLang.setLanguage(japanese);
-                japaneseUserLang.setProficiency(ProficiencyLevel.A1);
+                japaneseUserLang.setProficiency(ProficiencyLevel.BEGINNER);
                 japaneseUserLang.setLearning(true);
                 userLanguageRepository.save(japaneseUserLang);
 
