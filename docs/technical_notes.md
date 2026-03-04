@@ -62,13 +62,31 @@ The application uses **Spring Security** with a stateless **JWT** mechanism.
 ## 5. Database Strategy
 - **ORM**: Spring Data JPA.
 - **DTO Projection**: Entities are never exposed directly; they are mapped to DTOs in the Service layer.
-- **Enums**: Used strictly for state (e.g., `ReactionType`, `ReportReason`) to ensure data integrity.
+- **Enums**: Used strictly for state to ensure data integrity. Key enums:
+  - `ReactionType`, `ReportReason` — content interaction
+  - `FriendStatus` (`PENDING`, `ACCEPTED`, `REJECTED`) — friend request lifecycle
+  - `LocationVisibility` (`PUBLIC`, `FRIENDS_ONLY`, `NOBODY`) — map privacy control
 
 ## 6. Feature Specific Implementations
 
+### Friend System
+The Friend system (`Friend` entity) is a **mutual** relationship, distinct from the one-way Follow system:
+- **`requester`**: The user who sent the friend request.
+- **`receiver`**: The user who received the request.
+- **`status`**: `PENDING` → `ACCEPTED` or `REJECTED`. A rejected user can re-send a request (old record is deleted).
+- **Unique constraint** on `(requester_id, receiver_id)` prevents duplicate rows.
+- **Bidirectional queries**: `FriendRepository.findBetween()` and `areFriends()` check both directions so callers don't need to care who sent the request.
+- **Map integration**: `FriendRepository.findAcceptedFriendIds()` is called in `LearnerService` to efficiently build a friend set for privacy filtering without N+1 queries.
+
+### Location Visibility
+Replaces the old `showLocation` boolean with a 3-way `LocationVisibility` enum stored as a string column:
+- `PUBLIC` (default) — visible to everyone on the map. Existing users retain this automatically.
+- `FRIENDS_ONLY` — only mutual friends (status = `ACCEPTED`) can see this user on the map.
+- `NOBODY` — user is completely hidden from all map queries.
+
+The filter is applied in `LearnerService.findNearbyLearners()` before returning results to the frontend. The `PrivacySettings` embeddable and `PrivacySettingsDto` expose this via `PATCH /api/users/me/privacy`.
 ### Follow System
 The Follow system (`UserFollow` entity) uses a join table strategy with explicit relationship management:
-- **`follower`**: The user who initiates the follow (source).
 - **`following`**: The user being followed (target).
 - **Service Layer**: A dedicated `FollowService` handles business logic including self-follow prevention and idempotency.
 

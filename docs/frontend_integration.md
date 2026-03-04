@@ -1,6 +1,6 @@
 # Frontend Integration Guide - Current Implementation
 
-**Last Updated:** 2026-01-21  
+**Last Updated:** 2026-03-05  
 **Base URL:** `http://localhost:8081/api`  
 **Auth:** Bearer Token (JWT)
 
@@ -15,8 +15,9 @@
 3. [Languages](#3-languages) - 2 endpoints ✅
 4. [Posts & Content](#4-posts--content) - 9 endpoints ⚠️
 5. [Social Features](#5-social-features) - 4 endpoints ✅
+6. [Friends](#6-friends) - 6 endpoints ✅
 
-**Total Implemented:** 35 endpoints
+**Total Implemented:** 41 endpoints
 
 ---
 
@@ -147,8 +148,9 @@ const logout = async () => {
 | **Posts/Feed** | ✅ | ✅ | `GET /api/posts` | ✅ Working |
 | **Learning - Words** | ✅ | ✅ | `GET /api/words` | ✅ Working |
 | **Learning - Stats** | ✅ | ✅ | `GET /api/learn/stats` | ✅ Working |
-| **Nearby Learners** | ✅ | ✅ | `GET /api/learners/nearby` | ✅ Working (inc. `learning_languages`) |
+| **Nearby Learners** | ✅ | ✅ | `GET /api/learners/nearby` | ✅ Working (respects `location_visibility`) |
 | **Chat Feature** | ✅ | ✅ | `/api/conversations` | ✅ REST API Done (WS Pending) |
+| **Friend System** | ⏳ | ✅ | `/api/users/{id}/friend-request` | 🔨 Backend done, frontend pending |
 
 ---
 
@@ -241,12 +243,18 @@ const getUserPosts = async (userId: string, page = 0) => {
 **Request:**
 ```typescript
 interface PrivacySettingsDto {
-  show_activity?: boolean;  // Show learning activity on profile
-  show_saved_words?: boolean;  // Show saved words count
+  show_activity?: boolean;          // Show learning activity on profile
+  show_saved_words?: boolean;        // Show saved words count
+  location_visibility?: 'PUBLIC' | 'FRIENDS_ONLY' | 'NOBODY'; // Who sees you on the map
 }
 ```
 
-**Response:** Updated `PrivacySettingsDto`
+**Response:** Updated `PrivacySettingsDto` (same shape, all fields present)
+
+> **`location_visibility` values:**
+> - `PUBLIC` — visible to everyone on the map (default for all existing users)
+> - `FRIENDS_ONLY` — only mutual friends can see your location
+> - `NOBODY` — you are hidden from the map entirely
 
 **Example:**
 ```typescript
@@ -674,7 +682,121 @@ const getFollowing = async (page = 0) => {
 
 ---
 
-## Complete React Example
+## 6. Friends
+
+> The Friend system is **mutual** — both users must agree. It is separate from the one-way Follow system and controls who sees your location on the map.
+
+### Send Friend Request
+**Endpoint:** `POST /users/{id}/friend-request`  
+**Auth:** Required
+
+**Response:** `201 Created`
+```typescript
+interface FriendRequestResponse {
+  id: string;              // UUID of the Friend record (used for accept/reject)
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  is_sent_by_me: boolean;
+  other_user: ProfileResponse;
+  created_at: string;
+}
+```
+
+**Example:**
+```typescript
+const sendFriendRequest = async (userId: string) => {
+  const token = localStorage.getItem('access_token');
+  const response = await fetch(`http://localhost:8081/api/users/${userId}/friend-request`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  return await response.json();
+};
+```
+
+---
+
+### Respond to Friend Request
+**Endpoint:** `PATCH /users/me/friend-requests/{friendId}?action=accept|reject`  
+**Auth:** Required
+
+**Example:**
+```typescript
+const respondToRequest = async (friendId: string, action: 'accept' | 'reject') => {
+  const token = localStorage.getItem('access_token');
+  const response = await fetch(
+    `http://localhost:8081/api/users/me/friend-requests/${friendId}?action=${action}`,
+    { method: 'PATCH', headers: { 'Authorization': `Bearer ${token}` } }
+  );
+  return await response.json();
+};
+```
+
+---
+
+### Remove Friend
+**Endpoint:** `DELETE /users/{id}/friend`  
+**Auth:** Required
+
+**Example:**
+```typescript
+const removeFriend = async (userId: string) => {
+  const token = localStorage.getItem('access_token');
+  await fetch(`http://localhost:8081/api/users/${userId}/friend`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+};
+```
+
+---
+
+### Get Friend Status (for Add Friend button state)
+**Endpoint:** `GET /users/{id}/friend-status`  
+**Auth:** Required
+
+**Response:** `200 OK` with `FriendRequestResponse`, or `204 No Content` if no relationship.
+
+**Example:**
+```typescript
+const getFriendStatus = async (userId: string) => {
+  const token = localStorage.getItem('access_token');
+  const response = await fetch(`http://localhost:8081/api/users/${userId}/friend-status`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (response.status === 204) return null; // no relationship
+  return await response.json(); // FriendRequestResponse
+};
+// Use is_sent_by_me + status to determine button label:
+// null               → "Add Friend"
+// PENDING + sent     → "Pending" (cancel option)
+// PENDING + received → "Respond" (accept/reject)
+// ACCEPTED           → "Friends" (remove option)
+```
+
+---
+
+### Get Friends List
+**Endpoint:** `GET /users/{id}/friends`  
+**Auth:** Required  
+**Query Params:** `page` (default: 0), `size` (default: 20)
+
+**Response:** Paginated `ProfileResponse`
+
+---
+
+### Get Incoming Requests
+**Endpoint:** `GET /users/me/friend-requests/incoming`  
+**Auth:** Required
+
+**Response:** Paginated `FriendRequestResponse`
+
+---
+
+### Get Outgoing Requests
+**Endpoint:** `GET /users/me/friend-requests/outgoing`  
+**Auth:** Required
+
+**Response:** Paginated `FriendRequestResponse`
 
 ```typescript
 import { useState, useEffect } from 'react';

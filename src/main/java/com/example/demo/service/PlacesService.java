@@ -36,8 +36,7 @@ public class PlacesService {
         headers.set("X-Goog-Api-Key", apiKey);
 
         Map<String, Object> body = Map.of(
-                "input", input,
-                "includedRegionCodes", new String[] { "au" });
+                "input", input);
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
 

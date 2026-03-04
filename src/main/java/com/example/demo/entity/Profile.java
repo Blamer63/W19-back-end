@@ -2,6 +2,7 @@ package com.example.demo.entity;
 
 import com.example.demo.common.BaseEntity;
 import com.example.demo.enums.AppRole;
+import com.example.demo.enums.LocationVisibility;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -42,8 +43,10 @@ public class Profile extends BaseEntity {
     private Double latitude;
     private Double longitude;
 
-    @Column(name = "show_location")
-    private Boolean showLocation;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "location_visibility")
+    @Builder.Default
+    private LocationVisibility locationVisibility = LocationVisibility.PUBLIC;
 
     @Column(name = "location")
     private String location;
