@@ -1,7 +1,7 @@
 # API Reference - W19 Backend
 
 **Base URL:** `http://localhost:8081/api`  
-**Last Updated:** 2026-01-21
+**Last Updated:** 2026-03-05
 
 > **Note:** All JSON fields are **`snake_case`**.
 
@@ -11,13 +11,14 @@
 
 1. [Authentication](#authentication)
 2. [Users & Profiles](#users--profiles)
-3. [Languages](#languages)
-4. [Posts & Content](#posts--content)
-5. [Learning Core](#learning-core)
-6. [Discovery](#discovery)
-7. [Meetups](#meetups)
-8. [Places](#places)
-9. [Messaging & Chat](#messaging--chat)
+3. [Friends](#friends)
+4. [Languages](#languages)
+5. [Posts & Content](#posts--content)
+6. [Learning Core](#learning-core)
+7. [Discovery](#discovery)
+8. [Meetups](#meetups)
+9. [Places](#places)
+10. [Messaging & Chat](#messaging--chat)
 
 ---
 
@@ -131,7 +132,8 @@ Update privacy settings.
 ```json
 {
   "show_activity": false,
-  "show_saved_words": true
+  "show_saved_words": true,
+  "location_visibility": "FRIENDS_ONLY"
 }
 ```
 
@@ -139,9 +141,12 @@ Update privacy settings.
 ```json
 {
   "show_activity": false,
-  "show_saved_words": true
+  "show_saved_words": true,
+  "location_visibility": "FRIENDS_ONLY"
 }
 ```
+
+> `location_visibility` values: `"PUBLIC"` (default, visible to everyone on map), `"FRIENDS_ONLY"` (only mutual friends), `"NOBODY"` (hidden from map entirely).
 
 ### PUT /users/me/languages
 Update user languages (native/learning).
@@ -199,6 +204,66 @@ List following (paginated).
 - `size` (default: 20)
 
 **Response:** Same structure as followers
+
+---
+
+## Friends
+
+> The Friend system is a **mutual** relationship (both sides must agree). It is separate from the one-way Follow system. Friendship controls location visibility on the map.
+
+### POST /users/{id}/friend-request
+Send a friend request to another user.
+
+**Auth:** Required  
+**Response:** `201 Created`
+```json
+{
+  "id": "uuid",
+  "status": "PENDING",
+  "is_sent_by_me": true,
+  "other_user": { "id": "uuid", "username": "...", "display_name": "..." },
+  "created_at": "2026-03-05T00:00:00Z"
+}
+```
+**Errors:** `409 Conflict` if already friends or request pending. Re-sending after a rejection is allowed.
+
+### PATCH /users/me/friend-requests/{friendId}?action=accept|reject
+Accept or reject a pending incoming friend request.
+
+**Auth:** Required  
+**Query Param:** `action` — `accept` or `reject`  
+**Response:** `200 OK` (updated `FriendRequestResponse`)
+
+### DELETE /users/{id}/friend
+Remove an existing friend.
+
+**Auth:** Required  
+**Response:** `204 No Content`
+
+### GET /users/{id}/friends
+List all accepted friends of a user (paginated).
+
+**Auth:** Required  
+**Query Parameters:** `page` (default: 0), `size` (default: 20)  
+**Response:** Paginated `ProfileResponse`
+
+### GET /users/me/friend-requests/incoming
+List all pending friend requests sent to the current user.
+
+**Auth:** Required  
+**Response:** Paginated `FriendRequestResponse`
+
+### GET /users/me/friend-requests/outgoing
+List all pending friend requests sent by the current user.
+
+**Auth:** Required  
+**Response:** Paginated `FriendRequestResponse`
+
+### GET /users/{id}/friend-status
+Check the friendship status between the current user and another user.
+
+**Auth:** Required  
+**Response:** `200 OK` with `FriendRequestResponse`, or `204 No Content` if no relationship exists.
 
 ---
 
@@ -283,7 +348,13 @@ Get learning statistics (XP, streaks, etc).
 
 ### GET /api/learners/nearby
 Find nearby language learners based on geolocation.
-**Note:** Only users with `show_location=true` enabled in their settings will be visible. The requesting user is excluded from results.
+
+**Note:** Results respect each user's `location_visibility` setting:
+- `PUBLIC` — always visible (default)
+- `FRIENDS_ONLY` — only visible to mutual friends
+- `NOBODY` — hidden from all map results
+
+The requesting user is always excluded from results.
 
 **Authentication:** Required (JWT)
 

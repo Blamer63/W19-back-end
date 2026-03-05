@@ -4,11 +4,15 @@ import com.example.demo.dto.LanguageInfo;
 import com.example.demo.dto.LearnerResponse;
 import com.example.demo.entity.Profile;
 import com.example.demo.entity.UserLanguage;
+import com.example.demo.enums.LocationVisibility;
+import com.example.demo.repository.FriendRepository;
 import com.example.demo.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -16,6 +20,7 @@ import java.util.stream.Collectors;
 public class LearnerService {
 
         private final ProfileRepository profileRepository;
+        private final FriendRepository friendRepository;
 
         public List<LearnerResponse> findNearbyLearners(
                         Double latitude,
@@ -41,14 +46,35 @@ public class LearnerService {
                         profiles = profileRepository.findAllLearnersExcept(currentUser.getId());
                 }
 
+                // Get the current user's accepted friend IDs for FRIENDS_ONLY visibility check
+                Set<UUID> friendIds = Set.copyOf(friendRepository.findAcceptedFriendIds(currentUser.getId()));
+
                 final Double queryLat = latitude != null ? latitude : 0.0;
                 final Double queryLon = longitude != null ? longitude : 0.0;
 
                 return profiles.stream()
                                 .filter(profile -> languageCode == null || hasLanguage(profile, languageCode))
+                                .filter(profile -> isVisibleTo(profile, friendIds))
                                 .map(profile -> mapToLearnerResponse(profile, queryLat, queryLon))
                                 .sorted((a, b) -> Double.compare(a.getDistanceKm(), b.getDistanceKm()))
                                 .collect(Collectors.toList());
+        }
+
+        /**
+         * Checks if a user's location should be visible on the map.
+         * PUBLIC → always shown
+         * FRIENDS_ONLY → shown only if the viewer is a mutual friend
+         * NOBODY → never shown
+         */
+        private boolean isVisibleTo(Profile profile, Set<UUID> viewerFriendIds) {
+                LocationVisibility visibility = profile.getLocationVisibility();
+                if (visibility == null)
+                        return true; // treat null as PUBLIC
+                return switch (visibility) {
+                        case PUBLIC -> true;
+                        case FRIENDS_ONLY -> viewerFriendIds.contains(profile.getId());
+                        case NOBODY -> false;
+                };
         }
 
         private boolean hasLanguage(Profile profile, String languageCode) {

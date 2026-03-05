@@ -1,5 +1,6 @@
 package com.example.demo.dto;
 
+import com.example.demo.enums.LocationVisibility;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,4 +17,7 @@ public class PrivacySettingsDto {
 
     @JsonProperty("show_saved_words")
     private Boolean showSavedWords;
+
+    @JsonProperty("location_visibility")
+    private LocationVisibility locationVisibility;
 }

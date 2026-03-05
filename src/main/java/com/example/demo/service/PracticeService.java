@@ -111,6 +111,8 @@ public class PracticeService {
                 .wordId(word.getId())
                 .isCorrect(request.getIsCorrect())
                 .newMasteryLevel(newMastery)
+                .oldMastery(oldMastery)
+                .newMastery(newMastery)
                 .masteryChange(masteryChange)
                 .build();
     }

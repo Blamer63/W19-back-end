@@ -26,7 +26,8 @@ public interface ProfileRepository extends JpaRepository<Profile, java.util.UUID
 
         @org.springframework.data.jpa.repository.Query("SELECT p FROM Profile p WHERE " +
                         "p.id != :excludedId AND " +
-                        "(p.showLocation IS NULL OR p.showLocation = true) AND " +
+                        "(p.locationVisibility IS NULL OR p.locationVisibility != com.example.demo.enums.LocationVisibility.NOBODY) AND "
+                        +
                         "p.latitude IS NOT NULL AND p.longitude IS NOT NULL AND " +
                         "(6371 * acos(cos(radians(:latitude)) * cos(radians(p.latitude)) * " +
                         "cos(radians(p.longitude) - radians(:longitude)) + " +
