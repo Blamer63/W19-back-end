@@ -22,6 +22,12 @@ public class SubmitResultResponse {
     @JsonProperty("new_mastery_level")
     private Integer newMasteryLevel;
 
+    @JsonProperty("old_mastery")
+    private Integer oldMastery;
+
+    @JsonProperty("new_mastery")
+    private Integer newMastery;
+
     @JsonProperty("mastery_change")
     private Integer masteryChange;
 }
