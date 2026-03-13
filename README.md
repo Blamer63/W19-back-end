@@ -1,33 +1,70 @@
-# W19 Back-End Service
+# 🌏 Locale — Backend
 
-## Configuration
+Spring Boot backend for the Locale language exchange app.
 
-This application uses a `.env` file to manage environment variables.
+## Prerequisites
 
-### Setup
+- **Docker Desktop** (that's it — no Java or Maven needed!)
 
-1.  **Create a `.env` file** in the root directory of the project (if it doesn't already exist).
-2.  Add the following variables to the file:
+---
 
-    ```properties
-    GOOGLE_PLACES_KEY=your_actual_api_key
-    JWT_SECRET=your_secure_random_seceret
-    ```
+## 🚀 Running With Docker (Recommended for Team)
 
-    > **Note:** A `.env` file with your keys has been created for you locally.
+> Both repos must be cloned side-by-side on your machine:
+> ```
+> Desktop/
+> ├── W19-back-end/   ← this repo
+> └── W19-front-end/  ← frontend repo
+> ```
 
-3.  **Run the application**:
-    ```bash
-    ./mvnw spring-boot:run
-    ```
-    The application will automatically load the variables from the `.env` file.
+### 1. Copy the environment file
+```bash
+cp .env.example .env
+```
+Fill in the values your teammate shared with you (JWT secret + Google Places key).
 
-- `GOOGLE_PLACES_KEY`: Your Google Maps Places API Key.
-- `JWT_SECRET`: A secure random string for signing JWT tokens.
+### 2. Start everything
+```bash
+docker compose up --build
+```
 
-## Documentation
+This spins up **3 containers**:
+| Container | URL |
+|---|---|
+| Frontend (React) | http://localhost:8080 |
+| Backend (Spring Boot) | http://localhost:8081 |
+| PostgreSQL | localhost:5432 |
 
-- **[API Reference](./docs/api_reference.md)**: Main endpoint documentation.
-- **[Frontend Integration](./docs/frontend_integration.md)**: Guide for frontend developers.
-- **[Chat Integration Guide](./docs/chat_integration_guide.md)**: Specific details for implementing the chat feature.
-- **[Technical Notes](./docs/technical_notes.md)**: Architecture and design decisions.
+The database is **automatically seeded** with demo data on first start.
+
+### 3. Demo accounts (password: `demo123`)
+| Username | Email | Native language |
+|---|---|---|
+| minso_k | minso@locale.app | Korean |
+| emma_uk | emma@locale.app | English |
+| linh_vn | linh@locale.app | Vietnamese |
+| wei_cn | wei@locale.app | Chinese |
+
+---
+
+## 🔄 Useful Commands
+
+| Action | Command |
+|---|---|
+| Start (first time or after code changes) | `docker compose up --build` |
+| Start (no code changes) | `docker compose up` |
+| Stop | `docker compose down` |
+| **Reset database** (re-runs seed) | `docker compose down -v && docker compose up --build` |
+| View logs | `docker compose logs -f backend` |
+
+---
+
+## 💻 Running Locally (Without Docker)
+
+Requirements: Java 21, Maven, PostgreSQL 14+
+
+1. Start PostgreSQL and create database `mydatabase` with user `myuser` / password `secret`
+2. Copy `.env.example` → `.env` and fill in values
+3. Run: `./mvnw spring-boot:run`
+
+The API will be available at `http://localhost:8081`.

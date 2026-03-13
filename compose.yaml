@@ -1,9 +1,61 @@
 services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
   postgres:
-    image: 'postgres:latest'
+    image: postgres:16-alpine
     environment:
-      - 'POSTGRES_DB=mydatabase'
-      - 'POSTGRES_PASSWORD=secret'
-      - 'POSTGRES_USER=myuser'
+      POSTGRES_DB: mydatabase
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: secret
     ports:
-      - '5432:5432'
+      - "5432:5432"
+    volumes:
+      # Persist data across restarts
+      - postgres_data:/var/lib/postgresql/data
+      # Auto-seed on first start (only runs on a fresh/empty volume)
+      - ./seed.sql:/docker-entrypoint-initdb.d/seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser -d mydatabase"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Spring Boot Backend ─────────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: postgres
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mydatabase
+      SPRING_DATASOURCE_USERNAME: myuser
+      SPRING_DATASOURCE_PASSWORD: secret
+      JWT_SECRET: ${JWT_SECRET}
+      GOOGLE_PLACES_KEY: ${GOOGLE_PLACES_KEY}
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ── Vite / React Frontend ───────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ../W19-front-end
+      dockerfile: Dockerfile
+      args:
+        VITE_GOOGLE_PLACES_KEY: ${GOOGLE_PLACES_KEY}
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
