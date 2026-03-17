@@ -12,8 +12,6 @@ services:
     volumes:
       # Persist data across restarts
       - postgres_data:/var/lib/postgresql/data
-      # Auto-seed on first start (only runs on a fresh/empty volume)
-      - ./seed.sql:/docker-entrypoint-initdb.d/seed.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U myuser -d mydatabase"]
       interval: 10s
