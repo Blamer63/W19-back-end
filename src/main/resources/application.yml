@@ -6,6 +6,9 @@ spring:
     url: jdbc:postgresql://${DB_HOST:localhost}:5432/mydatabase
     username: myuser
     password: secret
+  docker:
+    compose:
+      enabled: false
   jpa:
     hibernate:
       ddl-auto: update
