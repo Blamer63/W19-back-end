@@ -1,4 +1,4 @@
-# Locale API Documentation
+# API Contract - W19 Backend
 
 **Base URL:** `http://localhost:8081/api`  
 **Authentication:** Bearer Token (JWT)  
@@ -6,76 +6,22 @@
 
 ---
 
-## 1. Authentication
-*   `POST /auth/register`
-*   `POST /auth/login`
-*   `POST /auth/refresh`
-*   `POST /auth/logout`
+> **Swagger UI is available at:** `http://localhost:8081/swagger-ui.html`
+>
+> All endpoint definitions, request/response schemas, and authentication requirements are documented interactively via Swagger. Use the UI to explore and test the API directly.
 
-## 2. Users & Profiles
-*   `GET /users/me`
-*   `PATCH /users/me`
-*   `GET /users/me/settings`
-*   `PATCH /users/me/settings`
-*   `PATCH /users/me/privacy`
-*   `GET /users/{id}`
-*   `GET /users/{id}/posts`
-*   `POST /users/{id}/block`
-*   `DELETE /users/{id}/block`
-*   `GET /users/me/languages`
-*   `POST /follow`
-*   `DELETE /follow`
-*   `GET /follow/followers`
-*   `GET /follow/following`
+---
 
-## 3. Languages
-*   `GET /languages`
+## Key Conventions
 
-## 4. Posts & Content
-*   `GET /posts` (Feed)
-*   `POST /posts`
-*   `GET /posts/{id}`
-*   `DELETE /posts/{id}`
-*   `GET /posts/{id}/translations?target_language=xx`
-*   `POST /posts/{id}/reactions`
-*   `DELETE /posts/{id}/reactions`
-*   `POST /posts/{id}/comments`
-*   `GET /posts/{id}/comments`
-*   `POST /posts/{id}/reports`
+- All JSON fields use `snake_case` (e.g. `display_name`, `avatar_url`).
+- All IDs are UUIDs.
+- Paginated responses follow Spring's `Page<T>` shape: `content`, `totalElements`, `totalPages`, `number`, `size`.
+- Protected routes require `Authorization: Bearer <access_token>` header.
+- Public routes (no auth required): `POST /api/auth/**`, `GET /api/languages`.
 
-## 5. Learning Core (`/api/practice` & `/api/words`)
+## Future / Pending Endpoints
 
-### Vocabulary
-*   `GET /api/words`
-*   `POST /api/words`
-*   `PATCH /api/words/{id}`
-*   `DELETE /api/words/{id}`
-
-### Practice Sessions
-*   `POST /api/practice/sessions` - Start Session
-*   `POST /api/practice/sessions/{id}/results` - Submit Word Result
-*   `POST /api/practice/sessions/{id}/complete` - Finish Session
-*   `GET /api/practice/sessions` - Session History
-
-### Stats
-*   `GET /api/stats`
-
-## 6. Messaging & Chat
-*   `GET /conversations`
-*   `POST /conversations` (Start new)
-*   `GET /conversations/{id}/messages` (History)
-*   `POST /conversations/{id}/messages` (Reply)
-
-## 7. Meetups
-*   `GET /api/meetups`
-*   `POST /api/meetups`
-*   `GET /api/meetups/{id}`
-*   `PUT /api/meetups/{id}`
-*   `DELETE /api/meetups/{id}`
-*   `POST /api/meetups/{id}/join`
-*   `POST /api/meetups/{id}/leave`
-*   `GET /api/meetups/{id}/attendees`
-
-## 8. Pending / Future
-*   Notifications
-*   Moderation Dashboard
+- Notifications
+- Moderation Dashboard
+- AI Object Scanner (`POST /api/scanner/analyze`)
