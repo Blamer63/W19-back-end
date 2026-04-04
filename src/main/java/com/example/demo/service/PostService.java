@@ -25,6 +25,7 @@ public class PostService {
         private final ProfileRepository profileRepository;
         private final PostReactionRepository postReactionRepository;
         private final PostCommentRepository postCommentRepository;
+        private final S3Service s3Service;
 
         @Transactional(readOnly = true)
         public Page<PostResponse> getFeed(String language, Pageable pageable, Double lat, Double lon,
@@ -103,7 +104,19 @@ public class PostService {
                         throw new RuntimeException("Unauthorized to delete this post");
                 }
 
+                String imageUrl = post.getImageUrl();
                 postRepository.delete(post);
+
+                if (imageUrl != null) {
+                        String key = s3Service.extractKey(imageUrl);
+                        if (key != null) {
+                                try {
+                                        s3Service.deleteFile(key);
+                                } catch (Exception e) {
+                                        log.warn("Failed to delete post image from S3: {}", key, e);
+                                }
+                        }
+                }
         }
 
         @Transactional(readOnly = true)

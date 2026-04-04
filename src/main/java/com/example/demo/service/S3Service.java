@@ -73,4 +73,20 @@ public class S3Service {
     public String getFileUrl(String key) {
         return "https://" + bucketName + ".s3." + region + ".amazonaws.com/" + key;
     }
+
+    /**
+     * Extracts the S3 key from a full public URL produced by this service.
+     * Returns null if the URL does not belong to this bucket.
+     *
+     * @param url e.g. "https://bucket.s3.region.amazonaws.com/images/uuid-photo.jpg"
+     * @return the key portion, e.g. "images/uuid-photo.jpg", or null
+     */
+    public String extractKey(String url) {
+        if (url == null) return null;
+        String prefix = "https://" + bucketName + ".s3." + region + ".amazonaws.com/";
+        if (url.startsWith(prefix)) {
+            return url.substring(prefix.length());
+        }
+        return null;
+    }
 }

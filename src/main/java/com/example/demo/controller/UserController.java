@@ -7,10 +7,12 @@ import com.example.demo.dto.PostResponse;
 import com.example.demo.dto.PrivacySettingsDto;
 import com.example.demo.dto.PublicUserProfileDto;
 import com.example.demo.service.PostService;
+import com.example.demo.service.S3Service;
 import com.example.demo.service.UserService;
 import com.example.demo.entity.Profile;
 import com.example.demo.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
@@ -22,12 +24,14 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
+@Slf4j
 public class UserController {
 
         private final UserService userService;
         private final ProfileRepository profileRepository;
         private final com.example.demo.service.ProfileService profileService;
         private final PostService postService;
+        private final S3Service s3Service;
 
         @GetMapping("/me")
         public ResponseEntity<ProfileResponse> getCurrentUser(Authentication authentication) {
@@ -93,6 +97,17 @@ public class UserController {
                         profile.setBio(request.getBio());
                 }
                 if (request.getAvatarUrl() != null) {
+                        String oldAvatarUrl = profile.getAvatarUrl();
+                        if (oldAvatarUrl != null && !oldAvatarUrl.equals(request.getAvatarUrl())) {
+                                String key = s3Service.extractKey(oldAvatarUrl);
+                                if (key != null) {
+                                        try {
+                                                s3Service.deleteFile(key);
+                                        } catch (Exception e) {
+                                                log.warn("Failed to delete old avatar from S3: {}", key, e);
+                                        }
+                                }
+                        }
                         profile.setAvatarUrl(request.getAvatarUrl());
                 }
                 if (request.getLatitude() != null) {
