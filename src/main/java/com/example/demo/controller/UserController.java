@@ -116,7 +116,6 @@ public class UserController {
                 if (request.getLongitude() != null) {
                         profile.setLongitude(request.getLongitude());
                 }
-
                 Profile updated = profileRepository.save(profile);
                 return ResponseEntity.ok(profileService.mapToResponse(updated));
         }

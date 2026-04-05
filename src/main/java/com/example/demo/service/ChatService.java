@@ -56,16 +56,22 @@ public class ChatService {
             throw new IllegalArgumentException("Either conversation ID or recipient ID must be provided");
         }
 
+        if (request.getContent() == null && request.getImageUrl() == null) {
+            throw new IllegalArgumentException("Message must have content or an image");
+        }
+
         Message message = Message.builder()
                 .conversation(conversation)
                 .sender(sender)
                 .content(request.getContent())
+                .imageUrl(request.getImageUrl())
                 .isRead(false)
                 .build();
 
         message = messageRepository.save(message);
 
-        conversation.setLastMessagePreview(message.getContent());
+        String preview = message.getContent() != null ? message.getContent() : "Image";
+        conversation.setLastMessagePreview(preview);
         conversation.setLastMessageAt(LocalDateTime.now());
         conversationRepository.save(conversation);
 
@@ -106,6 +112,7 @@ public class ChatService {
                 .conversationId(message.getConversation().getId())
                 .sender(profileService.mapToResponse(message.getSender()))
                 .content(message.getContent())
+                .imageUrl(message.getImageUrl())
                 .createdAt(message.getCreatedAt())
                 .isRead(message.isRead())
                 .build();
