@@ -99,4 +99,14 @@ public class ChatController {
         chatService.markAsRead(id, authentication.getName());
         return ResponseEntity.ok().build();
     }
+
+    // REST: Delete message (also removes S3 image attachment if present)
+    @DeleteMapping("/{id}/messages/{messageId}")
+    public ResponseEntity<Void> deleteMessage(
+            @PathVariable UUID id,
+            @PathVariable UUID messageId,
+            Authentication authentication) {
+        chatService.deleteMessage(messageId, authentication.getName());
+        return ResponseEntity.noContent().build();
+    }
 }

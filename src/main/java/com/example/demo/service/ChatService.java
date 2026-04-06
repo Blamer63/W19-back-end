@@ -11,6 +11,7 @@ import com.example.demo.repository.ConversationRepository;
 import com.example.demo.repository.MessageRepository;
 import com.example.demo.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -25,12 +26,14 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ChatService {
 
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
     private final ProfileRepository profileRepository;
     private final ProfileService profileService;
+    private final S3Service s3Service;
 
     @Transactional
     public MessageResponse sendMessage(String senderEmail, ChatRequest request) {
@@ -91,6 +94,30 @@ public class ChatService {
     public Page<MessageResponse> getConversationMessages(UUID conversationId, Pageable pageable) {
         return messageRepository.findByConversationIdOrderByCreatedAtDesc(conversationId, pageable)
                 .map(this::mapToMessageResponse);
+    }
+
+    @Transactional
+    public void deleteMessage(UUID messageId, String senderEmail) {
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new ResourceNotFoundException("Message not found"));
+
+        if (!message.getSender().getEmail().equals(senderEmail)) {
+            throw new IllegalArgumentException("Unauthorized to delete this message");
+        }
+
+        String imageUrl = message.getImageUrl();
+        messageRepository.delete(message);
+
+        if (imageUrl != null) {
+            String key = s3Service.extractKey(imageUrl);
+            if (key != null) {
+                try {
+                    s3Service.deleteFile(key);
+                } catch (Exception e) {
+                    log.warn("Failed to delete message image from S3: {}", key, e);
+                }
+            }
+        }
     }
 
     @Transactional
