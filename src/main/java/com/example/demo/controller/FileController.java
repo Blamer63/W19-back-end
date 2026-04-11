@@ -13,15 +13,13 @@ import java.util.Set;
 @RequestMapping("/api/files")
 public class FileController {
 
-    private static final Set<String> ALLOWED_TYPES = Set.of("images", "audio", "videos");
+    // Images are uploaded inline during entity creation (post, message, profile avatar).
+    // This endpoint only handles non-image media that doesn't attach to a specific entity.
+    private static final Set<String> ALLOWED_TYPES = Set.of("audio", "videos");
 
-    private static final long MAX_IMAGE_SIZE = 5L * 1024 * 1024;   //   5 MB
     private static final long MAX_AUDIO_SIZE = 20L * 1024 * 1024;  //  20 MB
     private static final long MAX_VIDEO_SIZE = 100L * 1024 * 1024; // 100 MB
 
-    private static final Set<String> IMAGE_MIME_TYPES = Set.of(
-            "image/jpeg", "image/png", "image/gif", "image/webp"
-    );
     private static final Set<String> AUDIO_MIME_TYPES = Set.of(
             "audio/mpeg", "audio/wav", "audio/ogg", "audio/mp4", "audio/aac", "audio/x-m4a"
     );
@@ -36,14 +34,13 @@ public class FileController {
     }
 
     /**
-     * Upload a file to S3.
+     * Upload an audio or video file to S3.
      *
      * Usage:
-     *   POST /api/files/upload?type=images   (with multipart form field "file")
-     *   POST /api/files/upload?type=audio
+     *   POST /api/files/upload?type=audio   (with multipart form field "file")
      *   POST /api/files/upload?type=videos
      *
-     * Returns: { "url": "https://bucket.s3.region.amazonaws.com/images/uuid-name.jpg" }
+     * Returns: { "url": "https://bucket.s3.region.amazonaws.com/audio/uuid-name.mp3" }
      */
     @PostMapping("/upload")
     public ResponseEntity<Map<String, String>> uploadFile(
@@ -52,7 +49,7 @@ public class FileController {
 
         if (!ALLOWED_TYPES.contains(type)) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Invalid type. Must be one of: images, audio, videos"));
+                    .body(Map.of("error", "Invalid type. Must be one of: audio, videos"));
         }
 
         if (file.isEmpty()) {
@@ -80,16 +77,14 @@ public class FileController {
     private Set<String> getAllowedMimeTypes(String type) {
         return switch (type) {
             case "audio"  -> AUDIO_MIME_TYPES;
-            case "videos" -> VIDEO_MIME_TYPES;
-            default       -> IMAGE_MIME_TYPES;
+            default       -> VIDEO_MIME_TYPES;
         };
     }
 
     private long getMaxSize(String type) {
         return switch (type) {
             case "audio"  -> MAX_AUDIO_SIZE;
-            case "videos" -> MAX_VIDEO_SIZE;
-            default       -> MAX_IMAGE_SIZE;
+            default       -> MAX_VIDEO_SIZE;
         };
     }
 

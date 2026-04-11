@@ -8,7 +8,4 @@ public class ChatRequest {
     private UUID cid; // Conversation ID
     private UUID recipientId; // For new conversations
     private String content;
-
-    @com.fasterxml.jackson.annotation.JsonProperty("image_url")
-    private String imageUrl;
 }

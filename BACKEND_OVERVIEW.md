@@ -20,6 +20,7 @@ It’s written as a *study guide* so you can quickly understand and navigate the
 - **External integrations**
   - Google Places API (via `RestTemplate`)
   - WebSockets for chat & typing indicators
+  - **AWS S3** (object storage for images, audio, and video uploads via AWS SDK v2)
 
 **Architecture style**: classic layered Spring Boot app
 
@@ -36,7 +37,7 @@ All Java code lives under `com.example.demo`:
 
 - `W19BackendApplication` – main application entrypoint (`@SpringBootApplication`).
 - `config` – Spring configuration:
-  - `SecurityConfig`, `ApplicationConfig`, `WebSocketConfig`, `OpenApiConfig`, `RestTemplateConfig`.
+  - `SecurityConfig`, `ApplicationConfig`, `WebSocketConfig`, `OpenApiConfig`, `RestTemplateConfig`, `S3Config`.
 - `security` – authentication and JWT:
   - `JwtAuthenticationFilter`, `JwtUtils`, `CustomUserDetailsService`.
 - `controller` – all REST and WebSocket controllers.
@@ -107,6 +108,7 @@ W19-back-end/
 │   │   │   │   ├── ApplicationConfig.java
 │   │   │   │   ├── OpenApiConfig.java
 │   │   │   │   ├── RestTemplateConfig.java
+│   │   │   │   ├── S3Config.java
 │   │   │   │   ├── SecurityConfig.java
 │   │   │   │   └── WebSocketConfig.java
 │   │   │   │
@@ -114,6 +116,7 @@ W19-back-end/
 │   │   │   │   ├── AuthController.java
 │   │   │   │   ├── ChatController.java
 │   │   │   │   ├── CommentController.java
+│   │   │   │   ├── FileController.java
 │   │   │   │   ├── FollowController.java
 │   │   │   │   ├── FriendController.java
 │   │   │   │   ├── LanguageController.java
@@ -258,6 +261,7 @@ W19-back-end/
 │   │   │       ├── ReactionService.java
 │   │   │       ├── RefreshTokenService.java
 │   │   │       ├── ReportService.java
+│   │   │       ├── S3Service.java
 │   │   │       ├── SavedWordService.java
 │   │   │       ├── StatsService.java
 │   │   │       ├── TranslationService.java
@@ -412,6 +416,9 @@ Connections:
   - `RestTemplate restTemplate()` – used by `PlacesService`.
 - `OpenApiConfig`
   - Declares OpenAPI metadata and security scheme (JWT bearer).
+- `S3Config`
+  - `S3Client s3Client()` – builds an AWS SDK v2 `S3Client` using `DefaultCredentialsProvider` and `aws.region` from `application.yml`.
+  - Used exclusively by `S3Service`.
 
 ---
 
@@ -434,12 +441,12 @@ This section lists the major controllers, their base paths, important methods, a
 
 #### 5.2 `UserController` – `/api/users`
 
-**Dependencies**: `UserService`, `ProfileService`, `ProfileRepository`, `PostService`
+**Dependencies**: `UserService`, `ProfileService`, `ProfileRepository`, `PostService`, `S3Service`
 
 - `GET /me` → `getCurrentUser(Authentication auth)`
   - Loads `Profile` via `ProfileRepository.findByEmail`, maps to `ProfileResponse` using `ProfileService.mapToResponse`.
 - `PATCH /me` → `updateProfile(UpdateProfileRequest request, Authentication auth)`
-  - Modifies fields on current user’s `Profile`, saves via `ProfileRepository.save`, maps to `ProfileResponse`.
+  - Modifies fields on current user’s `Profile`. If `avatarUrl` changes and the old avatar is an S3 object, calls `S3Service.deleteFile` to remove it first. Saves via `ProfileRepository.save`, maps to `ProfileResponse`.
 - `GET /{userId}` → `getPublicProfile(Long userId, Authentication auth)`
   - Calls `UserService.getPublicProfile(userId, currentUserIdOrNull)`.
 - `GET /{userId}/posts` → `getUserPosts(...)`
@@ -608,7 +615,19 @@ This section lists the major controllers, their base paths, important methods, a
 - `GET /{id}/attendees` → `getAttendees(Long id)`
   - Calls `MeetupService.getAttendees(id)`.
 
-#### 5.16 `ChatController` – `/api/conversations` & `/app/*` (WebSocket)
+#### 5.16 `FileController` – `/api/files`
+
+**Dependency**: `S3Service`
+
+- `POST /upload?type=<images|audio|videos>` → `uploadFile(MultipartFile file, String type)`
+  - Validates `type`, file emptiness, MIME type, and file size (5 MB / 20 MB / 100 MB limits for images / audio / videos respectively).
+  - Delegates to `S3Service.uploadFile(file, type)`.
+  - Returns `{ "url": "<s3-public-url>" }`.
+- `DELETE /delete?key=<s3-key>` → `deleteFile(String key)`
+  - Delegates to `S3Service.deleteFile(key)`.
+  - Returns `{ "message": "File deleted successfully" }`.
+
+#### 5.17 `ChatController` – `/api/conversations` & `/app/*` (WebSocket)
 
 **Dependencies**: `ChatService`, `SimpMessagingTemplate`
 
@@ -633,7 +652,7 @@ This section lists the major controllers, their base paths, important methods, a
 - `@MessageMapping("/chat.typing")` → `handleTyping(TypingNotificationDto dto, Authentication auth)`
   - Broadcasts typing indicators to `/topic/conversation.{conversationId}.typing`.
 
-#### 5.17 `GlobalExceptionHandler`
+#### 5.18 `GlobalExceptionHandler`
 
 - `@ControllerAdvice` with `@ExceptionHandler` methods for:
   - Validation errors.
@@ -695,7 +714,7 @@ This section describes the main services, their dependencies, and their high-lev
 
 #### 6.4 `PostService`
 
-**Depends on**: `PostRepository`, `ProfileRepository`, `PostReactionRepository`, `PostCommentRepository`
+**Depends on**: `PostRepository`, `ProfileRepository`, `PostReactionRepository`, `PostCommentRepository`, `S3Service`
 
 - `Page<PostResponse> getFeed(String language, Pageable pageable, Double lat, Double lon, String currentUserEmail)`
   - Fetches posts (optionally by language).
@@ -709,7 +728,7 @@ This section describes the main services, their dependencies, and their high-lev
 - `PostResponse getPost(Long postId, String currentUserEmailOrNull)`
   - Loads single post and maps to response.
 - `void deletePost(Long postId, String currentUserEmail)`
-  - Checks if current user is the author; if yes, deletes.
+  - Checks if current user is the author; if yes, extracts the S3 key from `post.imageUrl` via `S3Service.extractKey` and calls `S3Service.deleteFile` before deleting the post record.
 - `Page<PostResponse> getPostsByUser(Long userId, String currentUserEmail, Pageable pageable)`
   - Posts for a specific user, with same mapping logic as feed.
 
@@ -851,7 +870,24 @@ This section describes the main services, their dependencies, and their high-lev
 - `PlaceDetailsResponse getPlaceDetails(String placeId)`
   - Calls Places Details endpoint.
 
-#### 6.16 `TranslationService`, `ReportService`, `RefreshTokenService`
+#### 6.16 `S3Service`
+
+**Depends on**: `S3Client` (from `S3Config`), `aws.s3.buckets.customer` and `aws.region` properties
+
+- `String uploadFile(MultipartFile file, String folder)`
+  - Builds a unique S3 key: `<folder>/<UUID>-<originalFilename>`.
+  - Calls `S3Client.putObject` with the file bytes and `ContentType`.
+  - Returns the full public URL: `https://<bucket>.s3.<region>.amazonaws.com/<key>`.
+- `void deleteFile(String key)`
+  - Calls `S3Client.deleteObject` for the given key.
+- `String getFileUrl(String key)`
+  - Reconstructs the full public URL from a stored key.
+- `String extractKey(String url)`
+  - Strips the bucket-URL prefix to get back the S3 key; returns `null` if the URL doesn't belong to this bucket.
+
+Used by `FileController` (upload/delete endpoints), `PostService` (image cleanup on post deletion), and `UserController` (old avatar cleanup on profile update).
+
+#### 6.17 `TranslationService`, `ReportService`, `RefreshTokenService`
 
 - `TranslationService`
   - `PostTranslationResponse getTranslation(Long postId, String targetLanguage)` – loads/creates `PostTranslation`.

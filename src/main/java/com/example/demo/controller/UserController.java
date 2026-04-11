@@ -1,7 +1,6 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.ProfileResponse;
-import com.example.demo.dto.UpdateProfileRequest;
 import com.example.demo.dto.UserSettingsDTO;
 import com.example.demo.dto.PostResponse;
 import com.example.demo.dto.PrivacySettingsDto;
@@ -15,10 +14,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.UUID;
 
 @RestController
@@ -83,22 +85,29 @@ public class UserController {
                 return ResponseEntity.ok(postService.getPostsByUser(userId, email, PageRequest.of(page, size)));
         }
 
-        @PatchMapping("/me")
+        @PatchMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
         public ResponseEntity<ProfileResponse> updateProfile(
                         Authentication authentication,
-                        @RequestBody UpdateProfileRequest request) {
+                        @RequestParam(required = false) String displayName,
+                        @RequestParam(required = false) String bio,
+                        @RequestParam(required = false) Double latitude,
+                        @RequestParam(required = false) Double longitude,
+                        @RequestPart(value = "avatar", required = false) MultipartFile avatar) throws IOException {
                 Profile profile = profileRepository.findByEmail(authentication.getName())
                                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-                if (request.getDisplayName() != null) {
-                        profile.setDisplayName(request.getDisplayName());
+                if (displayName != null) {
+                        profile.setDisplayName(displayName);
                 }
-                if (request.getBio() != null) {
-                        profile.setBio(request.getBio());
+                if (bio != null) {
+                        profile.setBio(bio);
                 }
-                if (request.getAvatarUrl() != null) {
+                if (avatar != null && !avatar.isEmpty()) {
+                        s3Service.validateImageFile(avatar);
                         String oldAvatarUrl = profile.getAvatarUrl();
-                        if (oldAvatarUrl != null && !oldAvatarUrl.equals(request.getAvatarUrl())) {
+                        String newAvatarUrl = s3Service.uploadFile(avatar, "images");
+                        profile.setAvatarUrl(newAvatarUrl);
+                        if (oldAvatarUrl != null) {
                                 String key = s3Service.extractKey(oldAvatarUrl);
                                 if (key != null) {
                                         try {
@@ -108,13 +117,12 @@ public class UserController {
                                         }
                                 }
                         }
-                        profile.setAvatarUrl(request.getAvatarUrl());
                 }
-                if (request.getLatitude() != null) {
-                        profile.setLatitude(request.getLatitude());
+                if (latitude != null) {
+                        profile.setLatitude(latitude);
                 }
-                if (request.getLongitude() != null) {
-                        profile.setLongitude(request.getLongitude());
+                if (longitude != null) {
+                        profile.setLongitude(longitude);
                 }
                 Profile updated = profileRepository.save(profile);
                 return ResponseEntity.ok(profileService.mapToResponse(updated));

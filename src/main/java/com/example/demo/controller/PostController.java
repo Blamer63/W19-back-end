@@ -1,6 +1,5 @@
 package com.example.demo.controller;
 
-import com.example.demo.dto.CreatePostRequest;
 import com.example.demo.dto.PostResponse;
 import com.example.demo.service.PostService;
 import lombok.RequiredArgsConstructor;
@@ -9,10 +8,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.UUID;
 
 @RestController
@@ -39,12 +41,17 @@ public class PostController {
                 .ok(postService.getFeed(language, pageable, latitude, longitude, authentication.getName()));
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PostResponse> createPost(
-            @RequestBody CreatePostRequest request,
-            Authentication authentication) {
+            @RequestParam("content") String content,
+            @RequestParam(value = "original_language", required = false) String originalLanguage,
+            @RequestParam(required = false) Double latitude,
+            @RequestParam(required = false) Double longitude,
+            @RequestPart(value = "image", required = false) MultipartFile image,
+            Authentication authentication) throws IOException {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(postService.createPost(request, authentication.getName()));
+                .body(postService.createPost(content, originalLanguage, latitude, longitude, image,
+                        authentication.getName()));
     }
 
     @GetMapping("/{postId}")

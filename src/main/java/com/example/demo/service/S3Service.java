@@ -9,10 +9,16 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class S3Service {
+
+    private static final long MAX_IMAGE_SIZE = 5L * 1024 * 1024; // 5 MB
+    private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of(
+            "image/jpeg", "image/png", "image/gif", "image/webp"
+    );
 
     private final S3Client s3Client;
 
@@ -24,6 +30,24 @@ public class S3Service {
 
     public S3Service(S3Client s3Client) {
         this.s3Client = s3Client;
+    }
+
+    /**
+     * Validates that a file is an acceptable image before uploading.
+     * Throws IllegalArgumentException if validation fails.
+     */
+    public void validateImageFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Image file must not be empty");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_IMAGE_TYPES.contains(contentType)) {
+            throw new IllegalArgumentException(
+                    "Invalid image type. Allowed: jpeg, png, gif, webp");
+        }
+        if (file.getSize() > MAX_IMAGE_SIZE) {
+            throw new IllegalArgumentException("Image exceeds the 5 MB limit");
+        }
     }
 
     /**

@@ -16,7 +16,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,17 +37,29 @@ public class ChatService {
     private final ProfileService profileService;
     private final S3Service s3Service;
 
+    // Used by the WebSocket endpoint (text only — WS cannot carry multipart)
     @Transactional
     public MessageResponse sendMessage(String senderEmail, ChatRequest request) {
+        if (request.getContent() == null || request.getContent().isBlank()) {
+            throw new IllegalArgumentException("Message must have content");
+        }
+        return sendMessage(senderEmail, request.getCid(), request.getRecipientId(),
+                request.getContent(), null);
+    }
+
+    // Used by the REST endpoints (supports image upload)
+    @Transactional
+    public MessageResponse sendMessage(String senderEmail, UUID cid, UUID recipientId,
+            String content, MultipartFile image) throws IOException {
         Profile sender = profileRepository.findByEmail(senderEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Sender not found"));
 
         Conversation conversation;
-        if (request.getCid() != null) {
-            conversation = conversationRepository.findById(request.getCid())
+        if (cid != null) {
+            conversation = conversationRepository.findById(cid)
                     .orElseThrow(() -> new ResourceNotFoundException("Conversation not found"));
-        } else if (request.getRecipientId() != null) {
-            Profile recipient = profileRepository.findById(request.getRecipientId())
+        } else if (recipientId != null) {
+            Profile recipient = profileRepository.findById(recipientId)
                     .orElseThrow(() -> new ResourceNotFoundException("Recipient not found"));
 
             conversation = conversationRepository.findBetweenUsers(sender.getId(), recipient.getId())
@@ -59,26 +73,46 @@ public class ChatService {
             throw new IllegalArgumentException("Either conversation ID or recipient ID must be provided");
         }
 
-        if (request.getContent() == null && request.getImageUrl() == null) {
+        if (content == null && (image == null || image.isEmpty())) {
             throw new IllegalArgumentException("Message must have content or an image");
         }
 
-        Message message = Message.builder()
-                .conversation(conversation)
-                .sender(sender)
-                .content(request.getContent())
-                .imageUrl(request.getImageUrl())
-                .isRead(false)
-                .build();
+        String imageUrl = null;
+        if (image != null && !image.isEmpty()) {
+            s3Service.validateImageFile(image);
+            imageUrl = s3Service.uploadFile(image, "images");
+        }
 
-        message = messageRepository.save(message);
+        try {
+            Message message = Message.builder()
+                    .conversation(conversation)
+                    .sender(sender)
+                    .content(content)
+                    .imageUrl(imageUrl)
+                    .isRead(false)
+                    .build();
 
-        String preview = message.getContent() != null ? message.getContent() : "Image";
-        conversation.setLastMessagePreview(preview);
-        conversation.setLastMessageAt(LocalDateTime.now());
-        conversationRepository.save(conversation);
+            message = messageRepository.save(message);
 
-        return mapToMessageResponse(message);
+            String preview = message.getContent() != null ? message.getContent() : "Image";
+            conversation.setLastMessagePreview(preview);
+            conversation.setLastMessageAt(LocalDateTime.now());
+            conversationRepository.save(conversation);
+
+            return mapToMessageResponse(message);
+        } catch (Exception e) {
+            if (imageUrl != null) {
+                String key = s3Service.extractKey(imageUrl);
+                if (key != null) {
+                    try {
+                        s3Service.deleteFile(key);
+                    } catch (Exception ex) {
+                        log.warn("Failed to clean up S3 image after failed message save: {}", key, ex);
+                    }
+                }
+            }
+            throw e;
+        }
     }
 
     @Transactional(readOnly = true)
