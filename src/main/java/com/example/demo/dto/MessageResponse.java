@@ -17,6 +17,10 @@ public class MessageResponse {
     private UUID conversationId;
     private ProfileResponse sender;
     private String content;
+
+    @com.fasterxml.jackson.annotation.JsonProperty("image_url")
+    private String imageUrl;
+
     private LocalDateTime createdAt;
     private boolean isRead;
 }

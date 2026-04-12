@@ -11,11 +11,14 @@ import com.example.demo.repository.ConversationRepository;
 import com.example.demo.repository.MessageRepository;
 import com.example.demo.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,24 +28,38 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ChatService {
 
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
     private final ProfileRepository profileRepository;
     private final ProfileService profileService;
+    private final S3Service s3Service;
 
+    // Used by the WebSocket endpoint (text only — WS cannot carry multipart)
     @Transactional
     public MessageResponse sendMessage(String senderEmail, ChatRequest request) {
+        if (request.getContent() == null || request.getContent().isBlank()) {
+            throw new IllegalArgumentException("Message must have content");
+        }
+        return sendMessage(senderEmail, request.getCid(), request.getRecipientId(),
+                request.getContent(), null);
+    }
+
+    // Used by the REST endpoints (supports image upload)
+    @Transactional
+    public MessageResponse sendMessage(String senderEmail, UUID cid, UUID recipientId,
+            String content, MultipartFile image) throws IOException {
         Profile sender = profileRepository.findByEmail(senderEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Sender not found"));
 
         Conversation conversation;
-        if (request.getCid() != null) {
-            conversation = conversationRepository.findById(request.getCid())
+        if (cid != null) {
+            conversation = conversationRepository.findById(cid)
                     .orElseThrow(() -> new ResourceNotFoundException("Conversation not found"));
-        } else if (request.getRecipientId() != null) {
-            Profile recipient = profileRepository.findById(request.getRecipientId())
+        } else if (recipientId != null) {
+            Profile recipient = profileRepository.findById(recipientId)
                     .orElseThrow(() -> new ResourceNotFoundException("Recipient not found"));
 
             conversation = conversationRepository.findBetweenUsers(sender.getId(), recipient.getId())
@@ -56,20 +73,46 @@ public class ChatService {
             throw new IllegalArgumentException("Either conversation ID or recipient ID must be provided");
         }
 
-        Message message = Message.builder()
-                .conversation(conversation)
-                .sender(sender)
-                .content(request.getContent())
-                .isRead(false)
-                .build();
+        if (content == null && (image == null || image.isEmpty())) {
+            throw new IllegalArgumentException("Message must have content or an image");
+        }
 
-        message = messageRepository.save(message);
+        String imageUrl = null;
+        if (image != null && !image.isEmpty()) {
+            s3Service.validateImageFile(image);
+            imageUrl = s3Service.uploadFile(image, "images");
+        }
 
-        conversation.setLastMessagePreview(message.getContent());
-        conversation.setLastMessageAt(LocalDateTime.now());
-        conversationRepository.save(conversation);
+        try {
+            Message message = Message.builder()
+                    .conversation(conversation)
+                    .sender(sender)
+                    .content(content)
+                    .imageUrl(imageUrl)
+                    .isRead(false)
+                    .build();
 
-        return mapToMessageResponse(message);
+            message = messageRepository.save(message);
+
+            String preview = message.getContent() != null ? message.getContent() : "Image";
+            conversation.setLastMessagePreview(preview);
+            conversation.setLastMessageAt(LocalDateTime.now());
+            conversationRepository.save(conversation);
+
+            return mapToMessageResponse(message);
+        } catch (Exception e) {
+            if (imageUrl != null) {
+                String key = s3Service.extractKey(imageUrl);
+                if (key != null) {
+                    try {
+                        s3Service.deleteFile(key);
+                    } catch (Exception ex) {
+                        log.warn("Failed to clean up S3 image after failed message save: {}", key, ex);
+                    }
+                }
+            }
+            throw e;
+        }
     }
 
     @Transactional(readOnly = true)
@@ -85,6 +128,30 @@ public class ChatService {
     public Page<MessageResponse> getConversationMessages(UUID conversationId, Pageable pageable) {
         return messageRepository.findByConversationIdOrderByCreatedAtDesc(conversationId, pageable)
                 .map(this::mapToMessageResponse);
+    }
+
+    @Transactional
+    public void deleteMessage(UUID messageId, String senderEmail) {
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new ResourceNotFoundException("Message not found"));
+
+        if (!message.getSender().getEmail().equals(senderEmail)) {
+            throw new IllegalArgumentException("Unauthorized to delete this message");
+        }
+
+        String imageUrl = message.getImageUrl();
+        messageRepository.delete(message);
+
+        if (imageUrl != null) {
+            String key = s3Service.extractKey(imageUrl);
+            if (key != null) {
+                try {
+                    s3Service.deleteFile(key);
+                } catch (Exception e) {
+                    log.warn("Failed to delete message image from S3: {}", key, e);
+                }
+            }
+        }
     }
 
     @Transactional
@@ -106,6 +173,7 @@ public class ChatService {
                 .conversationId(message.getConversation().getId())
                 .sender(profileService.mapToResponse(message.getSender()))
                 .content(message.getContent())
+                .imageUrl(message.getImageUrl())
                 .createdAt(message.getCreatedAt())
                 .isRead(message.isRead())
                 .build();

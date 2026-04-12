@@ -8,13 +8,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.UUID;
 
 @RestController
@@ -60,12 +63,15 @@ public class ChatController {
         return ResponseEntity.ok(chatService.getUserConversations(authentication.getName(), pageable));
     }
 
-    // REST: Start new conversation
-    @PostMapping
+    // REST: Start new conversation (supports optional image attachment)
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<MessageResponse> startConversation(
-            @RequestBody ChatRequest request,
-            Authentication authentication) {
-        return ResponseEntity.ok(chatService.sendMessage(authentication.getName(), request));
+            @RequestParam("recipientId") UUID recipientId,
+            @RequestParam(required = false) String content,
+            @RequestPart(value = "image", required = false) MultipartFile image,
+            Authentication authentication) throws IOException {
+        return ResponseEntity.ok(chatService.sendMessage(
+                authentication.getName(), null, recipientId, content, image));
     }
 
     // REST: Get message history
@@ -78,14 +84,15 @@ public class ChatController {
         return ResponseEntity.ok(chatService.getConversationMessages(id, pageable));
     }
 
-    // REST: Fallback send message
-    @PostMapping("/{id}/messages")
+    // REST: Send message to existing conversation (supports optional image attachment)
+    @PostMapping(value = "/{id}/messages", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<MessageResponse> sendMessage(
             @PathVariable UUID id,
-            @RequestBody ChatRequest request,
-            Authentication authentication) {
-        request.setCid(id);
-        MessageResponse response = chatService.sendMessage(authentication.getName(), request);
+            @RequestParam(required = false) String content,
+            @RequestPart(value = "image", required = false) MultipartFile image,
+            Authentication authentication) throws IOException {
+        MessageResponse response = chatService.sendMessage(
+                authentication.getName(), id, null, content, image);
 
         // Still broadcast via WS so live clients get it
         messagingTemplate.convertAndSend("/topic/conversation." + id, response);
@@ -98,5 +105,15 @@ public class ChatController {
     public ResponseEntity<Void> markAsRead(@PathVariable UUID id, Authentication authentication) {
         chatService.markAsRead(id, authentication.getName());
         return ResponseEntity.ok().build();
+    }
+
+    // REST: Delete message (also removes S3 image attachment if present)
+    @DeleteMapping("/{id}/messages/{messageId}")
+    public ResponseEntity<Void> deleteMessage(
+            @PathVariable UUID id,
+            @PathVariable UUID messageId,
+            Authentication authentication) {
+        chatService.deleteMessage(messageId, authentication.getName());
+        return ResponseEntity.noContent().build();
     }
 }

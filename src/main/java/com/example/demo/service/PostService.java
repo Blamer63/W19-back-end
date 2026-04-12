@@ -1,6 +1,5 @@
 package com.example.demo.service;
 
-import com.example.demo.dto.CreatePostRequest;
 import com.example.demo.dto.PostResponse;
 import com.example.demo.entity.Post;
 import com.example.demo.entity.Profile;
@@ -13,7 +12,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.UUID;
 
 @Service
@@ -25,6 +26,7 @@ public class PostService {
         private final ProfileRepository profileRepository;
         private final PostReactionRepository postReactionRepository;
         private final PostCommentRepository postCommentRepository;
+        private final S3Service s3Service;
 
         @Transactional(readOnly = true)
         public Page<PostResponse> getFeed(String language, Pageable pageable, Double lat, Double lon,
@@ -66,21 +68,41 @@ public class PostService {
         }
 
         @Transactional
-        public PostResponse createPost(CreatePostRequest request, String currentUserEmail) {
+        public PostResponse createPost(String content, String originalLanguage,
+                        Double latitude, Double longitude,
+                        MultipartFile image, String currentUserEmail) throws IOException {
                 Profile currentUser = profileRepository.findByEmail(currentUserEmail)
                                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-                Post post = Post.builder()
-                                .author(currentUser)
-                                .content(request.getContent())
-                                .originalLanguage(request.getOriginalLanguage())
-                                .imageUrl(request.getImageUrl())
-                                .latitude(request.getLatitude())
-                                .longitude(request.getLongitude())
-                                .build();
+                String imageUrl = null;
+                if (image != null && !image.isEmpty()) {
+                        s3Service.validateImageFile(image);
+                        imageUrl = s3Service.uploadFile(image, "images");
+                }
 
-                return mapToResponse(postRepository.save(post), currentUser, request.getLatitude(),
-                                request.getLongitude());
+                try {
+                        Post post = Post.builder()
+                                        .author(currentUser)
+                                        .content(content)
+                                        .originalLanguage(originalLanguage)
+                                        .imageUrl(imageUrl)
+                                        .latitude(latitude)
+                                        .longitude(longitude)
+                                        .build();
+                        return mapToResponse(postRepository.save(post), currentUser, latitude, longitude);
+                } catch (Exception e) {
+                        if (imageUrl != null) {
+                                String key = s3Service.extractKey(imageUrl);
+                                if (key != null) {
+                                        try {
+                                                s3Service.deleteFile(key);
+                                        } catch (Exception ex) {
+                                                log.warn("Failed to clean up S3 image after failed post save: {}", key, ex);
+                                        }
+                                }
+                        }
+                        throw e;
+                }
         }
 
         @Transactional(readOnly = true)
@@ -103,7 +125,19 @@ public class PostService {
                         throw new RuntimeException("Unauthorized to delete this post");
                 }
 
+                String imageUrl = post.getImageUrl();
                 postRepository.delete(post);
+
+                if (imageUrl != null) {
+                        String key = s3Service.extractKey(imageUrl);
+                        if (key != null) {
+                                try {
+                                        s3Service.deleteFile(key);
+                                } catch (Exception e) {
+                                        log.warn("Failed to delete post image from S3: {}", key, e);
+                                }
+                        }
+                }
         }
 
         @Transactional(readOnly = true)
