@@ -19,3 +19,8 @@ app:
     expiration-ms: 3600000 # 1 hour
   google:
     places-key: "test-api-key-not-used-in-tests"
+  scanner:
+    yolo-url: ""
+    translation-url: ""
+    default-confidence-threshold: 0.4
+    default-max-results: 6

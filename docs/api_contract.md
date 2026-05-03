@@ -20,8 +20,23 @@
 - Protected routes require `Authorization: Bearer <access_token>` header.
 - Public routes (no auth required): `POST /api/auth/**`, `GET /api/languages`.
 
+## Scanner Endpoint
+
+- `POST /api/scanner/analyze`
+- Requires auth token.
+- Request body (`snake_case`):
+  - `image_base64` (required): Base64-encoded frame/image captured by frontend camera flow.
+  - `target_language` (required): User preferred language code (e.g. `vi`, `es`).
+  - `confidence_threshold` (optional): Defaults to `0.4`.
+  - `max_results` (optional): Defaults to `6`.
+- Response:
+  - `status`: `OK` or `NO_OBJECTS`
+  - `message`: user-friendly status text
+  - `target_language`
+  - `detection_count`
+  - `detections[]`: each has `label`, `translated_label`, `confidence`, `translated`
+
 ## Future / Pending Endpoints
 
 - Notifications
 - Moderation Dashboard
-- AI Object Scanner (`POST /api/scanner/analyze`)

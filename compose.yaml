@@ -32,16 +32,98 @@ services:
       SPRING_DATASOURCE_PASSWORD: secret
       JWT_SECRET: ${JWT_SECRET}
       GOOGLE_PLACES_KEY: ${GOOGLE_PLACES_KEY}
+      YOLO_URL: http://yolo-server:8000/detect
+      # CLASSIFIER_API_URL: http://classifier-service:8003/classify
+      # CLIP_API_URL: http://clip-service:8002/classify
+      CAPTION_API_URL: http://caption-service:8004/caption
+      TRANSLATION_URL: http://translation-adapter:8001/translate
     env_file:
       - .env
     depends_on:
       postgres:
         condition: service_healthy
+      yolo-server:
+        condition: service_started
+      caption-service:
+        condition: service_started
+      translation-adapter:
+        condition: service_started
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 5
+
+  # ── YOLO ML Service ─────────────────────────────────────────────────────────
+  yolo-server:
+    build:
+      context: ./ml-services/yolo-server
+      # Assuming a Dockerfile exists there, otherwise we might need to create one, or just use a python image
+      # But usually it has a Dockerfile if it's meant to be dockerized. 
+    image: yolo-server:latest
+    ports:
+      - "8000:8000"
+    environment:
+      YOLO_MODEL: best.pt
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Translation Adapter ─────────────────────────────────────────────────────
+  translation-adapter:
+    build:
+      context: ./ml-services/translation-adapter
+    image: translation-adapter:latest
+    ports:
+      - "8001:8001"
+    environment:
+      LIBRETRANSLATE_URL: "http://host.docker.internal:5000/translate"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/docs')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── CLIP ML Service (Deprecated/Commented) ──────────────────────────────────
+  # clip-service:
+  #   build:
+  #     context: ./ml-services/clip-service
+  #   image: clip-service:latest
+  #   ports:
+  #     - "8002:8002"
+  #   healthcheck:
+  #     test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/docs')"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
+  # ── Classifier ML Service (Deprecated/Commented) ────────────────────────────
+  # classifier-service:
+  #   build:
+  #     context: ./ml-services/classifier-service
+  #   image: classifier-service:latest
+  #   ports:
+  #     - "8003:8000"
+  #   healthcheck:
+  #     test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
+  # ── Caption ML Service ──────────────────────────────────────────────────────
+  caption-service:
+    build:
+      context: ./ml-services/caption-service
+    image: caption-service:latest
+    ports:
+      - "8004:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # ── Vite / React Frontend ───────────────────────────────────────────────────
   frontend:

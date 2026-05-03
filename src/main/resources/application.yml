@@ -27,3 +27,14 @@ app:
     expiration-ms: 3600000 # 1 hour
   google:
     places-key: ${GOOGLE_PLACES_KEY}
+  scanner:
+    yolo-url: ${YOLO_URL:}
+    clip-url: ${CLIP_API_URL:}
+    translation-url: ${TRANSLATION_URL:}
+    default-confidence-threshold: ${SCANNER_DEFAULT_CONFIDENCE:0.4}
+    default-max-results: ${SCANNER_DEFAULT_MAX_RESULTS:3}
+ml:
+  classifier-service:
+    url: ${CLASSIFIER_API_URL:http://localhost:8003}
+  caption-service:
+    url: ${CAPTION_API_URL:http://localhost:8004}

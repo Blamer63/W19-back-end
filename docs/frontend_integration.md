@@ -257,6 +257,38 @@ interface ConversationResponse {
 }
 ```
 
+### AI Object Scanner
+
+```typescript
+interface ScannerAnalyzeRequest {
+  image_base64: string;
+  target_language: string;
+  confidence_threshold?: number; // default 0.4
+  max_results?: number;          // default 6
+}
+
+interface DetectedObjectResponse {
+  label: string;
+  translated_label: string;
+  confidence: number;
+  translated: boolean;
+}
+
+interface ScannerAnalyzeResponse {
+  status: 'OK' | 'NO_OBJECTS';
+  message: string;
+  target_language: string;
+  detection_count: number;
+  detections: DetectedObjectResponse[];
+}
+```
+
+Frontend loop guidance for real-time use:
+- Capture camera frames on an interval (e.g. 300-700ms), not every rendered frame.
+- Send each frame to `POST /api/scanner/analyze`.
+- If `status === "NO_OBJECTS"`, show a neutral empty state (e.g. "No objects detected").
+- If `translated` is `false`, show the original `label` as fallback.
+
 ---
 
 ## WebSocket Integration (STOMP over SockJS)
@@ -310,6 +342,5 @@ interface Page<T> {
 
 ## Not Yet Implemented (Backend Needed)
 
-- **AI Object Scanner** — `POST /api/scanner/analyze` (image upload)
 - **Notifications**
 - **Moderation Dashboard**

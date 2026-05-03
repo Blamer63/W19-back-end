@@ -111,3 +111,14 @@ Proxies to Google Places API (server-side, keeps API key secure). No auth requir
 | `/app/chat.typing` | Client → Server | Broadcast typing indicator |
 | `/topic/conversation.{id}` | Server → Client | Receive messages |
 | `/topic/conversation.{id}.typing` | Server → Client | Receive typing status |
+
+---
+
+## AI Object Scanner (`/api/scanner`)
+
+- `POST /scanner/analyze` accepts camera frame payload (`image_base64`) and `target_language`.
+- Detection is delegated to configured YOLO API (`YOLO_API_URL`).
+- Object labels are translated through configured translation API (`TRANSLATION_API_URL`).
+- Duplicate labels are translated once per request, then cached in-memory for low-latency repeated frames.
+- When no objects are detected, endpoint returns `status=NO_OBJECTS` with empty `detections`.
+- If translation fails for a label, backend falls back to original English label for that item.
