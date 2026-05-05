@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -99,6 +100,64 @@ class SavedWordServiceTest {
         assertEquals("Japanese", response.getLanguageName());
         assertEquals("🇯🇵", response.getLanguageFlag());
         verify(savedWordRepository).save(any(SavedWord.class));
+    }
+
+    @Test
+    void saveWord_FromScanner_PersistsScannerSourceAndContext() {
+        CreateWordRequest request = CreateWordRequest.builder()
+                .word("apple")
+                .translation("사과")
+                .languageCode("ko")
+                .source(SourceType.SCANNER)
+                .sourceContext("Detected in photo with 94% confidence")
+                .build();
+
+        Language korean = Language.builder()
+                .code("ko")
+                .name("Korean")
+                .flagEmoji("🇰🇷")
+                .build();
+        SavedWord scannerWord = SavedWord.builder()
+                .id(UUID.randomUUID())
+                .user(testUser)
+                .word("apple")
+                .translation("사과")
+                .languageCode("ko")
+                .source(SourceType.SCANNER)
+                .context("Detected in photo with 94% confidence")
+                .masteryLevel(0)
+                .createdAt(Instant.now())
+                .nextReview(Instant.now())
+                .build();
+
+        when(profileRepository.findByEmail("test@example.com"))
+                .thenReturn(Optional.of(testUser));
+        when(savedWordRepository.existsByUserIdAndWordAndLanguageCode(testUser.getId(), "apple", "ko"))
+                .thenReturn(false);
+        when(savedWordRepository.save(any(SavedWord.class)))
+                .thenReturn(scannerWord);
+        when(languageRepository.findById("ko"))
+                .thenReturn(Optional.of(korean));
+
+        SavedWordResponse response = savedWordService.saveWord("test@example.com", request);
+
+        ArgumentCaptor<SavedWord> savedWordCaptor = ArgumentCaptor.forClass(SavedWord.class);
+        verify(savedWordRepository).save(savedWordCaptor.capture());
+        SavedWord savedWord = savedWordCaptor.getValue();
+
+        assertEquals("apple", savedWord.getWord());
+        assertEquals("사과", savedWord.getTranslation());
+        assertEquals("ko", savedWord.getLanguageCode());
+        assertEquals(SourceType.SCANNER, savedWord.getSource());
+        assertEquals("Detected in photo with 94% confidence", savedWord.getContext());
+        assertNull(savedWord.getSourceId());
+
+        assertEquals("apple", response.getWord());
+        assertEquals("사과", response.getTranslation());
+        assertEquals("ko", response.getLanguageCode());
+        assertEquals("Korean", response.getLanguageName());
+        assertEquals(SourceType.SCANNER, response.getSource());
+        assertEquals("Detected in photo with 94% confidence", response.getSourceContext());
     }
 
     @Test
