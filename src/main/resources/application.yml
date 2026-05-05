@@ -35,3 +35,6 @@ app:
     expiration-ms: 3600000 # 1 hour
   google:
     places-key: ${GOOGLE_PLACES_KEY}
+  yolo:
+    endpoint: ${YOLO_ENDPOINT:http://localhost:5001/detect}
+    confidence-threshold: 0.60
