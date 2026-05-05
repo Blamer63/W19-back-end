@@ -205,36 +205,46 @@ When `DELETE /posts/{id}` is called:
 
 ## 6. File Storage (AWS S3)
 
-All media files are stored in the `fs-kaiday-customer-test` S3 bucket (region `ap-southeast-2`). The backend exposes a thin authenticated proxy at `/api/files`.
+All media files are stored in the private `fs-kaiday-customer-test` S3 bucket (region `ap-southeast-2`) and served through CloudFront. New uploads return `https://<cloudfront-domain>/<key>` URLs.
 
 ### Upload — `POST /api/files/upload?type=<images|audio|videos>`
 
-1. Validates `type` parameter is one of `images`, `audio`, `videos`.
+Images are uploaded through the entity workflow that owns them:
+
+| Media | Endpoint | Multipart field | Stored field |
+|-------|----------|-----------------|--------------|
+| Profile avatar | `PATCH /api/users/me` | `avatar` | `profiles.avatar_url` |
+| Post image | `POST /api/posts` | `image` | `posts.image_url` |
+| Message image | `POST /api/conversations` or `POST /api/conversations/{id}/messages` | `image` | `messages.image_url` |
+
+Standalone uploads through `/api/files/upload` are limited to audio and video.
+
+1. Validates `type` parameter is one of `audio`, `videos`.
 2. Validates file is not empty.
 3. Validates MIME type matches the declared type.
 4. Validates file size against per-type limits.
-5. Generates a unique S3 key: `<type>/<UUID>-<originalFilename>`.
+5. Generates a unique S3 key: `<type>/<UUID>-<sanitizedOriginalFilename>`.
 6. Uploads via `S3Client.putObject` with `ContentType` header.
-7. Returns `{ "url": "https://<bucket>.s3.<region>.amazonaws.com/<key>" }`.
+7. Returns `{ "url": "https://<cloudfront-domain>/<key>" }`.
 
 | Type | Max size |
 |------|----------|
-| `images` | 5 MB |
 | `audio` | 20 MB |
 | `videos` | 100 MB |
 
 ### Delete — `DELETE /api/files/delete?key=<s3-key>`
 
-Calls `S3Client.deleteObject` for the given key. Used explicitly by the frontend or triggered automatically by the backend on post/avatar deletion.
+Only deletes standalone `audio/` and `videos/` keys. Image keys are owned by profile, post, or message records and must be cleaned up through those entity workflows.
 
 ### Automatic S3 Cleanup (backend-initiated)
 
 | Trigger | Where | What gets deleted |
 |---------|-------|-------------------|
 | `DELETE /posts/{id}` | `PostService.deletePost` | `post.imageUrl` key (via `extractKey`) |
-| `PATCH /users/me` with new `avatar_url` | `UserController.updateProfile` | Old `profile.avatarUrl` key (via `extractKey`) |
+| `DELETE /conversations/{id}/messages/{messageId}` | `ChatService.deleteMessage` | `message.imageUrl` key (via `extractKey`) |
+| `PATCH /users/me` with new multipart `avatar` | `UserController.updateProfile` | Old `profile.avatarUrl` key (via `extractKey`) |
 
-`S3Service.extractKey(url)` strips the bucket URL prefix to recover the key. Returns `null` for non-S3 URLs, making the cleanup call unconditionally safe.
+`S3Service.extractKey(url)` strips either the old S3 URL prefix or the new CloudFront URL prefix to recover the key. Returns `null` for unrelated URLs, making migration cleanup safe.
 
 ---
 

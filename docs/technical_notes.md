@@ -192,9 +192,10 @@ Session lifecycle:
 
 ### AWS S3 File Storage
 
-Files are stored in `fs-kaiday-customer-test` (region `ap-southeast-2`). `S3Service` manages all interactions:
+Files are stored in the private `fs-kaiday-customer-test` bucket (region `ap-southeast-2`) and served through CloudFront. `S3Service` manages S3 writes/deletes and URL/key conversion:
 
-- **Upload**: key pattern `<folder>/<UUID>-<originalFilename>` ensures uniqueness; returns full public URL
+- **Upload**: key pattern `<folder>/<UUID>-<sanitizedOriginalFilename>` ensures uniqueness and prevents path-like filenames from influencing keys; returns a CloudFront URL
+- **Standalone media**: `FileController` accepts only `audio` and `videos`; image uploads are handled by profile, post, and message endpoints
 - **Delete**: called in two cleanup flows:
   - `PostService.deletePost` — deletes the post's image before removing the DB record
   - `UserController.updateProfile` — deletes the old avatar when a new one is set
@@ -207,6 +208,10 @@ File size limits enforced by `FileController`:
 | `images` | 5 MB |
 | `audio` | 20 MB |
 | `videos` | 100 MB |
+
+Image uploads are capped at 5 MB by `S3Service.validateImageFile`.
+
+Message image cleanup is handled by `ChatService.deleteMessage`. During the CloudFront migration, `extractKey(url)` supports both old direct S3 URLs and new CloudFront URLs.
 
 ### Meetups
 

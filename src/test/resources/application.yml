@@ -12,6 +12,18 @@ spring:
     properties:
       hibernate:
         format_sql: true
+  sql:
+    init:
+      mode: never
+
+aws:
+  region: ap-southeast-2
+  cloudfront:
+    domain: test.cloudfront.local
+  s3:
+    mock: true
+    buckets:
+      customer: test-bucket
 
 app:
   jwt:

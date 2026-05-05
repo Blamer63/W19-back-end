@@ -159,6 +159,8 @@
 | `audio` | 20 MB |
 | `videos` | 100 MB |
 
+Current backend behavior: `/api/files/upload` accepts standalone `audio` and `videos` only. Profile, post, and message images are uploaded through their owning multipart endpoints (`avatar` or `image`) so the backend can attach and clean them up safely.
+
 ### Languages — `/api/languages`
 
 | Method | Path | Auth | Description |

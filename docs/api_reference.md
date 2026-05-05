@@ -78,29 +78,33 @@ Two separate social graphs:
 
 ## File Upload — AWS S3 (`/api/files`)
 
-Authenticated endpoint that proxies uploads to the configured S3 bucket (`fs-kaiday-customer-test`, region `ap-southeast-2`).
+Authenticated endpoint for standalone audio/video uploads. Files are stored in the private S3 bucket (`fs-kaiday-customer-test`, region `ap-southeast-2`) and returned as CloudFront URLs.
 
-### `POST /files/upload?type=<images|audio|videos>`
+Profile, post, and message images are not uploaded here. They are uploaded inline through their owning endpoints so the backend can attach them to DB records and clean them up later.
+
+### `POST /files/upload?type=<audio|videos>`
 
 - Body: `multipart/form-data` with field `file`.
 - Validates MIME type and file size before uploading.
-- Returns `{ "url": "<full public S3 URL>" }`.
-- S3 key pattern: `<type>/<UUID>-<originalFilename>`.
+- Returns `{ "url": "https://<cloudfront-domain>/<key>" }`.
+- S3 key pattern: `<type>/<UUID>-<sanitizedOriginalFilename>`.
 
 | `type` param | Allowed MIME types | Max size |
 |---|---|---|
-| `images` | `image/*` | 5 MB |
 | `audio` | `audio/*` | 20 MB |
 | `videos` | `video/*` | 100 MB |
 
 ### `DELETE /files/delete?key=<s3-key>`
 
-- Deletes the object at the given S3 key.
+- Deletes standalone `audio/` or `videos/` objects only.
+- Image objects must be deleted through their owning profile/post/message workflows.
 - Returns `{ "message": "File deleted successfully" }`.
 
 ### Automatic S3 cleanup
 
 S3 files are automatically deleted (no manual call needed) when:
+- A **message is deleted** (`DELETE /conversations/{id}/messages/{messageId}`) - the message's `image_url` S3 key is cleaned up.
+- During migration, cleanup supports both old direct S3 URLs and new CloudFront URLs.
 - A **post is deleted** (`DELETE /posts/{id}`) — the post's `image_url` S3 key is cleaned up.
 - A **profile avatar is replaced** (`PATCH /users/me` with a new `avatar_url`) — the old avatar key is cleaned up.
 

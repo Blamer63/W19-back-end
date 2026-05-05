@@ -23,6 +23,8 @@ spring:
 
 aws:
   region: ap-southeast-2
+  cloudfront:
+    domain: d3i7r8z4cxs3p9.cloudfront.net
   s3:
     mock: false
     buckets:

@@ -16,9 +16,12 @@ import java.util.UUID;
 public class S3Service {
 
     private static final long MAX_IMAGE_SIZE = 5L * 1024 * 1024; // 5 MB
+    private static final int MAX_FILENAME_LENGTH = 120;
     private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of(
             "image/jpeg", "image/png", "image/gif", "image/webp"
     );
+    private static final Set<String> ALLOWED_FOLDERS = Set.of("images", "audio", "videos");
+    private static final Set<String> STANDALONE_MEDIA_FOLDERS = Set.of("audio", "videos");
 
     private final S3Client s3Client;
 
@@ -27,6 +30,9 @@ public class S3Service {
 
     @Value("${aws.region}")
     private String region;
+
+    @Value("${aws.cloudfront.domain}")
+    private String cloudfrontDomain;
 
     public S3Service(S3Client s3Client) {
         this.s3Client = s3Client;
@@ -58,8 +64,11 @@ public class S3Service {
      * @return the full public URL of the uploaded file
      */
     public String uploadFile(MultipartFile file, String folder) throws IOException {
-        // Build a unique key so two users uploading "photo.jpg" never collide
-        String key = folder + "/" + UUID.randomUUID() + "-" + file.getOriginalFilename();
+        if (!ALLOWED_FOLDERS.contains(folder)) {
+            throw new IllegalArgumentException("Invalid S3 folder");
+        }
+
+        String key = folder + "/" + UUID.randomUUID() + "-" + sanitizeOriginalFilename(file.getOriginalFilename());
 
         PutObjectRequest request = PutObjectRequest.builder()
                 .bucket(bucketName)
@@ -69,8 +78,7 @@ public class S3Service {
 
         s3Client.putObject(request, RequestBody.fromBytes(file.getBytes()));
 
-        // Return the standard S3 URL format
-        return "https://" + bucketName + ".s3." + region + ".amazonaws.com/" + key;
+        return "https://" + cloudfrontDomain + "/" + key;
     }
 
     /**
@@ -95,7 +103,7 @@ public class S3Service {
      * @return full public URL
      */
     public String getFileUrl(String key) {
-        return "https://" + bucketName + ".s3." + region + ".amazonaws.com/" + key;
+        return "https://" + cloudfrontDomain + "/" + key;
     }
 
     /**
@@ -107,10 +115,55 @@ public class S3Service {
      */
     public String extractKey(String url) {
         if (url == null) return null;
-        String prefix = "https://" + bucketName + ".s3." + region + ".amazonaws.com/";
-        if (url.startsWith(prefix)) {
-            return url.substring(prefix.length());
+        String s3Prefix = "https://" + bucketName + ".s3." + region + ".amazonaws.com/";
+        String cloudfrontPrefix = "https://" + cloudfrontDomain + "/";
+        if (url.startsWith(s3Prefix)) {
+            return url.substring(s3Prefix.length());
+        }
+        if (url.startsWith(cloudfrontPrefix)) {
+            return url.substring(cloudfrontPrefix.length());
         }
         return null;
+    }
+
+    /**
+     * Returns true when a key belongs to the generic audio/video upload area.
+     * Image keys are owned by profile, post, or message records and should be
+     * deleted through those entity workflows.
+     */
+    public boolean isStandaloneMediaKey(String key) {
+        if (key == null) {
+            return false;
+        }
+        return STANDALONE_MEDIA_FOLDERS.stream().anyMatch(folder -> key.startsWith(folder + "/"));
+    }
+
+    String sanitizeOriginalFilename(String originalFilename) {
+        if (originalFilename == null || originalFilename.isBlank()) {
+            return "file";
+        }
+
+        String filename = originalFilename.replace('\\', '/');
+        int slashIndex = filename.lastIndexOf('/');
+        if (slashIndex >= 0) {
+            filename = filename.substring(slashIndex + 1);
+        }
+
+        filename = filename.replaceAll("[^A-Za-z0-9._-]", "_")
+                .replaceAll("_+", "_");
+
+        while (filename.startsWith(".")) {
+            filename = filename.substring(1);
+        }
+
+        if (filename.isBlank()) {
+            filename = "file";
+        }
+
+        if (filename.length() > MAX_FILENAME_LENGTH) {
+            filename = filename.substring(filename.length() - MAX_FILENAME_LENGTH);
+        }
+
+        return filename;
     }
 }
