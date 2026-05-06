@@ -66,7 +66,7 @@ Two separate social graphs:
 
 - `GET /posts` (feed) accepts optional `latitude`/`longitude` to compute a `distance` string (Haversine formula) on each post.
 - Optional `language` filter returns only posts in that language code. Omitting or passing `"all"` returns all languages.
-- `GET /posts/{id}/translations?target_language=<code>` — result is **cached** per `(post_id, target_language)`. Repeat requests do not re-call any translation API.
+- `GET /posts/{id}/translations?target_language=<code>` — result is **cached** per `(post_id, target_language)`. Cache misses call Google Cloud Translation Basic v2 through the backend; repeat requests do not re-call the provider.
 - `DELETE /posts/{id}` — author only. Also extracts the S3 key from `image_url` and **deletes the file from S3** before removing the DB record.
 - Reactions: **one per user per post** (upsert — posting a new reaction replaces the previous one). `DELETE /posts/{id}/reactions` removes it entirely.
 - Comments: ordered `created_at ASC` (oldest first). Only the comment author can delete their comment.
@@ -78,33 +78,29 @@ Two separate social graphs:
 
 ## File Upload — AWS S3 (`/api/files`)
 
-Authenticated endpoint for standalone audio/video uploads. Files are stored in the private S3 bucket (`fs-kaiday-customer-test`, region `ap-southeast-2`) and returned as CloudFront URLs.
+Authenticated endpoint that proxies uploads to the configured S3 bucket (`fs-kaiday-customer-test`, region `ap-southeast-2`).
 
-Profile, post, and message images are not uploaded here. They are uploaded inline through their owning endpoints so the backend can attach them to DB records and clean them up later.
-
-### `POST /files/upload?type=<audio|videos>`
+### `POST /files/upload?type=<images|audio|videos>`
 
 - Body: `multipart/form-data` with field `file`.
 - Validates MIME type and file size before uploading.
-- Returns `{ "url": "https://<cloudfront-domain>/<key>" }`.
-- S3 key pattern: `<type>/<UUID>-<sanitizedOriginalFilename>`.
+- Returns `{ "url": "<full public S3 URL>" }`.
+- S3 key pattern: `<type>/<UUID>-<originalFilename>`.
 
 | `type` param | Allowed MIME types | Max size |
 |---|---|---|
+| `images` | `image/*` | 5 MB |
 | `audio` | `audio/*` | 20 MB |
 | `videos` | `video/*` | 100 MB |
 
 ### `DELETE /files/delete?key=<s3-key>`
 
-- Deletes standalone `audio/` or `videos/` objects only.
-- Image objects must be deleted through their owning profile/post/message workflows.
+- Deletes the object at the given S3 key.
 - Returns `{ "message": "File deleted successfully" }`.
 
 ### Automatic S3 cleanup
 
 S3 files are automatically deleted (no manual call needed) when:
-- A **message is deleted** (`DELETE /conversations/{id}/messages/{messageId}`) - the message's `image_url` S3 key is cleaned up.
-- During migration, cleanup supports both old direct S3 URLs and new CloudFront URLs.
 - A **post is deleted** (`DELETE /posts/{id}`) — the post's `image_url` S3 key is cleaned up.
 - A **profile avatar is replaced** (`PATCH /users/me` with a new `avatar_url`) — the old avatar key is cleaned up.
 

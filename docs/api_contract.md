@@ -77,7 +77,7 @@
 | POST | `/posts` | Bearer | Create post |
 | GET | `/posts/{postId}` | Bearer | Single post |
 | DELETE | `/posts/{postId}` | Bearer | Delete post (author only; also deletes S3 image) |
-| GET | `/posts/{postId}/translations` | Bearer | Get/auto-create translation (`?target_language=<code>`) |
+| GET | `/posts/{postId}/translations` | Bearer | Get/auto-create cached Google translation (`?target_language=<code>`) |
 | POST | `/posts/{postId}/reports` | Bearer | Report post |
 
 ### Reactions — `/api/posts/{postId}/reactions`
@@ -148,17 +148,16 @@
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/files/upload?type=audio\|videos` | Bearer | Upload standalone audio/video to S3 → `{ url: string }` |
-| DELETE | `/files/delete?key=<s3-key>` | Bearer | Delete standalone `audio/...` or `videos/...` object from S3 |
+| POST | `/files/upload?type=images\|audio\|videos` | Bearer | Upload file to S3 → `{ url: string }` |
+| DELETE | `/files/delete?key=<s3-key>` | Bearer | Delete file from S3 |
 
 **File size limits:**
 
 | Type | Max size |
 |------|----------|
+| `images` | 5 MB |
 | `audio` | 20 MB |
 | `videos` | 100 MB |
-
-Current backend behavior: `/api/files/upload` accepts standalone `audio` and `videos` only. Profile, post, and message images are uploaded through their owning multipart endpoints (`avatar` or `image`) so the backend can attach and clean them up safely.
 
 ### Languages — `/api/languages`
 
