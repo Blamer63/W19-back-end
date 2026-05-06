@@ -40,7 +40,7 @@ public class FileController {
      *   POST /api/files/upload?type=audio   (with multipart form field "file")
      *   POST /api/files/upload?type=videos
      *
-     * Returns: { "url": "https://bucket.s3.region.amazonaws.com/audio/uuid-name.mp3" }
+     * Returns: { "url": "https://<cloudfront-domain>/audio/uuid-name.mp3" }
      */
     @PostMapping("/upload")
     public ResponseEntity<Map<String, String>> uploadFile(
@@ -89,13 +89,18 @@ public class FileController {
     }
 
     /**
-     * Delete a file from S3 by its key.
+     * Delete a standalone audio or video file from S3 by its key.
      *
      * Usage:
-     *   DELETE /api/files/delete?key=images/uuid-name.jpg
+     *   DELETE /api/files/delete?key=audio/uuid-name.mp3
      */
     @DeleteMapping("/delete")
     public ResponseEntity<Map<String, String>> deleteFile(@RequestParam("key") String key) {
+        if (!s3Service.isStandaloneMediaKey(key)) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Only standalone audio and video keys can be deleted here"));
+        }
+
         s3Service.deleteFile(key);
         return ResponseEntity.ok(Map.of("message", "File deleted successfully"));
     }

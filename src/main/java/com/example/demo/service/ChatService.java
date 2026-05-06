@@ -162,7 +162,7 @@ public class ChatService {
     public void markAsRead(UUID conversationId, String email) {
         // Find existing messages in this conversation that are not sent by current user and are unread
         // For simplicity in this mock-aligned version, we mark all unread in this conversation
-        List<Message> unreadMessages = messageRepository.findAll() 
+        List<Message> unreadMessages = messageRepository.findAll()
                 .stream()
                 .filter(m -> m.getConversation().getId().equals(conversationId) && !m.isRead())
                 .collect(Collectors.toList());

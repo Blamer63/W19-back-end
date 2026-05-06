@@ -45,8 +45,8 @@
 | Session History | `/api/learn/sessions` |
 | Conversations | `/api/conversations` |
 | Nearby Learners | `/api/learners/nearby` |
-| File Upload | `/api/files/upload?type=images\|audio\|videos` |
-| File Delete | `/api/files/delete?key=<s3-key>` |
+| File Upload | `/api/files/upload?type=audio\|videos` |
+| File Delete | `/api/files/delete?key=<audio-or-video-s3-key>` |
 | Meetups | `/api/meetups` |
 | Places Autocomplete | `/api/places/autocomplete?input=<query>` |
 | Place Details | `/api/places/{placeId}` |
@@ -215,25 +215,25 @@ interface PostTranslationResponse {
 ### File Upload (S3)
 
 ```typescript
-// POST /api/files/upload?type=images|audio|videos
+// POST /api/files/upload?type=audio|videos
 // Body: multipart/form-data with field "file"
 interface FileUploadResponse {
-  url: string;   // full public S3 URL — store this on the entity (post.image_url, profile.avatar_url, etc.)
+  url: string;   // CloudFront URL for standalone audio/video media
 }
 
-// DELETE /api/files/delete?key=<s3-key>
+// DELETE /api/files/delete?key=<audio-or-video-s3-key>
 interface FileDeleteResponse {
   message: string;  // "File deleted successfully"
 }
 
 // File size limits:
-// images → 5 MB
 // audio  → 20 MB
 // videos → 100 MB
 
-// Upload pattern:
-// 1. POST /api/files/upload?type=images  (multipart form)
-// 2. Use returned `url` in CreatePostRequest.image_url or UpdateProfileRequest.avatar_url
+// Images are uploaded through their owning endpoints:
+// - PATCH /api/users/me with multipart field "avatar"
+// - POST /api/posts with multipart field "image"
+// - POST /api/conversations or /api/conversations/{id}/messages with multipart field "image"
 ```
 
 ### Friends
@@ -530,13 +530,10 @@ Common query params: `?page=0&size=20&sort=createdAt,desc`
 
 ```
 1.  Pick file in UI
-2.  POST /api/files/upload?type=images
+2.  POST /api/posts
     Content-Type: multipart/form-data
-    Body: file=<binary>
-    → { url: "https://fs-kaiday-customer-test.s3.ap-southeast-2.amazonaws.com/images/<uuid>-photo.jpg" }
-
-3a. Creating a post:
-    POST /api/posts  { content: "...", image_url: "<url from step 2>" }
+    Body: content=<text>, original_language=<code>, image=<binary>
+    → { image_url: "https://<cloudfront-domain>/images/<uuid>-photo.jpg", ... }
 
 3b. Updating avatar:
     PATCH /api/users/me  { avatar_url: "<url from step 2>" }

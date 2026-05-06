@@ -20,6 +20,8 @@ spring:
 
 aws:
   region: ap-southeast-2
+  cloudfront:
+    domain: test.cloudfront.local
   s3:
     mock: true
     buckets:
