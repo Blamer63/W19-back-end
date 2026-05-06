@@ -128,6 +128,39 @@ public class SavedWordControllerTest {
 
     @Test
     @WithMockUser(username = "test@example.com")
+    void saveWord_FromScanner_Success() throws Exception {
+        Language korean = Language.builder()
+                .code("ko")
+                .name("Korean")
+                .flagEmoji("🇰🇷")
+                .build();
+        languageRepository.save(korean);
+
+        String scannerPayload = """
+                {
+                  "word": "apple",
+                  "translation": "사과",
+                  "language_code": "ko",
+                  "source": "SCANNER",
+                  "context": "Detected in photo with 94% confidence"
+                }
+                """;
+
+        mockMvc.perform(post("/api/words")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(scannerPayload))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.word").value("apple"))
+                .andExpect(jsonPath("$.translation").value("사과"))
+                .andExpect(jsonPath("$.language_code").value("ko"))
+                .andExpect(jsonPath("$.language_name").value("Korean"))
+                .andExpect(jsonPath("$.source").value("SCANNER"))
+                .andExpect(jsonPath("$.context").value("Detected in photo with 94% confidence"))
+                .andExpect(jsonPath("$.mastery_level").value(0));
+    }
+
+    @Test
+    @WithMockUser(username = "test@example.com")
     void saveWord_Duplicate_Returns500() throws Exception {
         // Save word first
         SavedWord existing = SavedWord.builder()
