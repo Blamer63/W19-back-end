@@ -3,7 +3,6 @@ package com.example.demo.controller;
 import com.example.demo.dto.DetectedObjectDTO;
 import com.example.demo.exception.ObjectDetectionUnavailableException;
 import com.example.demo.service.ObjectDetectionService;
-import com.example.demo.service.S3Service;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -18,7 +17,6 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -36,9 +34,6 @@ public class ScanControllerTest {
 
     @MockitoBean
     private ObjectDetectionService objectDetectionService;
-
-    @MockitoBean
-    private S3Service s3Service;
 
     @Test
     @WithMockUser(username = "test@example.com")
@@ -67,7 +62,6 @@ public class ScanControllerTest {
                 .andExpect(jsonPath("$.detected_objects[0].learning_word").value("\uC0AC\uACFC"))
                 .andExpect(jsonPath("$.detected_objects[0].language_code").value("ko"));
 
-        verify(s3Service).validateImageFile(image);
         verify(objectDetectionService).detect(any(), eq("test@example.com"));
     }
 
@@ -80,14 +74,14 @@ public class ScanControllerTest {
                 "text/plain",
                 "not-an-image".getBytes());
 
-        doThrow(new IllegalArgumentException("Invalid image type. Allowed: jpeg, png, gif, webp"))
-                .when(s3Service).validateImageFile(image);
+        when(objectDetectionService.detect(any(), eq("test@example.com")))
+                .thenThrow(new IllegalArgumentException("Unsupported image type. Allowed: jpeg, png, webp"));
 
         mockMvc.perform(multipart("/api/scan").file(image))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Invalid image type. Allowed: jpeg, png, gif, webp"));
+                .andExpect(jsonPath("$.error").value("Unsupported image type. Allowed: jpeg, png, webp"));
 
-        verifyNoInteractions(objectDetectionService);
+        verify(objectDetectionService).detect(any(), eq("test@example.com"));
     }
 
     @Test
@@ -118,6 +112,6 @@ public class ScanControllerTest {
         mockMvc.perform(multipart("/api/scan").file(image))
                 .andExpect(status().isForbidden());
 
-        verifyNoInteractions(s3Service, objectDetectionService);
+        verifyNoInteractions(objectDetectionService);
     }
 }

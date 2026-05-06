@@ -23,6 +23,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -99,6 +100,35 @@ class ObjectDetectionServiceTest {
         assertThatThrownBy(() -> objectDetectionService.detect(image(), "test@example.com"))
                 .isInstanceOf(ObjectDetectionUnavailableException.class)
                 .hasMessage("Object detection service unavailable");
+    }
+
+    @Test
+    void detectRejectsEmptyImage() {
+        MockMultipartFile emptyImage = new MockMultipartFile("image", "scan.jpg", "image/jpeg", new byte[0]);
+
+        assertThatThrownBy(() -> objectDetectionService.detect(emptyImage, "test@example.com"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Image must not be empty");
+    }
+
+    @Test
+    void detectRejectsUnsupportedImageType() {
+        MockMultipartFile textFile = new MockMultipartFile("image", "notes.txt", "text/plain", "not-an-image".getBytes());
+
+        assertThatThrownBy(() -> objectDetectionService.detect(textFile, "test@example.com"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Unsupported image type. Allowed: jpeg, png, webp");
+    }
+
+    @Test
+    void detectRejectsImagesOverFiveMegabytes() {
+        byte[] imageBytes = new byte[(5 * 1024 * 1024) + 1];
+        Arrays.fill(imageBytes, (byte) 1);
+        MockMultipartFile largeImage = new MockMultipartFile("image", "large.jpg", "image/jpeg", imageBytes);
+
+        assertThatThrownBy(() -> objectDetectionService.detect(largeImage, "test@example.com"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Image exceeds 5 MB limit");
     }
 
     private void whenYoloReturns(List<ObjectDetectionService.YoloLabel> labels) {

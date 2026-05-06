@@ -30,10 +30,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class ObjectDetectionService {
+
+    private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
+    private static final long MAX_SCAN_SIZE = 5L * 1024 * 1024;
 
     private static final String DEFAULT_LANGUAGE_CODE = "en";
     private static final Map<String, Map<String, String>> OBJECT_DICTIONARY = Map.of(
@@ -58,8 +62,18 @@ public class ObjectDetectionService {
     @Value("${app.yolo.confidence-threshold}")
     private double confidenceThreshold;
 
+    private void validateImage(MultipartFile file) {
+        if (file == null || file.isEmpty())
+            throw new IllegalArgumentException("Image must not be empty");
+        if (!ALLOWED_IMAGE_TYPES.contains(file.getContentType()))
+            throw new IllegalArgumentException("Unsupported image type. Allowed: jpeg, png, webp");
+        if (file.getSize() > MAX_SCAN_SIZE)
+            throw new IllegalArgumentException("Image exceeds 5 MB limit");
+    }
+
     @Transactional(readOnly = true)
     public List<DetectedObjectDTO> detect(MultipartFile image, String currentUserEmail) throws IOException {
+        validateImage(image);
         String languageCode = resolveLearningLanguageCode(currentUserEmail);
         List<YoloLabel> labels = requestDetections(image);
 
