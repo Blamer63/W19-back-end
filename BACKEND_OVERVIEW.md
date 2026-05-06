@@ -619,12 +619,12 @@ This section lists the major controllers, their base paths, important methods, a
 
 **Dependency**: `S3Service`
 
-- `POST /upload?type=<images|audio|videos>` → `uploadFile(MultipartFile file, String type)`
-  - Validates `type`, file emptiness, MIME type, and file size (5 MB / 20 MB / 100 MB limits for images / audio / videos respectively).
+- `POST /upload?type=<audio|videos>` → `uploadFile(MultipartFile file, String type)`
+  - Validates `type`, file emptiness, MIME type, and file size (20 MB / 100 MB limits for audio / videos respectively).
   - Delegates to `S3Service.uploadFile(file, type)`.
-  - Returns `{ "url": "<s3-public-url>" }`.
+  - Returns `{ "url": "<cloudfront-url>" }`.
 - `DELETE /delete?key=<s3-key>` → `deleteFile(String key)`
-  - Delegates to `S3Service.deleteFile(key)`.
+  - Rejects entity-owned image keys and delegates standalone audio/video keys to `S3Service.deleteFile(key)`.
   - Returns `{ "message": "File deleted successfully" }`.
 
 #### 5.17 `ChatController` – `/api/conversations` & `/app/*` (WebSocket)
@@ -877,7 +877,7 @@ This section describes the main services, their dependencies, and their high-lev
 - `String uploadFile(MultipartFile file, String folder)`
   - Builds a unique S3 key: `<folder>/<UUID>-<originalFilename>`.
   - Calls `S3Client.putObject` with the file bytes and `ContentType`.
-  - Returns the full public URL: `https://<bucket>.s3.<region>.amazonaws.com/<key>`.
+  - Returns the full public URL: `https://<cloudfront-domain>/<key>`.
 - `void deleteFile(String key)`
   - Calls `S3Client.deleteObject` for the given key.
 - `String getFileUrl(String key)`

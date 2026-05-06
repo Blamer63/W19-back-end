@@ -148,14 +148,13 @@
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/files/upload?type=images\|audio\|videos` | Bearer | Upload file to S3 → `{ url: string }` |
-| DELETE | `/files/delete?key=<s3-key>` | Bearer | Delete file from S3 |
+| POST | `/files/upload?type=audio\|videos` | Bearer | Upload standalone audio/video to S3 → `{ url: string }` |
+| DELETE | `/files/delete?key=<s3-key>` | Bearer | Delete standalone `audio/...` or `videos/...` object from S3 |
 
 **File size limits:**
 
 | Type | Max size |
 |------|----------|
-| `images` | 5 MB |
 | `audio` | 20 MB |
 | `videos` | 100 MB |
 

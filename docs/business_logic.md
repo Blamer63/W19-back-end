@@ -207,7 +207,7 @@ When `DELETE /posts/{id}` is called:
 
 All media files are stored in the private `fs-kaiday-customer-test` S3 bucket (region `ap-southeast-2`) and served through CloudFront. New uploads return `https://<cloudfront-domain>/<key>` URLs.
 
-### Upload — `POST /api/files/upload?type=<images|audio|videos>`
+### Upload — `POST /api/files/upload?type=<audio|videos>`
 
 Images are uploaded through the entity workflow that owns them:
 
