@@ -43,8 +43,12 @@ public class ChatService {
         if (request.getContent() == null || request.getContent().isBlank()) {
             throw new IllegalArgumentException("Message must have content");
         }
-        return sendMessage(senderEmail, request.getCid(), request.getRecipientId(),
-                request.getContent(), null);
+        try {
+            return sendMessage(senderEmail, request.getCid(), request.getRecipientId(),
+                    request.getContent(), null);
+        } catch (IOException e) {
+            throw new IllegalStateException("Unexpected failure sending text message", e);
+        }
     }
 
     // Used by the REST endpoints (supports image upload)
