@@ -77,7 +77,7 @@
 | POST | `/posts` | Bearer | Create post |
 | GET | `/posts/{postId}` | Bearer | Single post |
 | DELETE | `/posts/{postId}` | Bearer | Delete post (author only; also deletes S3 image) |
-| GET | `/posts/{postId}/translations` | Bearer | Get/auto-create translation (`?target_language=<code>`) |
+| GET | `/posts/{postId}/translations` | Bearer | Get/auto-create cached Google translation (`?target_language=<code>`) |
 | POST | `/posts/{postId}/reports` | Bearer | Report post |
 
 ### Reactions — `/api/posts/{postId}/reactions`

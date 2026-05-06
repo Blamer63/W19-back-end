@@ -21,7 +21,7 @@ Spring Boot backend for the Locale language exchange app.
 ```bash
 cp .env.example .env
 ```
-Fill in the values your teammate shared with you (JWT secret + Google Places key).
+Fill in the values your teammate shared with you (JWT secret, Google Places key, and Google Translation key).
 
 ### 2. Start everything
 ```bash
@@ -68,3 +68,11 @@ Requirements: Java 21, Maven, PostgreSQL 14+
 3. Run: `./mvnw spring-boot:run`
 
 The API will be available at `http://localhost:8081`.
+
+Required environment variables:
+
+| Variable | Purpose |
+|---|---|
+| `JWT_SECRET` | Signs JWT access tokens |
+| `GOOGLE_PLACES_KEY` | Calls Google Places proxy endpoints |
+| `GOOGLE_TRANSLATE_API_KEY` | Calls Google Cloud Translation for post translations |

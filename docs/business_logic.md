@@ -186,7 +186,11 @@ Each `PostResponse` includes the author's **native language** (first `UserLangua
 
 ### Translations
 
-- Cached per `(post_id, target_language)` in the `post_translation` table. Repeat requests do not re-call any external translation service.
+- Cached per `(post_id, target_language)` in the `post_translation` table. Repeat requests do not re-call the external provider.
+- On cache miss, the backend calls Google Cloud Translation Basic v2 through a backend-only API key.
+- `target_language` is normalized to lowercase and must exist in the app `languages` table.
+- If the target language matches the post's original language, the original content is returned and cached without calling Google.
+- Provider failures return a service-unavailable response instead of exposing raw provider errors.
 
 ### Post Deletion & S3 Cleanup
 
