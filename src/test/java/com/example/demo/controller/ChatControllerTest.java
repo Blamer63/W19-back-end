@@ -1,6 +1,5 @@
 package com.example.demo.controller;
 
-import com.example.demo.dto.ChatRequest;
 import com.example.demo.entity.Profile;
 import com.example.demo.repository.ConversationRepository;
 import com.example.demo.repository.MessageRepository;
@@ -11,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -70,31 +68,22 @@ class ChatControllerTest {
         }
 
         @Test
-        @WithMockUser(username = "sender")
+        @WithMockUser(username = "sender@example.com")
         void shouldCreateNewConversationAndSendMessage() throws Exception {
-                ChatRequest request = new ChatRequest();
-                request.setRecipientId(recipient.getId());
-                request.setContent("Hello REST");
-
-                mockMvc.perform(post("/api/conversations")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
+                mockMvc.perform(multipart("/api/conversations")
+                                .param("recipientId", recipient.getId().toString())
+                                .param("content", "Hello REST"))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.content").value("Hello REST"))
                                 .andExpect(jsonPath("$.sender.username").value("sender"));
         }
 
         @Test
-        @WithMockUser(username = "sender")
+        @WithMockUser(username = "sender@example.com")
         void shouldGetConversations() throws Exception {
-                // Create a conversation first
-                ChatRequest request = new ChatRequest();
-                request.setRecipientId(recipient.getId());
-                request.setContent("Initialize");
-
-                mockMvc.perform(post("/api/conversations")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
+                mockMvc.perform(multipart("/api/conversations")
+                                .param("recipientId", recipient.getId().toString())
+                                .param("content", "Initialize"))
                                 .andExpect(status().isOk());
 
                 mockMvc.perform(get("/api/conversations")
@@ -106,25 +95,18 @@ class ChatControllerTest {
         }
 
         @Test
-        @WithMockUser(username = "sender")
+        @WithMockUser(username = "sender@example.com")
         void shouldGetMessagesWithPagination() throws Exception {
-                // Create conversation and messages
-                ChatRequest request = new ChatRequest();
-                request.setRecipientId(recipient.getId());
-                request.setContent("Message 1");
-
-                String response = mockMvc.perform(post("/api/conversations")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
+                String response = mockMvc.perform(multipart("/api/conversations")
+                                .param("recipientId", recipient.getId().toString())
+                                .param("content", "Message 1"))
                                 .andReturn().getResponse().getContentAsString();
 
                 UUID conversationId = UUID.fromString(objectMapper.readTree(response).get("conversationId").asText());
 
                 for (int i = 2; i <= 5; i++) {
-                        request.setContent("Message " + i);
-                        mockMvc.perform(post("/api/conversations/" + conversationId + "/messages")
-                                        .contentType(MediaType.APPLICATION_JSON)
-                                        .content(objectMapper.writeValueAsString(request)))
+                        mockMvc.perform(multipart("/api/conversations/{id}/messages", conversationId)
+                                        .param("content", "Message " + i))
                                         .andExpect(status().isOk());
                 }
 

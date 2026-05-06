@@ -42,6 +42,8 @@ class ChatServiceTest {
     private ProfileRepository profileRepository;
     @Mock
     private ProfileService profileService;
+    @Mock
+    private S3Service s3Service;
 
     @InjectMocks
     private ChatService chatService;
@@ -56,10 +58,12 @@ class ChatServiceTest {
         sender = new Profile();
         sender.setId(UUID.randomUUID());
         sender.setUsername("sender");
+        sender.setEmail("sender@example.com");
 
         recipient = new Profile();
         recipient.setId(UUID.randomUUID());
         recipient.setUsername("recipient");
+        recipient.setEmail("recipient@example.com");
 
         conversation = Conversation.builder()
                 .participants(Arrays.asList(sender, recipient))
@@ -80,14 +84,14 @@ class ChatServiceTest {
         request.setRecipientId(recipient.getId());
         request.setContent("Hello");
 
-        when(profileRepository.findByUsername("sender")).thenReturn(Optional.of(sender));
+        when(profileRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(sender));
         when(profileRepository.findById(recipient.getId())).thenReturn(Optional.of(recipient));
         when(conversationRepository.findBetweenUsers(sender.getId(), recipient.getId())).thenReturn(Optional.empty());
         when(conversationRepository.save(any(Conversation.class))).thenReturn(conversation);
         when(messageRepository.save(any(Message.class))).thenReturn(message);
         when(profileService.mapToResponse(any(Profile.class))).thenReturn(new ProfileResponse());
 
-        MessageResponse response = chatService.sendMessage("sender", request);
+        MessageResponse response = chatService.sendMessage("sender@example.com", request);
 
         assertNotNull(response);
         assertEquals("Hello", response.getContent());
@@ -101,12 +105,12 @@ class ChatServiceTest {
         request.setCid(conversation.getId());
         request.setContent("Hello again");
 
-        when(profileRepository.findByUsername("sender")).thenReturn(Optional.of(sender));
+        when(profileRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(sender));
         when(conversationRepository.findById(conversation.getId())).thenReturn(Optional.of(conversation));
         when(messageRepository.save(any(Message.class))).thenReturn(message);
         when(profileService.mapToResponse(any(Profile.class))).thenReturn(new ProfileResponse());
 
-        MessageResponse response = chatService.sendMessage("sender", request);
+        MessageResponse response = chatService.sendMessage("sender@example.com", request);
 
         assertNotNull(response);
         verify(conversationRepository, never()).findBetweenUsers(any(), any());
@@ -118,10 +122,10 @@ class ChatServiceTest {
         Pageable pageable = PageRequest.of(0, 10);
         Page<Conversation> page = new PageImpl<>(Collections.singletonList(conversation));
 
-        when(profileRepository.findByUsername("sender")).thenReturn(Optional.of(sender));
+        when(profileRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(sender));
         when(conversationRepository.findByParticipantId(sender.getId(), pageable)).thenReturn(page);
 
-        Page<ConversationResponse> response = chatService.getUserConversations("sender", pageable);
+        Page<ConversationResponse> response = chatService.getUserConversations("sender@example.com", pageable);
 
         assertNotNull(response);
         assertEquals(1, response.getTotalElements());
@@ -146,10 +150,11 @@ class ChatServiceTest {
     void sendMessage_RecipientNotFound_ThrowsException() {
         ChatRequest request = new ChatRequest();
         request.setRecipientId(UUID.randomUUID());
+        request.setContent("Hello");
 
-        when(profileRepository.findByUsername("sender")).thenReturn(Optional.of(sender));
+        when(profileRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(sender));
         when(profileRepository.findById(any())).thenReturn(Optional.empty());
 
-        assertThrows(ResourceNotFoundException.class, () -> chatService.sendMessage("sender", request));
+        assertThrows(ResourceNotFoundException.class, () -> chatService.sendMessage("sender@example.com", request));
     }
 }

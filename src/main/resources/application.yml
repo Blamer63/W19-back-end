@@ -35,6 +35,11 @@ app:
     expiration-ms: 3600000 # 1 hour
   google:
     places-key: ${GOOGLE_PLACES_KEY}
+  translation:
+    provider: google
+    api-key: ${GOOGLE_TRANSLATE_API_KEY:}
+    base-url: https://translation.googleapis.com/language/translate/v2
+    timeout-ms: 5000
   yolo:
     endpoint: ${YOLO_ENDPOINT:http://localhost:5001/detect}
     confidence-threshold: 0.60

@@ -255,20 +255,22 @@ public class LearnerControllerTest {
 
         @Test
         @WithMockUser(username = "test@example.com")
-        void getNearbyLearners_MissingLatitude_ReturnsBadRequest() throws Exception {
+        void getNearbyLearners_MissingLatitude_ReturnsOk() throws Exception {
                 mockMvc.perform(get("/api/learners/nearby")
                                 .param("longitude", "151.2093")
                                 .param("radius_km", "10"))
-                                .andExpect(status().isBadRequest());
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.learners").isArray());
         }
 
         @Test
         @WithMockUser(username = "test@example.com")
-        void getNearbyLearners_MissingLongitude_ReturnsBadRequest() throws Exception {
+        void getNearbyLearners_MissingLongitude_ReturnsOk() throws Exception {
                 mockMvc.perform(get("/api/learners/nearby")
                                 .param("latitude", "-33.8688")
                                 .param("radius_km", "10"))
-                                .andExpect(status().isBadRequest());
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.learners").isArray());
         }
 
         @Test

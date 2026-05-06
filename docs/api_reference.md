@@ -66,7 +66,7 @@ Two separate social graphs:
 
 - `GET /posts` (feed) accepts optional `latitude`/`longitude` to compute a `distance` string (Haversine formula) on each post.
 - Optional `language` filter returns only posts in that language code. Omitting or passing `"all"` returns all languages.
-- `GET /posts/{id}/translations?target_language=<code>` — result is **cached** per `(post_id, target_language)`. Repeat requests do not re-call any translation API.
+- `GET /posts/{id}/translations?target_language=<code>` — result is **cached** per `(post_id, target_language)`. Cache misses call Google Cloud Translation Basic v2 through the backend; repeat requests do not re-call the provider.
 - `DELETE /posts/{id}` — author only. Also extracts the S3 key from `image_url` and **deletes the file from S3** before removing the DB record.
 - Reactions: **one per user per post** (upsert — posting a new reaction replaces the previous one). `DELETE /posts/{id}/reactions` removes it entirely.
 - Comments: ordered `created_at ASC` (oldest first). Only the comment author can delete their comment.
