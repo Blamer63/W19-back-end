@@ -79,9 +79,10 @@ public class ChatController {
     public ResponseEntity<Page<MessageResponse>> getMessages(
             @PathVariable UUID id,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
         Pageable pageable = PageRequest.of(page, size);
-        return ResponseEntity.ok(chatService.getConversationMessages(id, pageable));
+        return ResponseEntity.ok(chatService.getConversationMessages(id, authentication.getName(), pageable));
     }
 
     // REST: Send message to existing conversation (supports optional image attachment)

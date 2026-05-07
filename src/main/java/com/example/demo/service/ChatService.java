@@ -129,7 +129,19 @@ public class ChatService {
     }
 
     @Transactional(readOnly = true)
-    public Page<MessageResponse> getConversationMessages(UUID conversationId, Pageable pageable) {
+    public Page<MessageResponse> getConversationMessages(UUID conversationId, String email, Pageable pageable) {
+        Profile profile = profileRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Profile not found"));
+
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Conversation not found"));
+
+        boolean isParticipant = conversation.getParticipants().stream()
+                .anyMatch(p -> p.getId().equals(profile.getId()));
+        if (!isParticipant) {
+            throw new IllegalArgumentException("Access denied");
+        }
+
         return messageRepository.findByConversationIdOrderByCreatedAtDesc(conversationId, pageable)
                 .map(this::mapToMessageResponse);
     }
@@ -160,15 +172,21 @@ public class ChatService {
 
     @Transactional
     public void markAsRead(UUID conversationId, String email) {
-        // Find existing messages in this conversation that are not sent by current user and are unread
-        // For simplicity in this mock-aligned version, we mark all unread in this conversation
-        List<Message> unreadMessages = messageRepository.findAll()
-                .stream()
-                .filter(m -> m.getConversation().getId().equals(conversationId) && !m.isRead())
-                .collect(Collectors.toList());
+        Profile profile = profileRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Profile not found"));
 
-        unreadMessages.forEach(m -> m.setRead(true));
-        messageRepository.saveAll(unreadMessages);
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Conversation not found"));
+
+        boolean isParticipant = conversation.getParticipants().stream()
+                .anyMatch(p -> p.getId().equals(profile.getId()));
+        if (!isParticipant) {
+            throw new IllegalArgumentException("Access denied");
+        }
+
+        List<Message> unread = messageRepository.findByConversationIdAndIsReadFalse(conversationId);
+        unread.forEach(m -> m.setRead(true));
+        messageRepository.saveAll(unread);
     }
 
     private MessageResponse mapToMessageResponse(Message message) {
