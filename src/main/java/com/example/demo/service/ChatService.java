@@ -184,9 +184,7 @@ public class ChatService {
             throw new IllegalArgumentException("Access denied");
         }
 
-        List<Message> unread = messageRepository.findByConversationIdAndIsReadFalse(conversationId);
-        unread.forEach(m -> m.setRead(true));
-        messageRepository.saveAll(unread);
+        messageRepository.markAllAsRead(conversationId);
     }
 
     private MessageResponse mapToMessageResponse(Message message) {

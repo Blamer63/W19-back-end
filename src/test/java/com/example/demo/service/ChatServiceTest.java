@@ -223,15 +223,11 @@ class ChatServiceTest {
     void markAsRead_Success() {
         when(profileRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(sender));
         when(conversationRepository.findById(conversation.getId())).thenReturn(Optional.of(conversation));
-        when(messageRepository.findByConversationIdAndIsReadFalse(conversation.getId()))
-                .thenReturn(List.of(message));
 
         chatService.markAsRead(conversation.getId(), "sender@example.com");
 
-        verify(messageRepository).findByConversationIdAndIsReadFalse(conversation.getId());
-        verify(messageRepository).saveAll(any());
-        // confirms the old findAll() table-scan is gone
-        verify(messageRepository, never()).findAll();
+        verify(messageRepository).markAllAsRead(conversation.getId());
+        verify(messageRepository, never()).saveAll(any());
     }
 
     @Test
@@ -246,7 +242,7 @@ class ChatServiceTest {
         assertThrows(IllegalArgumentException.class,
                 () -> chatService.markAsRead(conversation.getId(), "stranger@example.com"));
 
-        verify(messageRepository, never()).findByConversationIdAndIsReadFalse(any());
+        verify(messageRepository, never()).markAllAsRead(any());
         verify(messageRepository, never()).saveAll(any());
     }
 }
