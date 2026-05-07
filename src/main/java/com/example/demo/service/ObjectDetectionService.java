@@ -5,10 +5,12 @@ import com.example.demo.entity.Profile;
 import com.example.demo.entity.UserLanguage;
 import com.example.demo.exception.ObjectDetectionUnavailableException;
 import com.example.demo.repository.ProfileRepository;
+import com.example.demo.service.translation.TranslationClient;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.ByteArrayResource;
@@ -34,6 +36,7 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ObjectDetectionService {
 
     private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
@@ -55,6 +58,7 @@ public class ObjectDetectionService {
 
     private final RestTemplate restTemplate;
     private final ProfileRepository profileRepository;
+    private final TranslationClient translationClient;
 
     @Value("${app.yolo.endpoint}")
     private String yoloEndpoint;
@@ -130,9 +134,24 @@ public class ObjectDetectionService {
 
     private DetectedObjectDTO toDetectedObject(YoloLabel label, String languageCode) {
         String normalizedLabel = label.getLabel().toLowerCase(Locale.ROOT);
+
         String learningWord = OBJECT_DICTIONARY
                 .getOrDefault(normalizedLabel, Map.of())
-                .getOrDefault(languageCode, label.getLabel());
+                .get(languageCode);
+
+        if (learningWord == null && !DEFAULT_LANGUAGE_CODE.equals(languageCode)) {
+            try {
+                learningWord = translationClient
+                        .translate(label.getLabel(), DEFAULT_LANGUAGE_CODE, languageCode)
+                        .getTranslatedText();
+            } catch (Exception e) {
+                log.warn("Translation unavailable for label '{}': {}", label.getLabel(), e.getMessage());
+            }
+        }
+
+        if (learningWord == null) {
+            learningWord = label.getLabel();
+        }
 
         return DetectedObjectDTO.builder()
                 .label(label.getLabel())
