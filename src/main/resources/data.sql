@@ -1,4 +1,11 @@
 -- =============================================================
+-- Schema patches (idempotent — safe to re-run on every boot)
+-- =============================================================
+-- Allow image-only messages: content can be NULL when imageUrl is set.
+-- ddl-auto:update never removes NOT NULL, so we do it here once.
+ALTER TABLE messages ALTER COLUMN content DROP NOT NULL;
+
+-- =============================================================
 -- W19 LOCALE APP - SEED DATA
 -- All demo users have password: demo123
 -- UUIDs are fixed so cross-table references are stable

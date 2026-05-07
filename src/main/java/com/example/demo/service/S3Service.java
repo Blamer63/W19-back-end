@@ -34,6 +34,9 @@ public class S3Service {
     @Value("${aws.cloudfront.domain}")
     private String cloudfrontDomain;
 
+    @Value("${aws.s3.mock:false}")
+    private boolean mockMode;
+
     public S3Service(S3Client s3Client) {
         this.s3Client = s3Client;
     }
@@ -70,6 +73,10 @@ public class S3Service {
 
         String key = folder + "/" + UUID.randomUUID() + "-" + sanitizeOriginalFilename(file.getOriginalFilename());
 
+        if (mockMode) {
+            return "https://mock-s3.local/" + key;
+        }
+
         PutObjectRequest request = PutObjectRequest.builder()
                 .bucket(bucketName)
                 .key(key)
@@ -87,6 +94,9 @@ public class S3Service {
      * @param key e.g. "images/abc-123-photo.jpg"
      */
     public void deleteFile(String key) {
+        if (mockMode) {
+            return;
+        }
         DeleteObjectRequest request = DeleteObjectRequest.builder()
                 .bucket(bucketName)
                 .key(key)
