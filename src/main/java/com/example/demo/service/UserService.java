@@ -4,6 +4,7 @@ import com.example.demo.dto.UserSettingsDTO;
 import com.example.demo.entity.Profile;
 import com.example.demo.entity.UserBlock;
 import com.example.demo.entity.UserSettings;
+import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.ProfileRepository;
 import com.example.demo.repository.UserSettingsRepository;
 import lombok.RequiredArgsConstructor;
@@ -81,17 +82,17 @@ public class UserService {
         @Transactional
         public void blockUser(UUID blockerId, UUID blockedId) {
                 if (blockerId.equals(blockedId)) {
-                        throw new RuntimeException("Cannot block yourself");
+                        throw new IllegalArgumentException("Cannot block yourself");
                 }
 
                 if (userBlockRepository.existsByBlockerIdAndBlockedId(blockerId, blockedId)) {
-                        throw new RuntimeException("User already blocked");
+                        throw new IllegalArgumentException("User already blocked");
                 }
 
                 Profile blocker = profileRepository.findById(blockerId)
-                                .orElseThrow(() -> new RuntimeException("Blocker not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Blocker not found"));
                 Profile blocked = profileRepository.findById(blockedId)
-                                .orElseThrow(() -> new RuntimeException("Blocked user not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Blocked user not found"));
 
                 UserBlock block = UserBlock.builder()
                                 .blocker(blocker)
@@ -99,16 +100,33 @@ public class UserService {
                                 .build();
 
                 userBlockRepository.save(block);
-
-                // TODO: Also unfollow if following?
+                safeUnfollowByIds(blockerId, blockedId);
+                safeUnfollowByIds(blockedId, blockerId);
         }
 
         @Transactional
         public void unblockUser(UUID blockerId, UUID blockedId) {
                 UserBlock block = userBlockRepository.findByBlockerIdAndBlockedId(blockerId, blockedId)
-                                .orElseThrow(() -> new RuntimeException("Block not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Block not found"));
 
                 userBlockRepository.delete(block);
+        }
+
+        private void safeUnfollowByIds(UUID followerId, UUID followingId) {
+                if (!followRepository.existsByFollowerIdAndFollowingId(followerId, followingId)) {
+                        return;
+                }
+                followRepository.deleteByFollowerIdAndFollowingId(followerId, followingId);
+                profileRepository.findById(followerId).ifPresent(p -> {
+                        p.setFollowingCount(Math.max(0,
+                                        (p.getFollowingCount() != null ? p.getFollowingCount() : 0) - 1));
+                        profileRepository.save(p);
+                });
+                profileRepository.findById(followingId).ifPresent(p -> {
+                        p.setFollowersCount(Math.max(0,
+                                        (p.getFollowersCount() != null ? p.getFollowersCount() : 0) - 1));
+                        profileRepository.save(p);
+                });
         }
 
         public PublicUserProfileDto getPublicProfile(UUID userId, UUID currentUserId) {
