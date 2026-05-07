@@ -32,13 +32,14 @@ aws:
 
 
 app:
+  cors:
+    allowed-origins: "*"
   jwt:
     secret: ${JWT_SECRET}
     expiration-ms: 3600000 # 1 hour
   google:
     places-key: ${GOOGLE_PLACES_KEY}
   translation:
-    provider: google
     api-key: ${GOOGLE_TRANSLATE_API_KEY:}
     base-url: https://translation.googleapis.com/language/translate/v2
     timeout-ms: 5000

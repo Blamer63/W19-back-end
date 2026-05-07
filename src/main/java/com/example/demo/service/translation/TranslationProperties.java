@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 @Setter
 public class TranslationProperties {
 
-    private String provider = "google";
     private String apiKey = "";
     private String baseUrl = "https://translation.googleapis.com/language/translate/v2";
     private int timeoutMs = 5000;
