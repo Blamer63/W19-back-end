@@ -6,6 +6,8 @@ import com.example.demo.entity.Profile;
 import com.example.demo.entity.UserLanguage;
 import com.example.demo.exception.ObjectDetectionUnavailableException;
 import com.example.demo.repository.ProfileRepository;
+import com.example.demo.service.translation.TranslationClient;
+import com.example.demo.service.translation.TranslationResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,25 +33,29 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ObjectDetectionServiceTest {
 
-    @Mock
-    private RestTemplate restTemplate;
-
-    @Mock
-    private ProfileRepository profileRepository;
+    @Mock private RestTemplate restTemplate;
+    @Mock private ProfileRepository profileRepository;
+    @Mock private TranslationClient translationClient;
 
     private ObjectDetectionService objectDetectionService;
 
     @BeforeEach
     void setUp() {
-        objectDetectionService = new ObjectDetectionService(restTemplate, profileRepository);
+        objectDetectionService = new ObjectDetectionService(restTemplate, profileRepository, translationClient);
         ReflectionTestUtils.setField(objectDetectionService, "yoloEndpoint", "http://localhost:5001/detect");
         ReflectionTestUtils.setField(objectDetectionService, "confidenceThreshold", 0.60d);
     }
+
+    // -------------------------------------------------------------------------
+    // Dictionary hits — translation API must NOT be called
+    // -------------------------------------------------------------------------
 
     @Test
     void detectFiltersLowConfidenceObjectsAndTranslatesToLearningLanguage() throws IOException {
@@ -65,9 +71,15 @@ class ObjectDetectionServiceTest {
         assertThat(detectedObjects.get(0).getLabel()).isEqualTo("apple");
         assertThat(detectedObjects.get(0).getConfidence()).isEqualTo(0.94d);
         assertThat(detectedObjects.get(0).getNativeWord()).isEqualTo("apple");
-        assertThat(detectedObjects.get(0).getLearningWord()).isEqualTo("\uC0AC\uACFC");
+        assertThat(detectedObjects.get(0).getLearningWord()).isEqualTo("사과"); // 사과
         assertThat(detectedObjects.get(0).getLanguageCode()).isEqualTo("ko");
+        // dictionary hit — translation API must not be called
+        verify(translationClient, never()).translate(any(), any(), any());
     }
+
+    // -------------------------------------------------------------------------
+    // English fallback — translation API must NOT be called
+    // -------------------------------------------------------------------------
 
     @Test
     void detectFallsBackToEnglishWhenProfileHasNoLearningLanguage() throws IOException {
@@ -84,7 +96,47 @@ class ObjectDetectionServiceTest {
         assertThat(detectedObjects.get(0).getLabel()).isEqualTo("bottle");
         assertThat(detectedObjects.get(0).getLearningWord()).isEqualTo("bottle");
         assertThat(detectedObjects.get(0).getLanguageCode()).isEqualTo("en");
+        // language is "en" — translation API must not be called
+        verify(translationClient, never()).translate(any(), any(), any());
     }
+
+    // -------------------------------------------------------------------------
+    // Translation API fallback — label not in dictionary, non-English target
+    // -------------------------------------------------------------------------
+
+    @Test
+    void detectTranslatesUnknownLabelViaTranslationClient() throws IOException {
+        Profile profile = profileWithLearningLanguage("test@example.com", "ko");
+        when(profileRepository.findByEmail("test@example.com")).thenReturn(Optional.of(profile));
+        whenYoloReturns(List.of(new ObjectDetectionService.YoloLabel("bottle", 0.91d)));
+        when(translationClient.translate("bottle", "en", "ko"))
+                .thenReturn(TranslationResult.builder().translatedText("병").build());
+
+        List<DetectedObjectDTO> detectedObjects = objectDetectionService.detect(image(), "test@example.com");
+
+        assertThat(detectedObjects).hasSize(1);
+        assertThat(detectedObjects.get(0).getLabel()).isEqualTo("bottle");
+        assertThat(detectedObjects.get(0).getLearningWord()).isEqualTo("병");
+        assertThat(detectedObjects.get(0).getLanguageCode()).isEqualTo("ko");
+    }
+
+    @Test
+    void detectFallsBackToEnglishLabelWhenTranslationClientFails() throws IOException {
+        Profile profile = profileWithLearningLanguage("test@example.com", "ko");
+        when(profileRepository.findByEmail("test@example.com")).thenReturn(Optional.of(profile));
+        whenYoloReturns(List.of(new ObjectDetectionService.YoloLabel("bottle", 0.91d)));
+        when(translationClient.translate("bottle", "en", "ko"))
+                .thenThrow(new RuntimeException("Translation service unavailable"));
+
+        List<DetectedObjectDTO> detectedObjects = objectDetectionService.detect(image(), "test@example.com");
+
+        assertThat(detectedObjects).hasSize(1);
+        assertThat(detectedObjects.get(0).getLearningWord()).isEqualTo("bottle");
+    }
+
+    // -------------------------------------------------------------------------
+    // YOLO service failure
+    // -------------------------------------------------------------------------
 
     @Test
     void detectThrowsUnavailableExceptionWhenYoloRequestFails() {
@@ -101,6 +153,10 @@ class ObjectDetectionServiceTest {
                 .isInstanceOf(ObjectDetectionUnavailableException.class)
                 .hasMessage("Object detection service unavailable");
     }
+
+    // -------------------------------------------------------------------------
+    // Input validation
+    // -------------------------------------------------------------------------
 
     @Test
     void detectRejectsEmptyImage() {
@@ -131,6 +187,10 @@ class ObjectDetectionServiceTest {
                 .hasMessage("Image exceeds 5 MB limit");
     }
 
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
     private void whenYoloReturns(List<ObjectDetectionService.YoloLabel> labels) {
         when(restTemplate.exchange(
                 eq("http://localhost:5001/detect"),
@@ -149,7 +209,6 @@ class ObjectDetectionServiceTest {
                 .language(language)
                 .isLearning(true)
                 .build();
-
         return Profile.builder()
                 .email(email)
                 .languages(new ArrayList<>(List.of(userLanguage)))
