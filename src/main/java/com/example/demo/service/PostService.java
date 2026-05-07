@@ -2,9 +2,11 @@ package com.example.demo.service;
 
 import com.example.demo.dto.PostResponse;
 import com.example.demo.entity.Post;
-import com.example.demo.entity.Profile;
 import com.example.demo.entity.Language;
+import com.example.demo.entity.Profile;
 import com.example.demo.entity.UserLanguage;
+import com.example.demo.enums.PostStatus;
+import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -32,39 +35,18 @@ public class PostService {
         public Page<PostResponse> getFeed(String language, Pageable pageable, Double lat, Double lon,
                         String currentUserEmail) {
                 Profile currentUser = profileRepository.findByEmail(currentUserEmail)
-                                .orElseThrow(() -> new RuntimeException("User not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-                // TEMPORARY: Show all posts for debugging
-                // TODO: Re-enable status filtering after fixing post statuses in database
-                /*
-                 * java.util.List<com.example.demo.enums.PostStatus> visibleStatuses =
-                 * java.util.Arrays.asList(
-                 * com.example.demo.enums.PostStatus.ACTIVE,
-                 * com.example.demo.enums.PostStatus.APPROVED
-                 * );
-                 */
+                List<PostStatus> visibleStatuses = List.of(PostStatus.ACTIVE, PostStatus.APPROVED);
 
                 Page<Post> posts;
                 if (language != null && !language.equalsIgnoreCase("all")) {
-                        posts = postRepository.findByOriginalLanguage(language, pageable);
-                        // posts = postRepository.findByOriginalLanguageAndStatusIn(language,
-                        // visibleStatuses, pageable);
+                        posts = postRepository.findByOriginalLanguageAndStatusIn(language, visibleStatuses, pageable);
                 } else {
-                        posts = postRepository.findAll(pageable);
-                        // posts = postRepository.findByStatusIn(visibleStatuses, pageable);
+                        posts = postRepository.findByStatusIn(visibleStatuses, pageable);
                 }
 
-                log.info("DEBUG: Found {} posts in database for user {}", posts.getTotalElements(), currentUserEmail);
-                log.info("DEBUG: Language filter: {}", language);
-
-                try {
-                        Page<PostResponse> response = posts.map(post -> mapToResponse(post, currentUser, lat, lon));
-                        log.info("DEBUG: Successfully mapped {} posts", response.getNumberOfElements());
-                        return response;
-                } catch (Exception e) {
-                        log.error("DEBUG: Error mapping posts to response", e);
-                        throw e;
-                }
+                return posts.map(post -> mapToResponse(post, currentUser, lat, lon));
         }
 
         @Transactional
@@ -72,7 +54,7 @@ public class PostService {
                         Double latitude, Double longitude,
                         MultipartFile image, String currentUserEmail) throws IOException {
                 Profile currentUser = profileRepository.findByEmail(currentUserEmail)
-                                .orElseThrow(() -> new RuntimeException("User not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
                 String imageUrl = null;
                 if (image != null && !image.isEmpty()) {
@@ -88,6 +70,7 @@ public class PostService {
                                         .imageUrl(imageUrl)
                                         .latitude(latitude)
                                         .longitude(longitude)
+                                        .status(PostStatus.ACTIVE)
                                         .build();
                         return mapToResponse(postRepository.save(post), currentUser, latitude, longitude);
                 } catch (Exception e) {
@@ -108,10 +91,10 @@ public class PostService {
         @Transactional(readOnly = true)
         public PostResponse getPost(UUID postId, String currentUserEmail) {
                 Profile currentUser = profileRepository.findByEmail(currentUserEmail)
-                                .orElseThrow(() -> new RuntimeException("User not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
                 Post post = postRepository.findById(postId)
-                                .orElseThrow(() -> new RuntimeException("Post not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
 
                 return mapToResponse(post, currentUser, null, null);
         }
@@ -119,10 +102,10 @@ public class PostService {
         @Transactional
         public void deletePost(UUID postId, String currentUserEmail) {
                 Post post = postRepository.findById(postId)
-                                .orElseThrow(() -> new RuntimeException("Post not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
 
                 if (!post.getAuthor().getEmail().equals(currentUserEmail)) {
-                        throw new RuntimeException("Unauthorized to delete this post");
+                        throw new IllegalArgumentException("Unauthorized to delete this post");
                 }
 
                 String imageUrl = post.getImageUrl();
@@ -143,10 +126,10 @@ public class PostService {
         @Transactional(readOnly = true)
         public Page<PostResponse> getPostsByUser(UUID userId, String currentUserEmail, Pageable pageable) {
                 Profile currentUser = profileRepository.findByEmail(currentUserEmail)
-                                .orElseThrow(() -> new RuntimeException("User not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
                 if (!profileRepository.existsById(userId)) {
-                        throw new RuntimeException("User not found");
+                        throw new ResourceNotFoundException("User not found");
                 }
 
                 Page<Post> posts = postRepository.findByAuthorId(userId, pageable);
