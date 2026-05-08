@@ -1,10 +1,10 @@
 package com.example.demo.config;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
@@ -19,13 +19,11 @@ public class RestTemplateConfig {
     }
 
     @Bean
-    public RestTemplate yoloRestTemplate(
-            RestTemplateBuilder builder,
-            @Value("${app.yolo.timeout-ms:5000}") long timeoutMs) {
+    public RestTemplate yoloRestTemplate(@Value("${app.yolo.timeout-ms:5000}") long timeoutMs) {
         Duration timeout = Duration.ofMillis(timeoutMs);
-        return builder
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .build();
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(timeout);
+        requestFactory.setReadTimeout(timeout);
+        return new RestTemplate(requestFactory);
     }
 }

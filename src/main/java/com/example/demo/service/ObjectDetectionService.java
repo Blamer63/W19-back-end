@@ -19,9 +19,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -113,8 +113,11 @@ public class ObjectDetectionService {
             }
         };
 
-        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("image", new HttpEntity<>(imageResource, imageHeaders));
+        MultipartBodyBuilder bodyBuilder = new MultipartBodyBuilder();
+        bodyBuilder.part("image", imageResource)
+                .filename(imageResource.getFilename())
+                .contentType(imageHeaders.getContentType());
+        MultiValueMap<String, HttpEntity<?>> body = bodyBuilder.build();
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
