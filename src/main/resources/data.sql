@@ -5,6 +5,12 @@
 -- ddl-auto:update never removes NOT NULL, so we do it here once.
 ALTER TABLE messages ALTER COLUMN content DROP NOT NULL;
 
+-- Group chat columns: ddl-auto:update cannot ADD COLUMN NOT NULL without a DEFAULT
+-- on a table that already has rows. We add them here idempotently.
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS is_group BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS group_name VARCHAR(255);
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS group_avatar VARCHAR(255);
+
 -- =============================================================
 -- W19 LOCALE APP - SEED DATA
 -- All demo users have password: demo123
