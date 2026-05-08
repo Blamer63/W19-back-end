@@ -9,7 +9,8 @@ import com.example.demo.repository.ProfileRepository;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.ByteArrayResource;
@@ -38,7 +39,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
+@Slf4j
 public class ObjectDetectionService {
 
     private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
@@ -50,6 +51,15 @@ public class ObjectDetectionService {
     private final RestTemplate restTemplate;
     private final ProfileRepository profileRepository;
     private final ScannerVocabularyService scannerVocabularyService;
+
+    public ObjectDetectionService(
+            @Qualifier("yoloRestTemplate") RestTemplate restTemplate,
+            ProfileRepository profileRepository,
+            ScannerVocabularyService scannerVocabularyService) {
+        this.restTemplate = restTemplate;
+        this.profileRepository = profileRepository;
+        this.scannerVocabularyService = scannerVocabularyService;
+    }
 
     @Value("${app.yolo.endpoint}")
     private String yoloEndpoint;
@@ -118,6 +128,7 @@ public class ObjectDetectionService {
                     });
             return Optional.ofNullable(response.getBody()).orElse(List.of());
         } catch (RestClientException ex) {
+            log.warn("YOLO object detection request failed for endpoint {}: {}", yoloEndpoint, ex.getMessage());
             throw new ObjectDetectionUnavailableException("Object detection service unavailable", ex);
         }
     }

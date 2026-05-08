@@ -40,3 +40,14 @@ uvicorn main:app --host 0.0.0.0 --port 5001
 ```
 
 The default model is `yolov8n.pt`. Override it with `YOLO_MODEL` if needed.
+Use `yolov8n.pt` for fastest local scans and `yolov8s.pt` when better detection
+accuracy is more important than response time.
+
+The confidence threshold is applied in the Spring backend with
+`app.yolo.confidence-threshold`. Keeping the threshold in Spring means the Python
+service returns raw model detections while the backend owns product filtering,
+deduplication, vocabulary enrichment, and persistence.
+
+When running through Docker Compose, the backend calls this service through
+`YOLO_ENDPOINT=http://yolo:5001/detect` and uses `YOLO_TIMEOUT_MS` to cap request
+time.

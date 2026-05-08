@@ -33,6 +33,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       GOOGLE_PLACES_KEY: ${GOOGLE_PLACES_KEY}
       YOLO_ENDPOINT: http://yolo:5001/detect
+      YOLO_TIMEOUT_MS: ${YOLO_TIMEOUT_MS:-5000}
     env_file:
       - .env
     depends_on:
