@@ -2,6 +2,8 @@ package com.example.demo.service;
 
 import com.example.demo.dto.ChatRequest;
 import com.example.demo.dto.ConversationResponse;
+import com.example.demo.dto.GroupCreateRequest;
+import com.example.demo.dto.GroupUpdateRequest;
 import com.example.demo.dto.MessageResponse;
 import com.example.demo.entity.Conversation;
 import com.example.demo.entity.Message;
@@ -119,13 +121,133 @@ public class ChatService {
         }
     }
 
+    @Transactional
+    public ConversationResponse createGroupConversation(String creatorEmail, GroupCreateRequest request) {
+        if (request.getParticipantIds() == null || request.getParticipantIds().size() < 2) {
+            throw new IllegalArgumentException("A group conversation requires at least 2 other participants");
+        }
+
+        Profile creator = profileRepository.findByEmail(creatorEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Profile not found"));
+
+        List<Profile> participants = new ArrayList<>();
+        participants.add(creator);
+
+        for (UUID participantId : request.getParticipantIds()) {
+            Profile participant = profileRepository.findById(participantId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Participant not found: " + participantId));
+            participants.add(participant);
+        }
+
+        Conversation conversation = Conversation.builder()
+                .isGroup(true)
+                .groupName(request.getGroupName())
+                .groupAvatar(request.getGroupAvatar())
+                .participants(participants)
+                .build();
+
+        conversation = conversationRepository.save(conversation);
+        return mapToConversationResponse(conversation, creator.getId());
+    }
+
+    @Transactional
+    public ConversationResponse addParticipant(UUID conversationId, UUID profileId, String requesterEmail) {
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Conversation not found"));
+
+        if (!conversation.isGroup()) {
+            throw new IllegalArgumentException("Cannot add participants to a direct message conversation");
+        }
+
+        boolean requesterIsParticipant = conversation.getParticipants().stream()
+                .anyMatch(p -> p.getEmail().equals(requesterEmail));
+        if (!requesterIsParticipant) {
+            throw new IllegalArgumentException("Only existing participants can add members");
+        }
+
+        Profile newMember = profileRepository.findById(profileId)
+                .orElseThrow(() -> new ResourceNotFoundException("Profile not found: " + profileId));
+
+        boolean alreadyMember = conversation.getParticipants().stream()
+                .anyMatch(p -> p.getId().equals(profileId));
+        if (alreadyMember) {
+            throw new IllegalArgumentException("User is already a participant");
+        }
+
+        UUID requesterId = conversation.getParticipants().stream()
+                .filter(p -> p.getEmail().equals(requesterEmail))
+                .findFirst().map(Profile::getId).orElse(null);
+        conversation.addParticipant(newMember);
+        conversation = conversationRepository.save(conversation);
+        return mapToConversationResponse(conversation, requesterId);
+    }
+
+    @Transactional
+    public void removeParticipant(UUID conversationId, UUID targetProfileId, String requesterEmail) {
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Conversation not found"));
+
+        if (!conversation.isGroup()) {
+            throw new IllegalArgumentException("Cannot remove participants from a direct message conversation");
+        }
+
+        Profile requester = profileRepository.findByEmail(requesterEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Profile not found"));
+
+        boolean requesterIsParticipant = conversation.getParticipants().stream()
+                .anyMatch(p -> p.getId().equals(requester.getId()));
+        if (!requesterIsParticipant) {
+            throw new IllegalArgumentException("Access denied");
+        }
+
+        // Participants may only remove themselves (leave) or be removed if the requester is removing another member.
+        // Any participant can remove any other participant (no dedicated admin role in this version).
+        Profile target = conversation.getParticipants().stream()
+                .filter(p -> p.getId().equals(targetProfileId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Target user is not a participant"));
+
+        conversation.removeParticipant(target);
+        conversationRepository.save(conversation);
+    }
+
+    @Transactional
+    public ConversationResponse updateGroup(UUID conversationId, GroupUpdateRequest request, String requesterEmail) {
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Conversation not found"));
+
+        if (!conversation.isGroup()) {
+            throw new IllegalArgumentException("Cannot update a direct message conversation");
+        }
+
+        boolean requesterIsParticipant = conversation.getParticipants().stream()
+                .anyMatch(p -> p.getEmail().equals(requesterEmail));
+        if (!requesterIsParticipant) {
+            throw new IllegalArgumentException("Access denied");
+        }
+
+        if (request.getGroupName() != null && !request.getGroupName().isBlank()) {
+            conversation.setGroupName(request.getGroupName());
+        }
+        if (request.getGroupAvatar() != null) {
+            conversation.setGroupAvatar(request.getGroupAvatar());
+        }
+
+        UUID requesterId = conversation.getParticipants().stream()
+                .filter(p -> p.getEmail().equals(requesterEmail))
+                .findFirst().map(Profile::getId).orElse(null);
+        conversation = conversationRepository.save(conversation);
+        return mapToConversationResponse(conversation, requesterId);
+    }
+
     @Transactional(readOnly = true)
     public Page<ConversationResponse> getUserConversations(String email, Pageable pageable) {
         Profile profile = profileRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Profile not found"));
 
-        return conversationRepository.findByParticipantId(profile.getId(), pageable)
-                .map(this::mapToConversationResponse);
+        UUID requesterId = profile.getId();
+        return conversationRepository.findByParticipantId(requesterId, pageable)
+                .map(c -> mapToConversationResponse(c, requesterId));
     }
 
     @Transactional(readOnly = true)
@@ -199,12 +321,19 @@ public class ChatService {
                 .build();
     }
 
-    private ConversationResponse mapToConversationResponse(Conversation conversation) {
+    private ConversationResponse mapToConversationResponse(Conversation conversation, UUID requesterId) {
+        int unreadCount = requesterId != null
+                ? messageRepository.countUnread(conversation.getId(), requesterId)
+                : 0;
         return ConversationResponse.builder()
                 .id(conversation.getId())
                 .participants(conversation.getParticipants().stream()
                         .map(profileService::mapToResponse)
                         .collect(Collectors.toList()))
+                .isGroup(conversation.isGroup())
+                .groupName(conversation.getGroupName())
+                .groupAvatar(conversation.getGroupAvatar())
+                .unreadCount(unreadCount)
                 .lastMessagePreview(conversation.getLastMessagePreview())
                 .lastMessageAt(conversation.getLastMessageAt())
                 .createdAt(conversation.getCreatedAt())

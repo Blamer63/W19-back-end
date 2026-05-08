@@ -16,6 +16,10 @@ import java.util.UUID;
 public class ConversationResponse {
     private UUID id;
     private List<ProfileResponse> participants;
+    private boolean isGroup;
+    private String groupName;
+    private String groupAvatar;
+    private int unreadCount;
     private String lastMessagePreview;
     private LocalDateTime lastMessageAt;
     private LocalDateTime createdAt;

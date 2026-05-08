@@ -28,6 +28,16 @@ public class Conversation extends BaseEntity {
     @Builder.Default
     private List<Message> messages = new ArrayList<>();
 
+    @Column(name = "is_group", nullable = false)
+    @Builder.Default
+    private boolean isGroup = false;
+
+    @Column(name = "group_name")
+    private String groupName;
+
+    @Column(name = "group_avatar")
+    private String groupAvatar;
+
     @Column(name = "last_message_preview")
     private String lastMessagePreview;
 

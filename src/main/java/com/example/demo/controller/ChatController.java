@@ -2,7 +2,10 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.ChatRequest;
 import com.example.demo.dto.ConversationResponse;
+import com.example.demo.dto.GroupCreateRequest;
+import com.example.demo.dto.GroupUpdateRequest;
 import com.example.demo.dto.MessageResponse;
+import com.example.demo.repository.ProfileRepository;
 import com.example.demo.service.ChatService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,6 +30,7 @@ public class ChatController {
 
     private final ChatService chatService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final ProfileRepository profileRepository;
 
     // WebSocket: Send message
     @MessageMapping("/chat.send")
@@ -46,11 +50,13 @@ public class ChatController {
     @MessageMapping("/chat.typing")
     public void processTyping(@Payload java.util.Map<String, Object> payload, Authentication authentication) {
         Object cid = payload.get("cid");
-        if (cid != null) {
-            messagingTemplate.convertAndSend(
-                    "/topic/conversation." + cid + ".typing",
-                    payload);
-        }
+        if (cid == null) return;
+
+        java.util.Map<String, Object> enriched = new java.util.HashMap<>(payload);
+        profileRepository.findByEmail(authentication.getName())
+                .ifPresent(p -> enriched.put("displayName", p.getDisplayName()));
+
+        messagingTemplate.convertAndSend("/topic/conversation." + cid + ".typing", enriched);
     }
 
     // REST: List conversations
@@ -116,5 +122,41 @@ public class ChatController {
             Authentication authentication) {
         chatService.deleteMessage(messageId, authentication.getName());
         return ResponseEntity.noContent().build();
+    }
+
+    // REST: Create group conversation
+    @PostMapping("/group")
+    public ResponseEntity<ConversationResponse> createGroup(
+            @RequestBody GroupCreateRequest request,
+            Authentication authentication) {
+        return ResponseEntity.ok(chatService.createGroupConversation(authentication.getName(), request));
+    }
+
+    // REST: Add participant to group
+    @PostMapping("/{id}/participants")
+    public ResponseEntity<ConversationResponse> addParticipant(
+            @PathVariable UUID id,
+            @RequestParam UUID profileId,
+            Authentication authentication) {
+        return ResponseEntity.ok(chatService.addParticipant(id, profileId, authentication.getName()));
+    }
+
+    // REST: Remove participant from group (or leave — call with own profileId)
+    @DeleteMapping("/{id}/participants/{profileId}")
+    public ResponseEntity<Void> removeParticipant(
+            @PathVariable UUID id,
+            @PathVariable UUID profileId,
+            Authentication authentication) {
+        chatService.removeParticipant(id, profileId, authentication.getName());
+        return ResponseEntity.noContent().build();
+    }
+
+    // REST: Update group name / avatar
+    @PatchMapping("/{id}")
+    public ResponseEntity<ConversationResponse> updateGroup(
+            @PathVariable UUID id,
+            @RequestBody GroupUpdateRequest request,
+            Authentication authentication) {
+        return ResponseEntity.ok(chatService.updateGroup(id, request, authentication.getName()));
     }
 }

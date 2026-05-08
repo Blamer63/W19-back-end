@@ -2,6 +2,8 @@ package com.example.demo.service;
 
 import com.example.demo.dto.ChatRequest;
 import com.example.demo.dto.ConversationResponse;
+import com.example.demo.dto.GroupCreateRequest;
+import com.example.demo.dto.GroupUpdateRequest;
 import com.example.demo.dto.MessageResponse;
 import com.example.demo.dto.ProfileResponse;
 import com.example.demo.entity.Conversation;
@@ -244,5 +246,240 @@ class ChatServiceTest {
 
         verify(messageRepository, never()).markAllAsRead(any());
         verify(messageRepository, never()).saveAll(any());
+    }
+
+    // -------------------------------------------------------------------------
+    // createGroupConversation
+    // -------------------------------------------------------------------------
+
+    @Test
+    void createGroupConversation_Success() {
+        Profile member1 = new Profile();
+        member1.setId(UUID.randomUUID());
+        Profile member2 = new Profile();
+        member2.setId(UUID.randomUUID());
+
+        GroupCreateRequest request = GroupCreateRequest.builder()
+                .groupName("Test Group")
+                .participantIds(Arrays.asList(member1.getId(), member2.getId()))
+                .build();
+
+        Conversation groupConv = Conversation.builder()
+                .isGroup(true)
+                .groupName("Test Group")
+                .participants(Arrays.asList(sender, member1, member2))
+                .build();
+        groupConv.setId(UUID.randomUUID());
+
+        when(profileRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(sender));
+        when(profileRepository.findById(member1.getId())).thenReturn(Optional.of(member1));
+        when(profileRepository.findById(member2.getId())).thenReturn(Optional.of(member2));
+        when(conversationRepository.save(any(Conversation.class))).thenReturn(groupConv);
+        when(profileService.mapToResponse(any(Profile.class))).thenReturn(new ProfileResponse());
+
+        ConversationResponse response = chatService.createGroupConversation("sender@example.com", request);
+
+        assertNotNull(response);
+        assertTrue(response.isGroup());
+        assertEquals("Test Group", response.getGroupName());
+        verify(conversationRepository).save(any(Conversation.class));
+    }
+
+    @Test
+    void createGroupConversation_TooFewParticipants_ThrowsException() {
+        GroupCreateRequest request = GroupCreateRequest.builder()
+                .groupName("Solo")
+                .participantIds(Collections.singletonList(UUID.randomUUID()))
+                .build();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> chatService.createGroupConversation("sender@example.com", request));
+
+        verifyNoInteractions(profileRepository, conversationRepository);
+    }
+
+    @Test
+    void createGroupConversation_ParticipantNotFound_ThrowsException() {
+        UUID unknownId = UUID.randomUUID();
+        GroupCreateRequest request = GroupCreateRequest.builder()
+                .groupName("Test Group")
+                .participantIds(Arrays.asList(unknownId, UUID.randomUUID()))
+                .build();
+
+        when(profileRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(sender));
+        when(profileRepository.findById(unknownId)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> chatService.createGroupConversation("sender@example.com", request));
+    }
+
+    // -------------------------------------------------------------------------
+    // addParticipant
+    // -------------------------------------------------------------------------
+
+    @Test
+    void addParticipant_Success() {
+        Conversation groupConv = Conversation.builder()
+                .isGroup(true)
+                .groupName("Group")
+                .participants(new java.util.ArrayList<>(Arrays.asList(sender, recipient)))
+                .build();
+        groupConv.setId(UUID.randomUUID());
+
+        Profile newMember = new Profile();
+        newMember.setId(UUID.randomUUID());
+        newMember.setEmail("new@example.com");
+
+        when(conversationRepository.findById(groupConv.getId())).thenReturn(Optional.of(groupConv));
+        when(profileRepository.findById(newMember.getId())).thenReturn(Optional.of(newMember));
+        when(conversationRepository.save(any(Conversation.class))).thenReturn(groupConv);
+        when(profileService.mapToResponse(any(Profile.class))).thenReturn(new ProfileResponse());
+
+        ConversationResponse response = chatService.addParticipant(
+                groupConv.getId(), newMember.getId(), "sender@example.com");
+
+        assertNotNull(response);
+        verify(conversationRepository).save(groupConv);
+    }
+
+    @Test
+    void addParticipant_NotGroupConversation_ThrowsException() {
+        when(conversationRepository.findById(conversation.getId())).thenReturn(Optional.of(conversation));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> chatService.addParticipant(
+                        conversation.getId(), UUID.randomUUID(), "sender@example.com"));
+    }
+
+    @Test
+    void addParticipant_RequesterNotParticipant_ThrowsException() {
+        Conversation groupConv = Conversation.builder()
+                .isGroup(true)
+                .participants(new java.util.ArrayList<>(Arrays.asList(sender, recipient)))
+                .build();
+        groupConv.setId(UUID.randomUUID());
+
+        when(conversationRepository.findById(groupConv.getId())).thenReturn(Optional.of(groupConv));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> chatService.addParticipant(
+                        groupConv.getId(), UUID.randomUUID(), "outsider@example.com"));
+    }
+
+    @Test
+    void addParticipant_AlreadyMember_ThrowsException() {
+        Conversation groupConv = Conversation.builder()
+                .isGroup(true)
+                .participants(new java.util.ArrayList<>(Arrays.asList(sender, recipient)))
+                .build();
+        groupConv.setId(UUID.randomUUID());
+
+        when(conversationRepository.findById(groupConv.getId())).thenReturn(Optional.of(groupConv));
+        when(profileRepository.findById(recipient.getId())).thenReturn(Optional.of(recipient));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> chatService.addParticipant(
+                        groupConv.getId(), recipient.getId(), "sender@example.com"));
+    }
+
+    // -------------------------------------------------------------------------
+    // removeParticipant
+    // -------------------------------------------------------------------------
+
+    @Test
+    void removeParticipant_Leave_Success() {
+        Conversation groupConv = Conversation.builder()
+                .isGroup(true)
+                .participants(new java.util.ArrayList<>(Arrays.asList(sender, recipient)))
+                .build();
+        groupConv.setId(UUID.randomUUID());
+
+        when(profileRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(sender));
+        when(conversationRepository.findById(groupConv.getId())).thenReturn(Optional.of(groupConv));
+
+        chatService.removeParticipant(groupConv.getId(), sender.getId(), "sender@example.com");
+
+        verify(conversationRepository).save(groupConv);
+    }
+
+    @Test
+    void removeParticipant_NotGroupConversation_ThrowsException() {
+        when(conversationRepository.findById(conversation.getId())).thenReturn(Optional.of(conversation));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> chatService.removeParticipant(
+                        conversation.getId(), recipient.getId(), "sender@example.com"));
+    }
+
+    @Test
+    void removeParticipant_TargetNotInGroup_ThrowsException() {
+        Profile outsider = new Profile();
+        outsider.setId(UUID.randomUUID());
+
+        Conversation groupConv = Conversation.builder()
+                .isGroup(true)
+                .participants(new java.util.ArrayList<>(Arrays.asList(sender, recipient)))
+                .build();
+        groupConv.setId(UUID.randomUUID());
+
+        when(profileRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(sender));
+        when(conversationRepository.findById(groupConv.getId())).thenReturn(Optional.of(groupConv));
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> chatService.removeParticipant(
+                        groupConv.getId(), outsider.getId(), "sender@example.com"));
+    }
+
+    // -------------------------------------------------------------------------
+    // updateGroup
+    // -------------------------------------------------------------------------
+
+    @Test
+    void updateGroup_Success() {
+        Conversation groupConv = Conversation.builder()
+                .isGroup(true)
+                .groupName("Old Name")
+                .participants(new java.util.ArrayList<>(Arrays.asList(sender, recipient)))
+                .build();
+        groupConv.setId(UUID.randomUUID());
+
+        GroupUpdateRequest request = GroupUpdateRequest.builder()
+                .groupName("New Name")
+                .build();
+
+        when(conversationRepository.findById(groupConv.getId())).thenReturn(Optional.of(groupConv));
+        when(conversationRepository.save(any(Conversation.class))).thenReturn(groupConv);
+        when(profileService.mapToResponse(any(Profile.class))).thenReturn(new ProfileResponse());
+
+        ConversationResponse response = chatService.updateGroup(
+                groupConv.getId(), request, "sender@example.com");
+
+        assertNotNull(response);
+        verify(conversationRepository).save(groupConv);
+        assertEquals("New Name", groupConv.getGroupName());
+    }
+
+    @Test
+    void updateGroup_NotGroupConversation_ThrowsException() {
+        when(conversationRepository.findById(conversation.getId())).thenReturn(Optional.of(conversation));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> chatService.updateGroup(
+                        conversation.getId(), new GroupUpdateRequest(), "sender@example.com"));
+    }
+
+    @Test
+    void updateGroup_RequesterNotParticipant_ThrowsException() {
+        Conversation groupConv = Conversation.builder()
+                .isGroup(true)
+                .participants(new java.util.ArrayList<>(Arrays.asList(sender, recipient)))
+                .build();
+        groupConv.setId(UUID.randomUUID());
+
+        when(conversationRepository.findById(groupConv.getId())).thenReturn(Optional.of(groupConv));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> chatService.updateGroup(
+                        groupConv.getId(), new GroupUpdateRequest(), "outsider@example.com"));
     }
 }
