@@ -44,6 +44,9 @@ public class SavedWordControllerTest {
     private LanguageRepository languageRepository;
 
     @Autowired
+    private ScannerTranslationCacheRepository scannerTranslationCacheRepository;
+
+    @Autowired
     private com.example.demo.repository.ContentReportRepository contentReportRepository;
     @Autowired
     private com.example.demo.repository.PostTranslationRepository postTranslationRepository;
@@ -86,6 +89,7 @@ public class SavedWordControllerTest {
         userBlockRepository.deleteAll();
         followRepository.deleteAll();
         refreshTokenRepository.deleteAll();
+        scannerTranslationCacheRepository.deleteAll();
         profileRepository.deleteAll();
         languageRepository.deleteAll();
 
@@ -161,7 +165,7 @@ public class SavedWordControllerTest {
 
     @Test
     @WithMockUser(username = "test@example.com")
-    void saveWord_Duplicate_Returns500() throws Exception {
+    void saveWord_MissingSource_ReturnsBadRequest() throws Exception {
         // Save word first
         SavedWord existing = SavedWord.builder()
                 .user(testUser)
@@ -181,6 +185,43 @@ public class SavedWordControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "test@example.com")
+    void saveWord_DuplicateScannerWord_ReturnsConflict() throws Exception {
+        Language korean = Language.builder()
+                .code("ko")
+                .name("Korean")
+                .flagEmoji("KR")
+                .build();
+        languageRepository.save(korean);
+
+        SavedWord existing = SavedWord.builder()
+                .user(testUser)
+                .word("chair")
+                .translation("uija")
+                .languageCode("ko")
+                .source(SourceType.SCANNER)
+                .context("Detected in photo with 91% confidence")
+                .build();
+        savedWordRepository.save(existing);
+
+        String scannerPayload = """
+                {
+                  "word": "chair",
+                  "translation": "uija",
+                  "language_code": "ko",
+                  "source": "SCANNER",
+                  "context": "Detected in photo with 76% confidence"
+                }
+                """;
+
+        mockMvc.perform(post("/api/words")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(scannerPayload))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("Word already saved"));
     }
 
     @Test

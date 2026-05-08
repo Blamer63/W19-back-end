@@ -6,6 +6,7 @@ import com.example.demo.dto.UpdateWordRequest;
 import com.example.demo.entity.Language;
 import com.example.demo.entity.Profile;
 import com.example.demo.entity.SavedWord;
+import com.example.demo.exception.DuplicateSavedWordException;
 import com.example.demo.repository.LanguageRepository;
 import com.example.demo.repository.ProfileRepository;
 import com.example.demo.repository.SavedWordRepository;
@@ -35,7 +36,7 @@ public class SavedWordService {
         // Check if word already exists
         if (savedWordRepository.existsByUserIdAndWordAndLanguageCode(
                 user.getId(), request.getWord(), request.getLanguageCode())) {
-            throw new RuntimeException("Word already saved");
+            throw new DuplicateSavedWordException("Word already saved");
         }
 
         SavedWord savedWord = SavedWord.builder()

@@ -34,6 +34,7 @@ This spins up **3 containers**:
 | Frontend (React) | http://localhost:8080 |
 | Backend (Spring Boot) | http://localhost:8081 |
 | PostgreSQL | localhost:5432 |
+| YOLO scanner service | http://localhost:5001 |
 
 The database is **automatically seeded** with demo data on first start.
 
@@ -76,3 +77,21 @@ Required environment variables:
 | `JWT_SECRET` | Signs JWT access tokens |
 | `GOOGLE_PLACES_KEY` | Calls Google Places proxy endpoints |
 | `GOOGLE_TRANSLATE_API_KEY` | Calls Google Cloud Translation for post translations |
+| `YOLO_ENDPOINT` | Scanner object detection endpoint, defaults to `http://localhost:5001/detect` |
+| `YOLO_MODEL` | YOLO model loaded by the Python scanner service, defaults to `yolov8n.pt` |
+| `YOLO_TIMEOUT_MS` | Backend timeout for scanner requests, defaults to `5000` |
+
+## AI Object Scanner Runtime
+
+The scanner uses the Spring Boot backend plus the Python YOLO service in `yolo_service/`.
+Docker Compose starts both services together and points the backend at `http://yolo:5001/detect`.
+
+Useful scanner settings:
+
+| Setting | Where | Purpose |
+|---|---|---|
+| `YOLO_MODEL` | `.env` / compose | Upgrade detection breadth without Java code changes, for example `yolov8s.pt` for better accuracy than `yolov8n.pt` |
+| `YOLO_TIMEOUT_MS` | `.env` / Spring config | Caps backend wait time for object detection calls |
+| `app.yolo.confidence-threshold` | `application.yml` | Filters low-confidence detections in Spring after YOLO returns results |
+
+The YOLO service exposes `GET /health`. The backend exposes Actuator `GET /actuator/health` for Docker healthchecks.

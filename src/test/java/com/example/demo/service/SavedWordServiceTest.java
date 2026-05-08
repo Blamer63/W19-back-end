@@ -7,6 +7,7 @@ import com.example.demo.entity.Language;
 import com.example.demo.entity.Profile;
 import com.example.demo.entity.SavedWord;
 import com.example.demo.enums.SourceType;
+import com.example.demo.exception.DuplicateSavedWordException;
 import com.example.demo.repository.LanguageRepository;
 import com.example.demo.repository.ProfileRepository;
 import com.example.demo.repository.SavedWordRepository;
@@ -161,7 +162,7 @@ class SavedWordServiceTest {
     }
 
     @Test
-    void saveWord_DuplicateWord_ThrowsException() {
+    void saveWord_DuplicateWord_ThrowsDuplicateSavedWordException() {
         CreateWordRequest request = CreateWordRequest.builder()
                 .word("さくら")
                 .translation("cherry blossom")
@@ -174,7 +175,11 @@ class SavedWordServiceTest {
         when(savedWordRepository.existsByUserIdAndWordAndLanguageCode(any(), any(), any()))
                 .thenReturn(true);
 
-        assertThrows(RuntimeException.class, () -> savedWordService.saveWord("test@example.com", request));
+        DuplicateSavedWordException exception = assertThrows(
+                DuplicateSavedWordException.class,
+                () -> savedWordService.saveWord("test@example.com", request));
+        assertEquals("Word already saved", exception.getMessage());
+        verify(savedWordRepository, never()).save(any(SavedWord.class));
     }
 
     @Test

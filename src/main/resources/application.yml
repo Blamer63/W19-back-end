@@ -46,3 +46,4 @@ app:
   yolo:
     endpoint: ${YOLO_ENDPOINT:http://localhost:5001/detect}
     confidence-threshold: 0.60
+    timeout-ms: ${YOLO_TIMEOUT_MS:5000}
