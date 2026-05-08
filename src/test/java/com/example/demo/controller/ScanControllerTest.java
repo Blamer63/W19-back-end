@@ -1,6 +1,8 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.BoundingBoxDTO;
 import com.example.demo.dto.DetectedObjectDTO;
+import com.example.demo.enums.ScannerTranslationSource;
 import com.example.demo.exception.ObjectDetectionUnavailableException;
 import com.example.demo.service.ObjectDetectionService;
 import org.junit.jupiter.api.Test;
@@ -51,6 +53,13 @@ public class ScanControllerTest {
                         .nativeWord("apple")
                         .learningWord("\uC0AC\uACFC")
                         .languageCode("ko")
+                        .translationSource(ScannerTranslationSource.DICTIONARY)
+                        .box(BoundingBoxDTO.builder()
+                                .x(0.25d)
+                                .y(0.30d)
+                                .width(0.40d)
+                                .height(0.50d)
+                                .build())
                         .build()));
 
         mockMvc.perform(multipart("/api/scan").file(image))
@@ -60,7 +69,12 @@ public class ScanControllerTest {
                 .andExpect(jsonPath("$.detected_objects[0].confidence").value(0.94))
                 .andExpect(jsonPath("$.detected_objects[0].native_word").value("apple"))
                 .andExpect(jsonPath("$.detected_objects[0].learning_word").value("\uC0AC\uACFC"))
-                .andExpect(jsonPath("$.detected_objects[0].language_code").value("ko"));
+                .andExpect(jsonPath("$.detected_objects[0].language_code").value("ko"))
+                .andExpect(jsonPath("$.detected_objects[0].translation_source").value("DICTIONARY"))
+                .andExpect(jsonPath("$.detected_objects[0].box.x").value(0.25))
+                .andExpect(jsonPath("$.detected_objects[0].box.y").value(0.30))
+                .andExpect(jsonPath("$.detected_objects[0].box.width").value(0.40))
+                .andExpect(jsonPath("$.detected_objects[0].box.height").value(0.50));
 
         verify(objectDetectionService).detect(any(), eq("test@example.com"));
     }

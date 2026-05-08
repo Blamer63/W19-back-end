@@ -1,5 +1,6 @@
 package com.example.demo.dto;
 
+import com.example.demo.enums.ScannerTranslationSource;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,4 +25,9 @@ public class DetectedObjectDTO {
 
     @JsonProperty("language_code")
     private String languageCode;
+
+    @JsonProperty("translation_source")
+    private ScannerTranslationSource translationSource;
+
+    private BoundingBoxDTO box;
 }

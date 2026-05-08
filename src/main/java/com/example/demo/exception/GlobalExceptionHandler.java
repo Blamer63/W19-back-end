@@ -28,6 +28,13 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(DuplicateSavedWordException.class)
+    public ResponseEntity<Map<String, String>> handleDuplicateSavedWordException(DuplicateSavedWordException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(ObjectDetectionUnavailableException.class)
     public ResponseEntity<Map<String, String>> handleObjectDetectionUnavailableException(
             ObjectDetectionUnavailableException ex) {

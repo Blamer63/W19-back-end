@@ -12,9 +12,21 @@ Lightweight FastAPI service for the AI Object Scanner backend.
 
 ```json
 [
-  { "label": "apple", "confidence": 0.94 }
+  {
+    "label": "apple",
+    "confidence": 0.94,
+    "box": {
+      "x": 0.32,
+      "y": 0.22,
+      "width": 0.18,
+      "height": 0.24
+    }
+  }
 ]
 ```
+
+`box` coordinates are normalized to the original image dimensions, where `x` and `y`
+represent the top-left corner and `width`/`height` represent the object box size.
 
 `GET /health`
 

@@ -1,16 +1,15 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.BoundingBoxDTO;
 import com.example.demo.dto.DetectedObjectDTO;
 import com.example.demo.entity.Profile;
 import com.example.demo.entity.UserLanguage;
 import com.example.demo.exception.ObjectDetectionUnavailableException;
 import com.example.demo.repository.ProfileRepository;
-import com.example.demo.service.translation.TranslationClient;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.ByteArrayResource;
@@ -28,37 +27,29 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class ObjectDetectionService {
 
     private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
     private static final long MAX_SCAN_SIZE = 5L * 1024 * 1024;
+    private static final int MAX_DETECTED_OBJECTS = 10;
 
     private static final String DEFAULT_LANGUAGE_CODE = "en";
-    private static final Map<String, Map<String, String>> OBJECT_DICTIONARY = Map.of(
-            "apple", Map.of("ko", "\uC0AC\uACFC", "ja", "\u308A\u3093\u3054", "vi", "t\u00E1o",
-                    "zh", "\u82F9\u679C", "es", "manzana", "fr", "pomme"),
-            "chair", Map.of("ko", "\uC758\uC790", "ja", "\u6905\u5B50", "vi", "gh\u1EBF",
-                    "zh", "\u6905\u5B50", "es", "silla", "fr", "chaise"),
-            "dog", Map.of("ko", "\uAC1C", "ja", "\u72AC", "vi", "ch\u00F3",
-                    "zh", "\u72D7", "es", "perro", "fr", "chien"),
-            "laptop", Map.of("ko", "\uB178\uD2B8\uBD81", "ja", "\u30CE\u30FC\u30C8\u30D1\u30BD\u30B3\u30F3",
-                    "vi", "m\u00E1y t\u00EDnh x\u00E1ch tay", "zh", "\u7B14\u8BB0\u672C\u7535\u8111",
-                    "es", "portatil", "fr", "ordinateur portable"),
-            "book", Map.of("ko", "\uCC45", "ja", "\u672C", "vi", "s\u00E1ch",
-                    "zh", "\u4E66", "es", "libro", "fr", "livre"));
 
     private final RestTemplate restTemplate;
     private final ProfileRepository profileRepository;
-    private final TranslationClient translationClient;
+    private final ScannerVocabularyService scannerVocabularyService;
 
     @Value("${app.yolo.endpoint}")
     private String yoloEndpoint;
@@ -80,11 +71,23 @@ public class ObjectDetectionService {
         validateImage(image);
         String languageCode = resolveLearningLanguageCode(currentUserEmail);
         List<YoloLabel> labels = requestDetections(image);
+        Map<String, ScannerVocabularyService.VocabularyMatch> vocabularyCache = new HashMap<>();
 
         return labels.stream()
                 .filter(label -> label.getLabel() != null)
+                .filter(label -> !normalizeLabel(label.getLabel()).isBlank())
                 .filter(label -> label.getConfidence() >= confidenceThreshold)
-                .map(label -> toDetectedObject(label, languageCode))
+                .collect(Collectors.toMap(
+                        label -> normalizeLabel(label.getLabel()),
+                        Function.identity(),
+                        (existing, candidate) -> existing.getConfidence() >= candidate.getConfidence()
+                                ? existing
+                                : candidate))
+                .values()
+                .stream()
+                .sorted(Comparator.comparingDouble(YoloLabel::getConfidence).reversed())
+                .limit(MAX_DETECTED_OBJECTS)
+                .map(label -> toDetectedObject(label, languageCode, vocabularyCache))
                 .toList();
     }
 
@@ -132,34 +135,30 @@ public class ObjectDetectionService {
                 .orElse(DEFAULT_LANGUAGE_CODE);
     }
 
-    private DetectedObjectDTO toDetectedObject(YoloLabel label, String languageCode) {
-        String normalizedLabel = label.getLabel().toLowerCase(Locale.ROOT);
-
-        String learningWord = OBJECT_DICTIONARY
-                .getOrDefault(normalizedLabel, Map.of())
-                .get(languageCode);
-
-        if (learningWord == null && !DEFAULT_LANGUAGE_CODE.equals(languageCode)) {
-            try {
-                learningWord = translationClient
-                        .translate(label.getLabel(), DEFAULT_LANGUAGE_CODE, languageCode)
-                        .getTranslatedText();
-            } catch (Exception e) {
-                log.warn("Translation unavailable for label '{}': {}", label.getLabel(), e.getMessage());
-            }
-        }
-
-        if (learningWord == null) {
-            learningWord = label.getLabel();
-        }
+    private DetectedObjectDTO toDetectedObject(
+            YoloLabel label,
+            String languageCode,
+            Map<String, ScannerVocabularyService.VocabularyMatch> vocabularyCache) {
+        String normalizedLabel = normalizeLabel(label.getLabel());
+        ScannerVocabularyService.VocabularyMatch vocabulary = vocabularyCache.computeIfAbsent(
+                normalizedLabel + ":" + languageCode,
+                ignored -> scannerVocabularyService.resolve(normalizedLabel, languageCode));
 
         return DetectedObjectDTO.builder()
-                .label(label.getLabel())
+                .label(normalizedLabel)
                 .confidence(label.getConfidence())
-                .nativeWord(label.getLabel())
-                .learningWord(learningWord)
+                .nativeWord(normalizedLabel)
+                .learningWord(vocabulary.getLearningWord())
                 .languageCode(languageCode)
+                .translationSource(vocabulary.getTranslationSource())
+                .box(label.getBox())
                 .build();
+    }
+
+    private String normalizeLabel(String label) {
+        return label.trim()
+                .replace('_', ' ')
+                .toLowerCase(Locale.ROOT);
     }
 
     @Data
@@ -168,5 +167,11 @@ public class ObjectDetectionService {
     static class YoloLabel {
         private String label;
         private double confidence;
+        private BoundingBoxDTO box;
+
+        YoloLabel(String label, double confidence) {
+            this.label = label;
+            this.confidence = confidence;
+        }
     }
 }

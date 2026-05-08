@@ -31,15 +31,23 @@ async def detect(image: UploadFile = File(...)):
     except UnidentifiedImageError as exc:
         raise HTTPException(status_code=400, detail="Uploaded file is not a readable image") from exc
 
+    image_width, image_height = frame.size
     results = model(frame)
     detections = []
 
     for box in results[0].boxes:
         label = model.names[int(box.cls)]
         confidence = float(box.conf)
+        x1, y1, x2, y2 = box.xyxy[0].tolist()
         detections.append({
             "label": label,
             "confidence": confidence,
+            "box": {
+                "x": max(0.0, min(1.0, x1 / image_width)),
+                "y": max(0.0, min(1.0, y1 / image_height)),
+                "width": max(0.0, min(1.0, (x2 - x1) / image_width)),
+                "height": max(0.0, min(1.0, (y2 - y1) / image_height)),
+            },
         })
 
     return detections
