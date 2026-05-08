@@ -7,6 +7,7 @@ import com.example.demo.dto.GroupUpdateRequest;
 import com.example.demo.dto.MessageResponse;
 import com.example.demo.repository.ProfileRepository;
 import com.example.demo.service.ChatService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -51,12 +52,14 @@ public class ChatController {
     public void processTyping(@Payload java.util.Map<String, Object> payload, Authentication authentication) {
         Object cid = payload.get("cid");
         if (cid == null) return;
+        UUID conversationId = UUID.fromString(cid.toString());
+        chatService.validateParticipant(conversationId, authentication.getName());
 
         java.util.Map<String, Object> enriched = new java.util.HashMap<>(payload);
         profileRepository.findByEmail(authentication.getName())
                 .ifPresent(p -> enriched.put("displayName", p.getDisplayName()));
 
-        messagingTemplate.convertAndSend("/topic/conversation." + cid + ".typing", enriched);
+        messagingTemplate.convertAndSend("/topic/conversation." + conversationId + ".typing", enriched);
     }
 
     // REST: List conversations
@@ -120,14 +123,14 @@ public class ChatController {
             @PathVariable UUID id,
             @PathVariable UUID messageId,
             Authentication authentication) {
-        chatService.deleteMessage(messageId, authentication.getName());
+        chatService.deleteMessage(id, messageId, authentication.getName());
         return ResponseEntity.noContent().build();
     }
 
     // REST: Create group conversation
     @PostMapping("/group")
     public ResponseEntity<ConversationResponse> createGroup(
-            @RequestBody GroupCreateRequest request,
+            @Valid @RequestBody GroupCreateRequest request,
             Authentication authentication) {
         return ResponseEntity.ok(chatService.createGroupConversation(authentication.getName(), request));
     }

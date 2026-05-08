@@ -1,5 +1,6 @@
 package com.example.demo.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,6 +17,7 @@ import java.util.UUID;
 public class ConversationResponse {
     private UUID id;
     private List<ProfileResponse> participants;
+    @JsonProperty("isGroup")
     private boolean isGroup;
     private String groupName;
     private String groupAvatar;

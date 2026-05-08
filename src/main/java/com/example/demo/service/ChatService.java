@@ -64,6 +64,11 @@ public class ChatService {
         if (cid != null) {
             conversation = conversationRepository.findById(cid)
                     .orElseThrow(() -> new ResourceNotFoundException("Conversation not found"));
+            boolean senderIsParticipant = conversation.getParticipants().stream()
+                    .anyMatch(p -> p.getId().equals(sender.getId()));
+            if (!senderIsParticipant) {
+                throw new IllegalArgumentException("Access denied");
+            }
         } else if (recipientId != null) {
             Profile recipient = profileRepository.findById(recipientId)
                     .orElseThrow(() -> new ResourceNotFoundException("Recipient not found"));
@@ -123,6 +128,9 @@ public class ChatService {
 
     @Transactional
     public ConversationResponse createGroupConversation(String creatorEmail, GroupCreateRequest request) {
+        if (request.getGroupName() == null || request.getGroupName().isBlank()) {
+            throw new IllegalArgumentException("Group name must not be blank");
+        }
         if (request.getParticipantIds() == null || request.getParticipantIds().size() < 2) {
             throw new IllegalArgumentException("A group conversation requires at least 2 other participants");
         }
@@ -268,10 +276,29 @@ public class ChatService {
                 .map(this::mapToMessageResponse);
     }
 
+    @Transactional(readOnly = true)
+    public void validateParticipant(UUID conversationId, String email) {
+        Profile profile = profileRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Profile not found"));
+
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Conversation not found"));
+
+        boolean isParticipant = conversation.getParticipants().stream()
+                .anyMatch(p -> p.getId().equals(profile.getId()));
+        if (!isParticipant) {
+            throw new IllegalArgumentException("Access denied");
+        }
+    }
+
     @Transactional
-    public void deleteMessage(UUID messageId, String senderEmail) {
+    public void deleteMessage(UUID conversationId, UUID messageId, String senderEmail) {
         Message message = messageRepository.findById(messageId)
                 .orElseThrow(() -> new ResourceNotFoundException("Message not found"));
+
+        if (!message.getConversation().getId().equals(conversationId)) {
+            throw new IllegalArgumentException("Message does not belong to this conversation");
+        }
 
         if (!message.getSender().getEmail().equals(senderEmail)) {
             throw new IllegalArgumentException("Unauthorized to delete this message");

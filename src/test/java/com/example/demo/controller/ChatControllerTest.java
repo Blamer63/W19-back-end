@@ -18,6 +18,7 @@ import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -116,5 +117,47 @@ class ChatControllerTest {
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.content.length()").value(2))
                                 .andExpect(jsonPath("$.totalElements").value(5));
+        }
+
+        @Test
+        @WithMockUser(username = "sender@example.com")
+        void shouldCreateGroupConversation() throws Exception {
+                Profile member2 = Profile.builder()
+                                .username("member2")
+                                .email("member2@example.com")
+                                .passwordHash("password")
+                                .displayName("Member Two")
+                                .build();
+                member2 = profileRepository.save(member2);
+
+                String body = """
+                                {
+                                  "groupName": "Study Group",
+                                  "participantIds": ["%s", "%s"]
+                                }
+                                """.formatted(recipient.getId(), member2.getId());
+
+                mockMvc.perform(post("/api/conversations/group")
+                                .contentType("application/json")
+                                .content(body))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.isGroup").value(true))
+                                .andExpect(jsonPath("$.groupName").value("Study Group"));
+        }
+
+        @Test
+        @WithMockUser(username = "sender@example.com")
+        void shouldRejectGroupConversationWithBlankName() throws Exception {
+                String body = """
+                                {
+                                  "groupName": "   ",
+                                  "participantIds": ["%s", "%s"]
+                                }
+                                """.formatted(recipient.getId(), UUID.randomUUID());
+
+                mockMvc.perform(post("/api/conversations/group")
+                                .contentType("application/json")
+                                .content(body))
+                                .andExpect(status().isBadRequest());
         }
 }

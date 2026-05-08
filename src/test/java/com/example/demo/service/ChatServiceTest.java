@@ -114,6 +114,34 @@ class ChatServiceTest {
     }
 
     @Test
+    void sendMessage_NewDirectMessage_ShouldNotReuseGroupConversation() {
+        ChatRequest request = new ChatRequest();
+        request.setRecipientId(recipient.getId());
+        request.setContent("Start a real DM");
+
+        Conversation directConversation = Conversation.builder()
+                .isGroup(false)
+                .participants(new java.util.ArrayList<>(Arrays.asList(sender, recipient)))
+                .build();
+        directConversation.setId(UUID.randomUUID());
+
+        when(profileRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(sender));
+        when(profileRepository.findById(recipient.getId())).thenReturn(Optional.of(recipient));
+        when(conversationRepository.findBetweenUsers(sender.getId(), recipient.getId()))
+                .thenReturn(Optional.empty());
+        when(conversationRepository.save(any(Conversation.class))).thenReturn(directConversation);
+        when(messageRepository.save(any(Message.class))).thenReturn(message);
+        when(profileService.mapToResponse(any(Profile.class))).thenReturn(new ProfileResponse());
+
+        MessageResponse response = chatService.sendMessage("sender@example.com", request);
+
+        assertNotNull(response);
+        verify(conversationRepository).findBetweenUsers(sender.getId(), recipient.getId());
+        verify(conversationRepository, times(2)).save(any(Conversation.class));
+        verify(messageRepository).save(any(Message.class));
+    }
+
+    @Test
     void sendMessage_ExistingConversation_Success() {
         ChatRequest request = new ChatRequest();
         request.setCid(conversation.getId());
@@ -130,6 +158,27 @@ class ChatServiceTest {
         assertNotNull(response);
         verify(conversationRepository, never()).findBetweenUsers(any(), any());
         verify(messageRepository).save(any(Message.class));
+    }
+
+    @Test
+    void sendMessage_ExistingConversation_NotParticipant_ShouldThrow() {
+        Profile stranger = new Profile();
+        stranger.setId(UUID.randomUUID());
+        stranger.setUsername("stranger");
+        stranger.setEmail("stranger@example.com");
+
+        ChatRequest request = new ChatRequest();
+        request.setCid(conversation.getId());
+        request.setContent("I should not be here");
+
+        when(profileRepository.findByEmail("stranger@example.com")).thenReturn(Optional.of(stranger));
+        when(conversationRepository.findById(conversation.getId())).thenReturn(Optional.of(conversation));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> chatService.sendMessage("stranger@example.com", request));
+
+        verify(messageRepository, never()).save(any(Message.class));
+        verify(conversationRepository, never()).save(any(Conversation.class));
     }
 
     @Test
@@ -218,6 +267,31 @@ class ChatServiceTest {
     }
 
     // -------------------------------------------------------------------------
+    // validateParticipant
+    // -------------------------------------------------------------------------
+
+    @Test
+    void validateParticipant_Participant_DoesNotThrow() {
+        when(profileRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(sender));
+        when(conversationRepository.findById(conversation.getId())).thenReturn(Optional.of(conversation));
+
+        assertDoesNotThrow(() -> chatService.validateParticipant(conversation.getId(), "sender@example.com"));
+    }
+
+    @Test
+    void validateParticipant_NonParticipant_ThrowsException() {
+        Profile stranger = new Profile();
+        stranger.setId(UUID.randomUUID());
+        stranger.setEmail("stranger@example.com");
+
+        when(profileRepository.findByEmail("stranger@example.com")).thenReturn(Optional.of(stranger));
+        when(conversationRepository.findById(conversation.getId())).thenReturn(Optional.of(conversation));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> chatService.validateParticipant(conversation.getId(), "stranger@example.com"));
+    }
+
+    // -------------------------------------------------------------------------
     // markAsRead
     // -------------------------------------------------------------------------
 
@@ -246,6 +320,22 @@ class ChatServiceTest {
 
         verify(messageRepository, never()).markAllAsRead(any());
         verify(messageRepository, never()).saveAll(any());
+    }
+
+    // -------------------------------------------------------------------------
+    // deleteMessage
+    // -------------------------------------------------------------------------
+
+    @Test
+    void deleteMessage_MessageNotInConversation_ShouldThrow() {
+        UUID wrongConversationId = UUID.randomUUID();
+
+        when(messageRepository.findById(message.getId())).thenReturn(Optional.of(message));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> chatService.deleteMessage(wrongConversationId, message.getId(), "sender@example.com"));
+
+        verify(messageRepository, never()).delete(any(Message.class));
     }
 
     // -------------------------------------------------------------------------
@@ -290,6 +380,19 @@ class ChatServiceTest {
         GroupCreateRequest request = GroupCreateRequest.builder()
                 .groupName("Solo")
                 .participantIds(Collections.singletonList(UUID.randomUUID()))
+                .build();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> chatService.createGroupConversation("sender@example.com", request));
+
+        verifyNoInteractions(profileRepository, conversationRepository);
+    }
+
+    @Test
+    void createGroupConversation_BlankName_ThrowsException() {
+        GroupCreateRequest request = GroupCreateRequest.builder()
+                .groupName("   ")
+                .participantIds(Arrays.asList(UUID.randomUUID(), UUID.randomUUID()))
                 .build();
 
         assertThrows(IllegalArgumentException.class,
