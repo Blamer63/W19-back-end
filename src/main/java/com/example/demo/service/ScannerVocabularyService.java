@@ -1,6 +1,8 @@
 package com.example.demo.service;
 
 import com.example.demo.enums.ScannerTranslationSource;
+import com.example.demo.entity.ScannerTranslationCache;
+import com.example.demo.repository.ScannerTranslationCacheRepository;
 import com.example.demo.service.translation.TranslationClient;
 import lombok.Builder;
 import lombok.RequiredArgsConstructor;
@@ -56,6 +58,7 @@ public class ScannerVocabularyService {
     );
 
     private final TranslationClient translationClient;
+    private final ScannerTranslationCacheRepository scannerTranslationCacheRepository;
 
     public VocabularyMatch resolve(String normalizedLabel, String languageCode) {
         if (DEFAULT_LANGUAGE_CODE.equals(languageCode)) {
@@ -76,12 +79,29 @@ public class ScannerVocabularyService {
                     .build();
         }
 
+        ScannerTranslationCache cachedTranslation = scannerTranslationCacheRepository
+                .findByLabelAndLanguageCode(normalizedLabel, languageCode)
+                .orElse(null);
+
+        if (cachedTranslation != null) {
+            return VocabularyMatch.builder()
+                    .learningWord(cachedTranslation.getTranslatedText())
+                    .translationSource(ScannerTranslationSource.TRANSLATION_CACHE)
+                    .build();
+        }
+
         try {
             String translatedText = translationClient
                     .translate(normalizedLabel, DEFAULT_LANGUAGE_CODE, languageCode)
                     .getTranslatedText();
 
             if (translatedText != null && !translatedText.isBlank()) {
+                scannerTranslationCacheRepository.save(ScannerTranslationCache.builder()
+                        .label(normalizedLabel)
+                        .languageCode(languageCode)
+                        .translatedText(translatedText)
+                        .build());
+
                 return VocabularyMatch.builder()
                         .learningWord(translatedText)
                         .translationSource(ScannerTranslationSource.TRANSLATION_API)

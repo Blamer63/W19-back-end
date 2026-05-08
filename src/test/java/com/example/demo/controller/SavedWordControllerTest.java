@@ -44,6 +44,9 @@ public class SavedWordControllerTest {
     private LanguageRepository languageRepository;
 
     @Autowired
+    private ScannerTranslationCacheRepository scannerTranslationCacheRepository;
+
+    @Autowired
     private com.example.demo.repository.ContentReportRepository contentReportRepository;
     @Autowired
     private com.example.demo.repository.PostTranslationRepository postTranslationRepository;
@@ -86,6 +89,7 @@ public class SavedWordControllerTest {
         userBlockRepository.deleteAll();
         followRepository.deleteAll();
         refreshTokenRepository.deleteAll();
+        scannerTranslationCacheRepository.deleteAll();
         profileRepository.deleteAll();
         languageRepository.deleteAll();
 

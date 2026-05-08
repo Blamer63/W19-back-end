@@ -8,6 +8,7 @@ import com.example.demo.entity.UserLanguage;
 import com.example.demo.enums.ScannerTranslationSource;
 import com.example.demo.exception.ObjectDetectionUnavailableException;
 import com.example.demo.repository.ProfileRepository;
+import com.example.demo.repository.ScannerTranslationCacheRepository;
 import com.example.demo.service.translation.TranslationClient;
 import com.example.demo.service.translation.TranslationResult;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,12 +47,14 @@ class ObjectDetectionServiceTest {
     @Mock private RestTemplate restTemplate;
     @Mock private ProfileRepository profileRepository;
     @Mock private TranslationClient translationClient;
+    @Mock private ScannerTranslationCacheRepository scannerTranslationCacheRepository;
 
     private ObjectDetectionService objectDetectionService;
 
     @BeforeEach
     void setUp() {
-        ScannerVocabularyService scannerVocabularyService = new ScannerVocabularyService(translationClient);
+        ScannerVocabularyService scannerVocabularyService =
+                new ScannerVocabularyService(translationClient, scannerTranslationCacheRepository);
         objectDetectionService = new ObjectDetectionService(restTemplate, profileRepository, scannerVocabularyService);
         ReflectionTestUtils.setField(objectDetectionService, "yoloEndpoint", "http://localhost:5001/detect");
         ReflectionTestUtils.setField(objectDetectionService, "confidenceThreshold", 0.60d);
@@ -192,6 +195,8 @@ class ObjectDetectionServiceTest {
         Profile profile = profileWithLearningLanguage("test@example.com", "ko");
         when(profileRepository.findByEmail("test@example.com")).thenReturn(Optional.of(profile));
         whenYoloReturns(List.of(new ObjectDetectionService.YoloLabel("backpack", 0.91d)));
+        when(scannerTranslationCacheRepository.findByLabelAndLanguageCode("backpack", "ko"))
+                .thenReturn(Optional.empty());
         when(translationClient.translate("backpack", "en", "ko"))
                 .thenReturn(TranslationResult.builder().translatedText("병").build());
 
@@ -209,6 +214,8 @@ class ObjectDetectionServiceTest {
         Profile profile = profileWithLearningLanguage("test@example.com", "ko");
         when(profileRepository.findByEmail("test@example.com")).thenReturn(Optional.of(profile));
         whenYoloReturns(List.of(new ObjectDetectionService.YoloLabel("backpack", 0.91d)));
+        when(scannerTranslationCacheRepository.findByLabelAndLanguageCode("backpack", "ko"))
+                .thenReturn(Optional.empty());
         when(translationClient.translate("backpack", "en", "ko"))
                 .thenThrow(new RuntimeException("Translation service unavailable"));
 
@@ -226,6 +233,8 @@ class ObjectDetectionServiceTest {
         whenYoloReturns(List.of(
                 new ObjectDetectionService.YoloLabel("backpack", 0.91d),
                 new ObjectDetectionService.YoloLabel(" BACKPACK ", 0.88d)));
+        when(scannerTranslationCacheRepository.findByLabelAndLanguageCode("backpack", "ko"))
+                .thenReturn(Optional.empty());
         when(translationClient.translate("backpack", "en", "ko"))
                 .thenReturn(TranslationResult.builder().translatedText("\uBC30\uB0AD").build());
 
