@@ -32,14 +32,14 @@ public class PracticeService {
 
         // Validate session size
         if (!List.of(5, 10, 15).contains(request.getSessionSize())) {
-            throw new RuntimeException("Session size must be 5, 10, or 15");
+            throw new IllegalArgumentException("Session size must be 5, 10, or 15");
         }
 
         // Get words for practice
         List<SavedWord> availableWords = getAvailableWords(user.getId(), request.getLanguageCode());
 
         if (availableWords.size() < request.getSessionSize()) {
-            throw new RuntimeException("Not enough saved words for requested session size");
+            throw new IllegalArgumentException("Not enough saved words for requested session size");
         }
 
         // Select words using weighted random

@@ -5,6 +5,7 @@ import com.example.demo.dto.SubmitResultRequest;
 import com.example.demo.entity.Language;
 import com.example.demo.entity.Profile;
 import com.example.demo.entity.SavedWord;
+import com.example.demo.enums.SourceType;
 import com.example.demo.repository.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -139,7 +141,40 @@ public class PracticeControllerTest {
 
         @Test
         @WithMockUser(username = "test@example.com")
-        void startSession_InvalidSize_Returns500() throws Exception {
+        void startSession_IncludesScannerSavedWords() throws Exception {
+                savedWordRepository.deleteAll();
+
+                for (int i = 0; i < 5; i++) {
+                        SavedWord word = SavedWord.builder()
+                                        .user(testUser)
+                                        .word("scannerWord" + i)
+                                        .translation("scannerTranslation" + i)
+                                        .languageCode("ja")
+                                        .source(SourceType.SCANNER)
+                                        .masteryLevel(i * 5)
+                                        .build();
+                        savedWordRepository.save(word);
+                }
+
+                StartSessionRequest request = new StartSessionRequest();
+                request.setSessionSize(5);
+                request.setLanguageCode("ja");
+
+                mockMvc.perform(post("/api/learn/sessions/start")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isCreated())
+                                .andExpect(jsonPath("$.words.length()").value(5))
+                                .andExpect(content().string(containsString("scannerWord0")))
+                                .andExpect(content().string(containsString("scannerWord1")))
+                                .andExpect(content().string(containsString("scannerWord2")))
+                                .andExpect(content().string(containsString("scannerWord3")))
+                                .andExpect(content().string(containsString("scannerWord4")));
+        }
+
+        @Test
+        @WithMockUser(username = "test@example.com")
+        void startSession_InvalidSize_ReturnsBadRequest() throws Exception {
                 StartSessionRequest request = new StartSessionRequest();
                 request.setSessionSize(7); // Invalid size
 
@@ -151,7 +186,7 @@ public class PracticeControllerTest {
 
         @Test
         @WithMockUser(username = "test@example.com")
-        void startSession_NotEnoughWords_Returns500() throws Exception {
+        void startSession_NotEnoughWords_ReturnsBadRequest() throws Exception {
                 // Delete all words
                 savedWordRepository.deleteAll();
 

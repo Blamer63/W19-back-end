@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import com.example.demo.entity.Language;
 import com.example.demo.entity.Profile;
 import com.example.demo.entity.SavedWord;
+import com.example.demo.enums.SourceType;
 import com.example.demo.repository.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -120,6 +121,28 @@ public class StatsControllerTest {
                 .andExpect(jsonPath("$.total_words").value(0))
                 .andExpect(jsonPath("$.average_mastery").value(0))
                 .andExpect(jsonPath("$.languages").isEmpty());
+    }
+
+    @Test
+    @WithMockUser(username = "test@example.com")
+    void getStats_IncludesScannerSavedWords() throws Exception {
+        SavedWord scannerWord = SavedWord.builder()
+                .user(testUser)
+                .word("chair")
+                .translation("isu")
+                .languageCode("ja")
+                .source(SourceType.SCANNER)
+                .masteryLevel(30)
+                .build();
+        savedWordRepository.save(scannerWord);
+
+        mockMvc.perform(get("/api/learn/stats"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total_words").value(1))
+                .andExpect(jsonPath("$.average_mastery").value(30))
+                .andExpect(jsonPath("$.languages[0].code").value("ja"))
+                .andExpect(jsonPath("$.languages[0].word_count").value(1))
+                .andExpect(jsonPath("$.mastery_distribution.learning").value(1));
     }
 
     @Test
