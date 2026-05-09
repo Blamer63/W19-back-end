@@ -8,7 +8,7 @@ import lombok.Data;
 public class ScannerAnalyzeRequest {
 
     @NotBlank
-    @JsonProperty("image_base64")
+    @JsonProperty("image")
     private String imageBase64;
 
     @NotBlank

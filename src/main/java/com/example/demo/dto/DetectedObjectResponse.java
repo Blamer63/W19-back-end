@@ -4,22 +4,17 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 @Builder
 public class DetectedObjectResponse {
 
-    private String label;
-
-    @JsonProperty("translated_label")
-    private String translatedLabel;
+    private List<String> labels;
 
     private String description;
 
-    @JsonProperty("translated_description")
-    private String translatedDescription;
+    @JsonProperty("translated_labels")
+    private List<String> translatedLabels;
 
-    private Double confidence;
-
-    @JsonProperty("translated")
-    private boolean translated;
 }

@@ -1,7 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.ScannerAnalyzeRequest;
-import com.example.demo.dto.ScannerAnalyzeResponse;
+import com.example.demo.dto.DetectedObjectResponse;
 import com.example.demo.service.scanner.ObjectScannerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,8 +18,9 @@ public class ScannerController {
     private final ObjectScannerService objectScannerService;
 
     @PostMapping("/analyze")
-    public ResponseEntity<ScannerAnalyzeResponse> analyze(@Valid @RequestBody ScannerAnalyzeRequest request) {
+    public ResponseEntity<DetectedObjectResponse> analyze(@Valid @RequestBody ScannerAnalyzeRequest request) {
         log.info("Scanner analyze request received for target language {}", request.getTargetLanguage());
+        log.info("Incoming image length: {}", request.getImageBase64() != null ? request.getImageBase64().length() : 0);
         return ResponseEntity.ok(objectScannerService.analyze(request));
     }
 }
