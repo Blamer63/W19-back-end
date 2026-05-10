@@ -63,8 +63,15 @@ public class AuthService {
                         username = request.getEmail().split("@")[0];
                 }
 
-                if (profileRepository.existsByUsername(username)) {
-                        username = username + System.currentTimeMillis() % 1000;
+                String baseUsername = username;
+                int attempt = 0;
+                while (profileRepository.existsByUsername(username)) {
+                        attempt++;
+                        username = baseUsername + attempt;
+                        if (attempt > 99) {
+                                username = baseUsername + java.util.UUID.randomUUID().toString().substring(0, 6);
+                                break;
+                        }
                 }
 
                 Profile profile = new Profile();
