@@ -1,5 +1,6 @@
 package com.example.demo.security;
 
+import com.example.demo.repository.ConversationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
@@ -14,15 +15,22 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
 
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final Pattern CONVERSATION_DESTINATION =
+            Pattern.compile("^/topic/conversation\\.([^.]+)(\\.typing)?$");
 
     private final JwtUtils jwtUtils;
     private final UserDetailsService userDetailsService;
+    private final ConversationRepository conversationRepository;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -35,50 +43,102 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
         }
         accessor.setLeaveMutable(true);
 
-        if (StompCommand.CONNECT.equals(accessor.getCommand())) {
-            authenticate(accessor);
-        } else if (StompCommand.SEND.equals(accessor.getCommand())
+        StompCommand command = accessor.getCommand();
+
+        if (StompCommand.CONNECT.equals(command)) {
+            if (!authenticate(accessor)) {
+                return null;
+            }
+        } else if (StompCommand.SUBSCRIBE.equals(command)) {
+            if (!authorizeSubscription(accessor)) {
+                return null;
+            }
+        } else if (StompCommand.SEND.equals(command)
                 && "/app/chat.typing".equals(accessor.getDestination())) {
-            log.info("STOMP typing SEND received: destination={}, user={}",
-                    accessor.getDestination(),
-                    describeUser(accessor.getUser()));
+            log.debug("STOMP typing SEND: destination={}, user={}",
+                    accessor.getDestination(), describeUser(accessor.getUser()));
         }
 
         return MessageBuilder.createMessage(message.getPayload(), accessor.getMessageHeaders());
     }
 
-    private void authenticate(StompHeaderAccessor accessor) {
+    private boolean authenticate(StompHeaderAccessor accessor) {
         String authHeader = accessor.getFirstNativeHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
-            log.warn("STOMP CONNECT missing bearer Authorization header");
-            return;
+            log.warn("STOMP CONNECT rejected: missing or malformed Authorization header");
+            return false;
         }
 
         String token = authHeader.substring(BEARER_PREFIX.length());
-        String email = jwtUtils.getUsernameFromToken(token);
+        String email;
+        try {
+            email = jwtUtils.getUsernameFromToken(token);
+        } catch (Exception e) {
+            log.warn("STOMP CONNECT rejected: JWT parsing failed — {}", e.getMessage());
+            return false;
+        }
+
         if (email == null) {
             log.warn("STOMP CONNECT rejected: JWT subject missing");
-            return;
+            return false;
         }
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+        UserDetails userDetails;
+        try {
+            userDetails = userDetailsService.loadUserByUsername(email);
+        } catch (Exception e) {
+            log.warn("STOMP CONNECT rejected: user not found — {}", email);
+            return false;
+        }
+
         if (!jwtUtils.validateToken(token, userDetails.getUsername())) {
-            log.warn("STOMP CONNECT rejected: invalid token for {}", email);
-            return;
+            log.warn("STOMP CONNECT rejected: invalid or expired token for {}", email);
+            return false;
         }
 
-        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                userDetails,
-                null,
-                userDetails.getAuthorities());
-        accessor.setUser(authentication);
+        accessor.setUser(new UsernamePasswordAuthenticationToken(
+                userDetails, null, userDetails.getAuthorities()));
         log.info("STOMP CONNECT authenticated as {}", email);
+        return true;
+    }
+
+    private boolean authorizeSubscription(StompHeaderAccessor accessor) {
+        String destination = accessor.getDestination();
+        if (destination == null) return true;
+
+        Matcher matcher = CONVERSATION_DESTINATION.matcher(destination);
+        if (!matcher.matches()) {
+            // Not a conversation topic (e.g. /user/queue/conversations) — allow
+            return true;
+        }
+
+        String uuidStr = matcher.group(1);
+        UUID conversationId;
+        try {
+            conversationId = UUID.fromString(uuidStr);
+        } catch (IllegalArgumentException e) {
+            log.warn("STOMP SUBSCRIBE rejected: invalid UUID in destination {}", destination);
+            return false;
+        }
+
+        if (accessor.getUser() == null) {
+            log.warn("STOMP SUBSCRIBE rejected: unauthenticated for destination {}", destination);
+            return false;
+        }
+
+        String email = accessor.getUser().getName();
+        boolean isMember = conversationRepository.countParticipantsByEmail(conversationId, email) > 0;
+        if (!isMember) {
+            log.warn("STOMP SUBSCRIBE rejected: {} is not a participant in {}", email, conversationId);
+            return false;
+        }
+
+        log.debug("STOMP SUBSCRIBE authorized: {} → {}", email, destination);
+        return true;
     }
 
     private String describeUser(java.security.Principal user) {
-        if (user == null) {
-            return "null";
-        }
+        if (user == null) return "null";
         return user.getClass().getSimpleName() + "{name=" + user.getName() + "}";
     }
 }

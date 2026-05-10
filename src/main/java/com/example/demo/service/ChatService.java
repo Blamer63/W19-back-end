@@ -127,6 +127,24 @@ public class ChatService {
     }
 
     @Transactional
+    public ConversationResponse findOrCreateDm(String senderEmail, UUID recipientId) {
+        Profile sender = profileRepository.findByEmail(senderEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Sender not found"));
+        Profile recipient = profileRepository.findById(recipientId)
+                .orElseThrow(() -> new ResourceNotFoundException("Recipient not found"));
+
+        Conversation conversation = conversationRepository.findBetweenUsers(sender.getId(), recipient.getId())
+                .orElseGet(() -> {
+                    Conversation newConv = Conversation.builder()
+                            .participants(new ArrayList<>(Arrays.asList(sender, recipient)))
+                            .build();
+                    return conversationRepository.save(newConv);
+                });
+
+        return mapToConversationResponse(conversation, sender.getId());
+    }
+
+    @Transactional
     public ConversationResponse createGroupConversation(String creatorEmail, GroupCreateRequest request) {
         if (request.getGroupName() == null || request.getGroupName().isBlank()) {
             throw new IllegalArgumentException("Group name must not be blank");

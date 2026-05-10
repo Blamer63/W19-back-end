@@ -54,16 +54,16 @@ public class ChatController {
     @MessageMapping("/chat.typing")
     public void processTyping(@Payload java.util.Map<String, Object> payload, Authentication authentication) {
         Object cid = payload.get("cid");
-        log.info("Typing event received: cid={}, authentication={}", cid, describeAuthentication(authentication));
+        log.debug("Typing event received: cid={}, authentication={}", cid, describeAuthentication(authentication));
         if (cid == null) {
             log.warn("Typing event ignored: missing cid");
             return;
         }
         String email = requireAuthenticatedEmail(authentication);
-        log.info("Typing event authenticated as {}", email);
+        log.debug("Typing event authenticated as {}", email);
         UUID conversationId = UUID.fromString(cid.toString());
         chatService.validateParticipant(conversationId, email);
-        log.info("Typing event participant validated: cid={}, email={}", conversationId, email);
+        log.debug("Typing event participant validated: cid={}, email={}", conversationId, email);
 
         java.util.Map<String, Object> enriched = new java.util.HashMap<>(payload);
         enriched.put("cid", conversationId.toString());
@@ -73,9 +73,7 @@ public class ChatController {
                     enriched.put("displayName", p.getDisplayName());
                 });
 
-        log.info("Typing event broadcasting to /topic/conversation.{}.typing payload={}",
-                conversationId,
-                enriched);
+        log.debug("Typing event broadcasting: cid={}", conversationId);
         messagingTemplate.convertAndSend("/topic/conversation." + conversationId + ".typing", enriched);
     }
 
@@ -107,6 +105,21 @@ public class ChatController {
         return ResponseEntity.ok(chatService.getUserConversations(authentication.getName(), pageable));
     }
 
+    // REST: Find or create a direct message conversation without sending a message
+    @PostMapping("/dm")
+    public ResponseEntity<ConversationResponse> findOrCreateDm(
+            @RequestParam UUID recipientId,
+            Authentication authentication) {
+        ConversationResponse response = chatService.findOrCreateDm(authentication.getName(), recipientId);
+        profileRepository.findById(recipientId).ifPresent(recipient ->
+                messagingTemplate.convertAndSendToUser(
+                        recipient.getEmail(),
+                        "/queue/conversations",
+                        java.util.Map.of("type", "NEW_CONVERSATION",
+                                "conversationId", response.getId().toString())));
+        return ResponseEntity.ok(response);
+    }
+
     // REST: Start new conversation (supports optional image attachment)
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<MessageResponse> startConversation(
@@ -114,8 +127,15 @@ public class ChatController {
             @RequestParam(required = false) String content,
             @RequestPart(value = "image", required = false) MultipartFile image,
             Authentication authentication) throws IOException {
-        return ResponseEntity.ok(chatService.sendMessage(
-                authentication.getName(), null, recipientId, content, image));
+        MessageResponse response = chatService.sendMessage(
+                authentication.getName(), null, recipientId, content, image);
+        profileRepository.findById(recipientId).ifPresent(recipient ->
+                messagingTemplate.convertAndSendToUser(
+                        recipient.getEmail(),
+                        "/queue/conversations",
+                        java.util.Map.of("type", "NEW_CONVERSATION",
+                                "conversationId", response.getConversationId().toString())));
+        return ResponseEntity.ok(response);
     }
 
     // REST: Get message history
@@ -167,7 +187,16 @@ public class ChatController {
     public ResponseEntity<ConversationResponse> createGroup(
             @Valid @RequestBody GroupCreateRequest request,
             Authentication authentication) {
-        return ResponseEntity.ok(chatService.createGroupConversation(authentication.getName(), request));
+        ConversationResponse response = chatService.createGroupConversation(authentication.getName(), request);
+        String creatorEmail = authentication.getName();
+        response.getParticipants().stream()
+                .filter(p -> !creatorEmail.equals(p.getEmail()))
+                .forEach(p -> messagingTemplate.convertAndSendToUser(
+                        p.getEmail(),
+                        "/queue/conversations",
+                        java.util.Map.of("type", "NEW_CONVERSATION",
+                                "conversationId", response.getId().toString())));
+        return ResponseEntity.ok(response);
     }
 
     // REST: Add participant to group
