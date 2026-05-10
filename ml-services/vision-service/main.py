@@ -1,240 +1,265 @@
-import math
+"""
+main.py — Vision service: SigLIP + FAISS + Hierarchical Taxonomy pipeline.
+
+API contract (UNCHANGED):
+  POST /analyze
+  Input:  { "image": "<base64 string>" }
+  Output: { "labels": [...], "description": "..." }
+
+Architecture:
+  YOLOv8m (proposals) → Letterbox crop → SigLIP image encoder
+  → Coarse routing (category centroids)
+  → Fine FAISS retrieval (per-category IndexFlatIP)
+  → Confidence filtering
+  → Context re-ranking
+  → Canonical label output
+
+Device resolution (three-way):
+  FORCE_CPU=1  → always CPU
+  ENABLE_CUDA=0 → disable GPU even if available
+  default      → cuda if available, else cpu
+"""
+
 import base64
 import io
-from fastapi import FastAPI
-from pydantic import BaseModel
-from PIL import Image
+import os
+
 import torch
-from transformers import CLIPProcessor, CLIPModel
+from fastapi import FastAPI
+from PIL import Image
+from pydantic import BaseModel
+from transformers import AutoModel, AutoProcessor
 from ultralytics import YOLO
 
-app = FastAPI()
+from image_utils import extract_crop, get_model_input_size
+from indexer import TaxonomyIndexes, load_indexes, verify_model_compatibility
+from retrieval import (
+    UNKNOWN_LABEL,
+    apply_confidence_filter,
+    context_rerank,
+    coarse_route,
+    deduplicate_labels,
+    fine_retrieve,
+    score_crop_importance,
+)
 
-device = "cpu"
-print(f"Loading Google Lens-style vision service on {device}...")
+# ─────────────────────────────────────────────────────────────────────────────
+# Configuration (all overrideable via environment variables)
+# ─────────────────────────────────────────────────────────────────────────────
 
-# 1. Load YOLO Model
-yolo_model = YOLO("yolov8x.pt")
+DEFAULT_SIGLIP_MODEL = "google/siglip-base-patch16-224"
+SIGLIP_MODEL_ID      = os.getenv("SIGLIP_MODEL", DEFAULT_SIGLIP_MODEL)
 
-# 2. Load CLIP Model
-clip_model_id = "openai/clip-vit-large-patch14"
-clip_processor = CLIPProcessor.from_pretrained(clip_model_id)
-clip_model = CLIPModel.from_pretrained(clip_model_id).to(device)
-clip_model.eval()
+YOLO_MODEL_NAME      = os.getenv("YOLO_MODEL",   "yolov8m.pt")
+YOLO_CONF_THRESHOLD  = float(os.getenv("YOLO_CONF",    "0.10"))
+YOLO_IOU_THRESHOLD   = float(os.getenv("YOLO_IOU",     "0.50"))
+YOLO_MAX_DET         = int(os.getenv("YOLO_MAX_DET",   "5"))
 
-# Deterministic Label Map with synonyms
-LABEL_MAP = {
-    "cell phone": "phone",
-    "mobile phone": "phone",
-    "smartphone": "phone",
-    "tv": "television",
-    "couch": "sofa",
-    "cup": "coffee mug",
-    "mug": "coffee mug",
-    "bottle": "water bottle",
-    "potted plant": "plant",
-    "houseplant": "plant",
-    "red apple": "apple",
-    "green apple": "apple",
-    "fruit": "apple",
-    "desk chair": "chair",
-    "office chair": "chair",
-    "dining table": "table",
-    "coffee table": "table",
-    "laptop computer": "laptop",
-    "macbook": "laptop"
-}
+MAX_OUTPUT_LABELS    = int(os.getenv("MAX_LABELS",     "3"))
 
-VOCABULARY = [
-    # People & body
-    "person", "man", "woman", "child", "baby",
-    # Animals
-    "dog", "cat", "horse", "cow", "sheep", "goat", "pig",
-    "bird", "chicken", "duck", "fish", "rabbit",
-    # Transportation
-    "car", "bus", "truck", "motorcycle", "bicycle", "train", "airplane", "boat", "scooter",
-    # Electronics
-    "phone", "cell phone", "mobile phone", "smartphone", "laptop", "laptop computer", "macbook", 
-    "tablet", "keyboard", "mouse", "monitor", "tv", "television", "remote", "speaker",
-    "headphones", "charger", "camera",
-    # Furniture
-    "chair", "desk chair", "office chair", "sofa", "couch", "table", "dining table", "coffee table", "desk",
-    "bed", "bookshelf", "cabinet", "drawer", "stool",
-    # Kitchen
-    "cup", "mug", "coffee mug", "glass", "bottle", "water bottle",
-    "plate", "bowl", "fork", "knife", "spoon",
-    "pan", "pot", "fridge", "oven", "microwave",
-    # Clothing
-    "shirt", "tshirt", "jacket", "coat", "hoodie",
-    "pants", "jeans", "shorts", "skirt", "dress",
-    "shoe", "sneaker", "boot", "sandals", "hat",
-    # Personal items
-    "bag", "backpack", "handbag", "wallet", "watch",
-    "glasses", "sunglasses", "umbrella",
-    # Home objects
-    "door", "window", "mirror", "lamp", "light",
-    "clock", "fan", "air conditioner", "heater",
-    "curtain", "pillow", "blanket", "potted plant", "houseplant", "plant",
-    # Office / school
-    "book", "notebook", "paper", "pen", "pencil",
-    "scissors", "stapler", "folder",
-    # Food
-    "apple", "red apple", "green apple", "fruit", "banana", "orange", "pizza", "burger",
-    "sandwich", "cake", "bread", "egg", "rice",
-    # Outdoor / environment
-    "tree", "flower", "grass", "road",
-    "building", "house", "wall", "floor", "ceiling",
-    "street", "sign", "traffic light", "bench",
-    # Sports
-    "ball", "tennis racket", "baseball bat", "skateboard",
-    # Misc common objects
-    "box", "container", "cupboard", "trash can",
-    "can", "toy", "remote control"
-]
 
-CLIP_PROMPTS = [
-    "a photo of a {}",
-    "a close-up photo of a {}",
-    "a clear image of a {}",
-    "the object is a {}"
-]
+def resolve_device() -> str:
+    """
+    Three-way device resolution:
+      FORCE_CPU=1   → always CPU (overrides everything)
+      ENABLE_CUDA=0 → disable GPU even if hardware available
+      default       → use GPU if available, else CPU
+    """
+    if os.getenv("FORCE_CPU", "0") == "1":
+        return "cpu"
+    if os.getenv("ENABLE_CUDA", "1") == "0":
+        return "cpu"
+    return "cuda" if torch.cuda.is_available() else "cpu"
 
-# Pre-compute CLIP text features with Prompt Ensembling
-with torch.no_grad():
-    text_inputs = []
-    for word in VOCABULARY:
-        for prompt in CLIP_PROMPTS:
-            text_inputs.append(prompt.format(word))
-            
-    # Process in batches to avoid memory issues
-    batch_size = 128
-    all_features = []
-    for i in range(0, len(text_inputs), batch_size):
-        batch_text = text_inputs[i:i+batch_size]
-        clip_text_tokens = clip_processor(text=batch_text, return_tensors="pt", padding=True).to(device)
-        features = clip_model.get_text_features(**clip_text_tokens)
-        all_features.append(features)
-        
-    clip_text_features = torch.cat(all_features, dim=0)
-    clip_text_features /= clip_text_features.norm(dim=-1, keepdim=True)
-    
-    # Reshape to [len(VOCABULARY), len(CLIP_PROMPTS), feature_dim]
-    clip_text_features = clip_text_features.view(len(VOCABULARY), len(CLIP_PROMPTS), -1)
-    
-    # Average across prompts
-    clip_text_features = clip_text_features.mean(dim=1)
-    clip_text_features /= clip_text_features.norm(dim=-1, keepdim=True)
 
-def crop_image(image: Image.Image, box) -> Image.Image:
-    width, height = image.size
-    x1, y1, x2, y2 = box.xyxy[0].tolist()
-    
-    # Expand 20%
-    w = x2 - x1
-    h = y2 - y1
-    pad_x = w * 0.20
-    pad_y = h * 0.20
-    
-    nx1 = max(0, x1 - pad_x)
-    ny1 = max(0, y1 - pad_y)
-    nx2 = min(width, x2 + pad_x)
-    ny2 = min(height, y2 + pad_y)
-    
-    cropped = image.crop((nx1, ny1, nx2, ny2))
-    return cropped.resize((224, 224), Image.Resampling.LANCZOS)
+# ─────────────────────────────────────────────────────────────────────────────
+# Startup
+# ─────────────────────────────────────────────────────────────────────────────
+
+app    = FastAPI(title="Vision Service", version="2.0.0")
+DEVICE = resolve_device()
+
+print(f"\n{'='*60}")
+print(f"  Vision Service v2 — SigLIP + FAISS + Hierarchical Taxonomy")
+print(f"  Device:      {DEVICE}")
+print(f"  YOLO:        {YOLO_MODEL_NAME}")
+print(f"  SigLIP:      {SIGLIP_MODEL_ID}")
+print(f"{'='*60}\n")
+
+# 1. Load YOLOv8m — for region proposals only (class predictions ignored)
+print("Loading YOLO detection model...")
+yolo_model = YOLO(YOLO_MODEL_NAME)
+print(f"  [OK] {YOLO_MODEL_NAME} loaded\n")
+
+# 2. Load SigLIP — image encoder for crop embeddings
+print(f"Loading SigLIP image encoder ({SIGLIP_MODEL_ID})...")
+siglip_processor = AutoProcessor.from_pretrained(SIGLIP_MODEL_ID)
+siglip_model     = AutoModel.from_pretrained(SIGLIP_MODEL_ID).to(DEVICE)
+siglip_model.eval()
+INPUT_SIZE = get_model_input_size(SIGLIP_MODEL_ID)
+print(f"  [OK] SigLIP loaded  (input: {INPUT_SIZE}x{INPUT_SIZE})\n")
+
+# 3. Load prebuilt FAISS taxonomy indexes
+print("Loading FAISS taxonomy indexes...")
+taxonomy_indexes: TaxonomyIndexes = load_indexes()
+verify_model_compatibility(taxonomy_indexes, SIGLIP_MODEL_ID)
+print(f"  [OK] {taxonomy_indexes}\n")
+print("Service ready.\n")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Request / Response
+# ─────────────────────────────────────────────────────────────────────────────
 
 class AnalyzeRequest(BaseModel):
-    image: str
+    image: str  # base64-encoded image
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Embedding helper
+# ─────────────────────────────────────────────────────────────────────────────
+
+def embed_crop(crop: Image.Image) -> "torch.Tensor":
+    """
+    Encode a PIL crop using SigLIP image encoder.
+    Returns a 1D L2-normalized float32 tensor on CPU.
+    """
+    inputs = siglip_processor(images=crop, return_tensors="pt").to(DEVICE)
+    with torch.no_grad():
+        out = siglip_model.get_image_features(**inputs)
+        features = out if isinstance(out, torch.Tensor) else out.pooler_output
+        features = features / (features.norm(dim=-1, keepdim=True) + 1e-8)
+    return features[0].cpu().float()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# /analyze endpoint
+# ─────────────────────────────────────────────────────────────────────────────
 
 @app.post("/analyze")
 def analyze_image(req: AnalyzeRequest):
+    # ── Decode image ──────────────────────────────────────────────────────────
     try:
         image_bytes = base64.b64decode(req.image)
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     except Exception as e:
-        return {"error": f"Invalid image data: {str(e)}", "labels": [], "description": ""}
+        return {"error": f"Invalid image data: {e}", "labels": [], "description": ""}
 
     try:
-        # 1. YOLO Inference (Region Proposal Only)
-        results = yolo_model(image, conf=0.1, iou=0.5, max_det=5, verbose=False)
+        # ── Step 1: YOLO region proposals ────────────────────────────────────
+        # YOLO class predictions are IGNORED — only bounding boxes used.
+        results = yolo_model(
+            image,
+            conf=YOLO_CONF_THRESHOLD,
+            iou=YOLO_IOU_THRESHOLD,
+            max_det=YOLO_MAX_DET,
+            verbose=False,
+        )
 
-        print("YOLO results:", results)
-        print("boxes:", len(results[0].boxes) if results else 0)
-        
-        crops = []
-        if results and len(results) > 0:
-            for box in results[0].boxes:
-                crops.append(crop_image(image, box))
-                
-        if len(crops) == 0:
+        boxes = results[0].boxes if results and len(results) > 0 else []
+        print(f"  YOLO: {len(boxes)} proposal(s)")
+
+        # Extract raw box coordinates (pixel space) for importance scoring
+        # before cropping — importance is computed on the original image geometry.
+        image_wh = image.size  # (width, height)
+
+        if len(boxes) == 0:
+            # Fallback: treat full image as one crop with maximum importance
+            crops          = [image]
+            raw_box_coords = [(0.0, 0.0, float(image_wh[0]), float(image_wh[1]))]
+        else:
+            crops          = [extract_crop(image, box, target_size=INPUT_SIZE) for box in boxes]
+            raw_box_coords = [tuple(box.xyxy[0].tolist()) for box in boxes]
+
+        # ── Step 2 → 5: Per-crop embedding + retrieval ────────────────────────
+        per_crop_results  = []
+        crop_importances  = []
+
+        for i, (crop, box_coords) in enumerate(zip(crops, raw_box_coords)):
+            # — Importance scoring (before embedding, uses only geometry) —
+            imp_score, imp_info = score_crop_importance(box_coords, image_wh)
+            crop_importances.append(imp_score)
+
+            x1, y1, x2, y2 = box_coords
+            print(
+                f"  Crop {i} bbox=({x1:.0f},{y1:.0f},{x2:.0f},{y2:.0f})  "
+                f"importance: center={imp_info['center_score']}  "
+                f"size={imp_info['size_score']}  "
+                f"completeness={imp_info['completeness_score']}  "
+                f"final={imp_info['importance']}"
+            )
+
+            # 2. Letterbox crop already done in extract_crop()
+            # 3. Encode with SigLIP
+            image_embed = embed_crop(crop).numpy()
+
+            # 4. Coarse routing — pick top-K categories via centroid similarity
+            top_categories = coarse_route(
+                image_embed,
+                taxonomy_indexes.category_centroids,
+            )
+            print(f"  Crop {i}: coarse route → {top_categories}")
+
+            # 5. Fine-grained FAISS retrieval within top categories
+            raw_results = fine_retrieve(
+                image_embed,
+                top_categories,
+                taxonomy_indexes.faiss_indexes,
+                taxonomy_indexes.id_maps,
+            )
+            print(f"  Crop {i}: top candidates → {[(l, f'{s:.3f}') for l, s, _ in raw_results[:3]]}")
+
+            # 6. Confidence filtering (per crop)
+            filtered = apply_confidence_filter(raw_results)
+            per_crop_results.append(filtered if filtered else [])
+
+        # ── Step 7: Context re-ranking across all crops ───────────────────────
+        # Boosts the dominant co-occurring category across crops
+        valid_crops = [r for r in per_crop_results if r]
+
+        if not valid_crops:
+            # All crops rejected by confidence gate
             return {
-                "labels": ["object"],
-                "description": "objects detected: object"
+                "labels":      [UNKNOWN_LABEL],
+                "description": f"objects detected: {UNKNOWN_LABEL}",
             }
-                
-        # 2. CLIP Inference per crop
-        all_crop_predictions = []
-        
-        for crop in crops:
-            with torch.no_grad():
-                pixel_values = clip_processor(images=crop, return_tensors="pt").pixel_values.to(device)
-                image_features = clip_model.get_image_features(pixel_values)
-                # image_features /= image_features.norm(dim=-1, keepdim=True)
-                image_features = image_features / (image_features.norm(dim=-1, keepdim=True) + 1e-8)
-                
-                # Cosine similarity only
-                similarity = image_features @ clip_text_features.T
-                values, indices = similarity[0].topk(5)
-                
-                crop_preds = []
-                for i in range(5):
-                    raw_label = VOCABULARY[indices[i].item()]
-                    sim_score = values[i].item()
-                    label = LABEL_MAP.get(raw_label, raw_label)
-                    crop_preds.append({"label": label, "similarity": sim_score})
-                    
-                all_crop_predictions.append(crop_preds)
-                
-        # 3. Aggregation across crops
-        label_stats = {}
-        for preds in all_crop_predictions:
-            for p in preds:
-                lbl = p["label"]
-                if lbl not in label_stats:
-                    label_stats[lbl] = {"count": 0, "sum_sim": 0.0}
-                label_stats[lbl]["count"] += 1
-                label_stats[lbl]["sum_sim"] += p["similarity"]
-                
-        final_scores = []
-        
-        for lbl, stats in label_stats.items():
-            freq = stats["count"]
-            mean_sim = stats["sum_sim"] / freq
-            consistency_boost = math.log(1 + freq)
-            
-            # Final scoring rule
-            final_score = 0.5 * freq + 0.3 * mean_sim + 0.2 * consistency_boost
-            
-            final_scores.append({
-                "label": lbl,
-                "score": final_score
-            })
-            
-        final_scores.sort(key=lambda x: x["score"], reverse=True)
-        
-        # 4. Post-processing
-        unique_labels = [item["label"] for item in final_scores[:5]]
-        
-        if len(unique_labels) == 0:
-            unique_labels = ["object"]
-        print("FINAL SCORES:")
-        for x in final_scores[:10]:
-            print(x)    
-            
+
+        reranked = context_rerank(valid_crops, crop_importances=[
+            crop_importances[i] for i, r in enumerate(per_crop_results) if r
+        ])
+
+        # ── Step 8: Deduplicate → canonical labels ────────────────────────────
+        # Tags are METADATA only — not in output.
+        # Canonical labels only — never aliases.
+        final_labels = deduplicate_labels(reranked, max_labels=MAX_OUTPUT_LABELS)
+
+        if not final_labels:
+            final_labels = [UNKNOWN_LABEL]
+
+        print(f"  FINAL: {final_labels}\n")
+
         return {
-            "labels": unique_labels,
-            "description": "objects detected: " + ", ".join(unique_labels)
+            "labels":      final_labels,
+            "description": "objects detected: " + ", ".join(final_labels),
         }
-        
+
     except Exception as e:
-        return {"error": f"Analysis failed: {str(e)}", "labels": [], "description": ""}
+        import traceback
+        traceback.print_exc()
+        return {"error": f"Analysis failed: {e}", "labels": [], "description": ""}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Health check
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.get("/health")
+def health():
+    return {
+        "status":         "ok",
+        "device":         DEVICE,
+        "siglip_model":   SIGLIP_MODEL_ID,
+        "yolo_model":     YOLO_MODEL_NAME,
+        "total_concepts": taxonomy_indexes.total_concepts,
+        "categories":     list(taxonomy_indexes.faiss_indexes.keys()),
+    }
