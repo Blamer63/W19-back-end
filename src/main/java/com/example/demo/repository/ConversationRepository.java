@@ -19,8 +19,13 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
 
     @Query("""
             SELECT c FROM Conversation c
-            WHERE (SELECT COUNT(p) FROM c.participants p WHERE p.id = :id1) > 0
+            WHERE c.isGroup = false
+              AND SIZE(c.participants) = 2
+              AND (SELECT COUNT(p) FROM c.participants p WHERE p.id = :id1) > 0
               AND (SELECT COUNT(p) FROM c.participants p WHERE p.id = :id2) > 0
             """)
     Optional<Conversation> findBetweenUsers(@Param("id1") UUID id1, @Param("id2") UUID id2);
+
+    @Query("SELECT COUNT(p) FROM Conversation c JOIN c.participants p WHERE c.id = :conversationId AND p.email = :email")
+    long countParticipantsByEmail(@Param("conversationId") UUID conversationId, @Param("email") String email);
 }
