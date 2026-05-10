@@ -69,6 +69,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_GOOGLE_PLACES_KEY: ${GOOGLE_PLACES_KEY}
+        VITE_ENABLE_PWA: "false"
     ports:
       - "8080:80"
     depends_on:

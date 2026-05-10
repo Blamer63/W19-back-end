@@ -9,6 +9,7 @@ import com.example.demo.repository.ProfileRepository;
 import com.example.demo.service.ChatService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +28,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/conversations")
 @RequiredArgsConstructor
+@Slf4j
 public class ChatController {
 
     private final ChatService chatService;
@@ -36,7 +38,8 @@ public class ChatController {
     // WebSocket: Send message
     @MessageMapping("/chat.send")
     public void processMessage(@Payload ChatRequest chatRequest, Authentication authentication) {
-        MessageResponse savedMessage = chatService.sendMessage(authentication.getName(), chatRequest);
+        String email = requireAuthenticatedEmail(authentication);
+        MessageResponse savedMessage = chatService.sendMessage(email, chatRequest);
 
         // Broadcast to the specific conversation topic
         messagingTemplate.convertAndSend(
@@ -51,15 +54,47 @@ public class ChatController {
     @MessageMapping("/chat.typing")
     public void processTyping(@Payload java.util.Map<String, Object> payload, Authentication authentication) {
         Object cid = payload.get("cid");
-        if (cid == null) return;
+        log.info("Typing event received: cid={}, authentication={}", cid, describeAuthentication(authentication));
+        if (cid == null) {
+            log.warn("Typing event ignored: missing cid");
+            return;
+        }
+        String email = requireAuthenticatedEmail(authentication);
+        log.info("Typing event authenticated as {}", email);
         UUID conversationId = UUID.fromString(cid.toString());
-        chatService.validateParticipant(conversationId, authentication.getName());
+        chatService.validateParticipant(conversationId, email);
+        log.info("Typing event participant validated: cid={}, email={}", conversationId, email);
 
         java.util.Map<String, Object> enriched = new java.util.HashMap<>(payload);
-        profileRepository.findByEmail(authentication.getName())
-                .ifPresent(p -> enriched.put("displayName", p.getDisplayName()));
+        enriched.put("cid", conversationId.toString());
+        profileRepository.findByEmail(email)
+                .ifPresent(p -> {
+                    enriched.put("userId", p.getId().toString());
+                    enriched.put("displayName", p.getDisplayName());
+                });
 
+        log.info("Typing event broadcasting to /topic/conversation.{}.typing payload={}",
+                conversationId,
+                enriched);
         messagingTemplate.convertAndSend("/topic/conversation." + conversationId + ".typing", enriched);
+    }
+
+    private String requireAuthenticatedEmail(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            log.warn("Authenticated WebSocket action rejected: authentication={}", describeAuthentication(authentication));
+            throw new IllegalArgumentException("Authentication required");
+        }
+        return authentication.getName();
+    }
+
+    private String describeAuthentication(Authentication authentication) {
+        if (authentication == null) {
+            return "null";
+        }
+        return authentication.getClass().getSimpleName()
+                + "{name=" + authentication.getName()
+                + ", authenticated=" + authentication.isAuthenticated()
+                + "}";
     }
 
     // REST: List conversations
