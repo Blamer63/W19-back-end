@@ -41,7 +41,10 @@ public interface ProfileRepository extends JpaRepository<Profile, java.util.UUID
                         @org.springframework.data.repository.query.Param("longitude") Double longitude,
                         @org.springframework.data.repository.query.Param("radiusKm") Double radiusKm);
 
-        @org.springframework.data.jpa.repository.Query("SELECT p FROM Profile p WHERE p.id != :excludedId ORDER BY p.createdAt DESC")
+        @org.springframework.data.jpa.repository.Query("SELECT p FROM Profile p WHERE p.id != :excludedId " +
+                        "AND p.latitude IS NOT NULL AND p.longitude IS NOT NULL " +
+                        "AND (p.locationVisibility IS NULL OR p.locationVisibility != com.example.demo.enums.LocationVisibility.NOBODY) " +
+                        "ORDER BY p.createdAt DESC")
         java.util.List<Profile> findAllLearnersExcept(
                         @org.springframework.data.repository.query.Param("excludedId") java.util.UUID excludedId);
 }
