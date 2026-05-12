@@ -39,3 +39,4 @@ build/
 .env
 
 .codex/
+compose.yaml

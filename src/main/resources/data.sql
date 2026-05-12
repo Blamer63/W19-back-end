@@ -267,9 +267,9 @@ ON CONFLICT DO NOTHING;
 -- -------------------------------------------------------
 
 -- Conversation 1: Minso ↔ Emma
-INSERT INTO conversations (id, last_message_preview, last_message_at, created_at, updated_at) VALUES
+INSERT INTO conversations (id, is_group, last_message_preview, last_message_at, created_at, updated_at) VALUES
 ('b0000000-0000-0000-0000-000000000001',
- 'Sure! See you at the café this Saturday 😊', NOW() - INTERVAL '1 hour', NOW() - INTERVAL '2 days', NOW())
+ false, 'Sure! See you at the café this Saturday 😊', NOW() - INTERVAL '1 hour', NOW() - INTERVAL '2 days', NOW())
 ON CONFLICT DO NOTHING;
 
 INSERT INTO conversation_participants (conversation_id, profile_id) VALUES
@@ -289,9 +289,9 @@ INSERT INTO messages (id, conversation_id, sender_id, content, is_read, created_
 ON CONFLICT DO NOTHING;
 
 -- Conversation 2: Wei ↔ Emma
-INSERT INTO conversations (id, last_message_preview, last_message_at, created_at, updated_at) VALUES
+INSERT INTO conversations (id, is_group, last_message_preview, last_message_at, created_at, updated_at) VALUES
 ('b0000000-0000-0000-0000-000000000002',
- '谢谢！你的中文很好！', NOW() - INTERVAL '30 minutes', NOW() - INTERVAL '1 day', NOW())
+ false, '谢谢！你的中文很好！', NOW() - INTERVAL '30 minutes', NOW() - INTERVAL '1 day', NOW())
 ON CONFLICT DO NOTHING;
 
 INSERT INTO conversation_participants (conversation_id, profile_id) VALUES
