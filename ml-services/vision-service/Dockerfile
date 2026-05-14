@@ -53,6 +53,7 @@ COPY scripts/ ./scripts/
 COPY image_utils.py .
 COPY retrieval.py .
 COPY indexer.py .
+COPY translation_store.py .
 COPY main.py .
 
 # ── Build FAISS indexes offline (Option C — pre-built in image) ───────────────

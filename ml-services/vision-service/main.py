@@ -22,7 +22,14 @@ Device resolution (three-way):
 
 import base64
 import io
+import logging
 import os
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger("vision.main")
 
 import torch
 from fastapi import FastAPI
@@ -42,6 +49,7 @@ from retrieval import (
     fine_retrieve,
     score_crop_importance,
 )
+from translation_store import init_translation_store, get_translation
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Configuration (all overrideable via environment variables)
@@ -104,6 +112,13 @@ print("Loading FAISS taxonomy indexes...")
 taxonomy_indexes: TaxonomyIndexes = load_indexes()
 verify_model_compatibility(taxonomy_indexes, SIGLIP_MODEL_ID)
 print(f"  [OK] {taxonomy_indexes}\n")
+
+# 4. Initialize local translation store
+print("Initializing translation store...")
+translations_dir = os.path.join(os.path.dirname(__file__), "taxonomy", "translations")
+init_translation_store(translations_dir)
+print(f"  [OK] Translation store ready\n")
+
 print("Service ready.\n")
 
 
@@ -113,6 +128,7 @@ print("Service ready.\n")
 
 class AnalyzeRequest(BaseModel):
     image: str  # base64-encoded image
+    language: str = "en"  # optional target language (en, es, fr, ja)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -211,22 +227,48 @@ def analyze_image(req: AnalyzeRequest):
 
             # 6. Confidence filtering (per crop)
             filtered = apply_confidence_filter(raw_results)
+            if filtered:
+                logger.info(
+                    f"  Crop {i}: confidence PASS — "
+                    f"top='{filtered[0][0]}' score={filtered[0][1]:.4f}"
+                )
+            else:
+                top_label = raw_results[0][0] if raw_results else "n/a"
+                top_score = raw_results[0][1] if raw_results else 0.0
+                logger.info(
+                    f"  Crop {i}: confidence REJECT — "
+                    f"top='{top_label}' score={top_score:.4f} (see ConfFilter debug log)"
+                )
             per_crop_results.append(filtered if filtered else [])
 
         # ── Step 7: Context re-ranking across all crops ───────────────────────
         # Boosts the dominant co-occurring category across crops
         valid_crops = [r for r in per_crop_results if r]
+        valid_importances = [
+            crop_importances[i] for i, r in enumerate(per_crop_results) if r
+        ]
+
+        logger.info(
+            f"  Rerank input: {len(valid_crops)} valid crop(s) "
+            f"of {len(per_crop_results)} total — importances={[round(w,3) for w in valid_importances]}"
+        )
 
         if not valid_crops:
             # All crops rejected by confidence gate
+            logger.warning(
+                "  All crops rejected by confidence filter — returning UNKNOWN_LABEL. "
+                "Check ConfFilter DEBUG logs above for rejection reasons."
+            )
             return {
                 "labels":      [UNKNOWN_LABEL],
                 "description": f"objects detected: {UNKNOWN_LABEL}",
             }
 
-        reranked = context_rerank(valid_crops, crop_importances=[
-            crop_importances[i] for i, r in enumerate(per_crop_results) if r
-        ])
+        reranked = context_rerank(valid_crops, crop_importances=valid_importances)
+        logger.info(
+            f"  Rerank output: {len(reranked)} candidate(s) — "
+            f"top={[(l, f'{s:.4f}') for l, s, _ in reranked[:3]]}"
+        )
 
         # ── Step 8: Deduplicate → canonical labels ────────────────────────────
         # Tags are METADATA only — not in output.
@@ -236,11 +278,16 @@ def analyze_image(req: AnalyzeRequest):
         if not final_labels:
             final_labels = [UNKNOWN_LABEL]
 
-        print(f"  FINAL: {final_labels}\n")
+        logger.info(f"  FINAL labels (pre-translation): {final_labels}")
+
+        # ── Step 9: Local translation lookup ──────────────────────────────────
+        translated_labels = [get_translation(label, req.language) for label in final_labels]
+
+        logger.info(f"  FINAL labels (post-translation, lang='{req.language}'): {translated_labels}")
 
         return {
-            "labels":      final_labels,
-            "description": "objects detected: " + ", ".join(final_labels),
+            "labels":      translated_labels,
+            "description": "objects detected: " + ", ".join(translated_labels),
         }
 
     except Exception as e:
@@ -262,4 +309,29 @@ def health():
         "yolo_model":     YOLO_MODEL_NAME,
         "total_concepts": taxonomy_indexes.total_concepts,
         "categories":     list(taxonomy_indexes.faiss_indexes.keys()),
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Debug / integration test endpoint
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.get("/debug-test")
+def debug_test():
+    """
+    Returns a hardcoded response that exactly matches the /analyze schema.
+
+    Use this from Spring Boot (via VisionServiceClient) to verify:
+      - the HTTP transport works
+      - Jackson can deserialize VisionResponse correctly
+      - labels arrive as a non-empty List<String>
+
+    If this returns labels=[] in Spring Boot, the bug is 100% in
+    VisionResponse DTO / Jackson deserialization, NOT in the ML pipeline.
+
+    If this returns labels=["chair", "vase"], the bug is in /analyze itself.
+    """
+    return {
+        "labels":      ["chair", "vase"],
+        "description": "objects detected: chair, vase",
     }

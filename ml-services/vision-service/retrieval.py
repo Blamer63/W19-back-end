@@ -25,7 +25,12 @@ import numpy as np
 # Config (overrideable via env vars)
 # ─────────────────────────────────────────────────────────────────────────────
 PRIMARY_THRESHOLD  = float(os.getenv("CONF_PRIMARY",   "0.05"))
-AMBIGUITY_RATIO    = float(os.getenv("CONF_AMBIGUITY",  "1.06"))
+# AMBIGUITY_RATIO: top1/top2 must exceed this to accept the top result.
+# 1.06 was too tight — SigLIP cosine scores for correct matches often differ
+# by only 2-4%, causing valid detections to be silently rejected.
+# 1.02 (2% margin) keeps meaningful ambiguity protection while allowing
+# legitimate close-but-correct top results through.
+AMBIGUITY_RATIO    = float(os.getenv("CONF_AMBIGUITY",  "1.02"))
 COARSE_TOP_K       = int(os.getenv("COARSE_TOP_K",      "3"))
 FINE_TOP_K         = int(os.getenv("FINE_TOP_K",        "5"))
 CONTEXT_BOOST      = float(os.getenv("CONTEXT_BOOST",   "1.15"))
@@ -110,6 +115,9 @@ def fine_retrieve(
 # Step 3 — Confidence Filtering
 # ─────────────────────────────────────────────────────────────────────────────
 
+import logging as _logging
+_conf_log = _logging.getLogger(__name__)
+
 def apply_confidence_filter(
     results: list[tuple[str, float, str]],
     primary_threshold: float = PRIMARY_THRESHOLD,
@@ -119,31 +127,51 @@ def apply_confidence_filter(
     Filter results using two gates:
 
     Gate 1 — Primary threshold:
-      If best score < primary_threshold → abstain ("unknown object" upstream)
-      SigLIP cosine scores on CPU typically range 0.15-0.40 for correct matches.
-      Threshold 0.20 calibrated for base-patch16-224.
+      If best score < primary_threshold → abstain ("unknown object" upstream).
+      PRIMARY_THRESHOLD=0.05 is intentionally conservative for SigLIP cosine
+      scores, which typically sit in the 0.07–0.20 range on CPU for
+      base-patch16-224. Raise via env CONF_PRIMARY if you need stricter gating.
 
     Gate 2 — Ambiguity check:
-      If top1_score / top2_score < ambiguity_ratio → too ambiguous → abstain
-      This prevents outputting a coin-flip label with false confidence.
+      If top1_score / top2_score < ambiguity_ratio → too ambiguous → abstain.
+      AMBIGUITY_RATIO=1.02 means top candidate must beat second by at least 2%.
+      This prevents coin-flip labels while allowing close-but-correct results.
 
     Returns filtered list (may be empty → caller should output UNKNOWN_LABEL).
+    Logs the rejection reason at DEBUG level for diagnostics.
     """
     if not results:
+        _conf_log.debug("  [ConfFilter] REJECT — empty results list")
         return []
 
-    best_score = results[0][1]
+    best_label, best_score, best_cat = results[0]
 
-    # Gate 1
+    # Gate 1 — primary threshold
     if best_score < primary_threshold:
+        _conf_log.debug(
+            f"  [ConfFilter] REJECT Gate1 — best '{best_label}' "
+            f"score={best_score:.4f} < threshold={primary_threshold:.4f}"
+        )
         return []
 
     # Gate 2 — ambiguity check
     if len(results) > 1:
-        second_score = results[1][1]
-        if second_score > 0 and (best_score / second_score) < ambiguity_ratio:
-            return []
+        second_label, second_score, _ = results[1]
+        if second_score > 0:
+            ratio = best_score / second_score
+            if ratio < ambiguity_ratio:
+                _conf_log.debug(
+                    f"  [ConfFilter] REJECT Gate2 — ambiguous: "
+                    f"'{best_label}'({best_score:.4f}) vs "
+                    f"'{second_label}'({second_score:.4f}) "
+                    f"ratio={ratio:.4f} < required={ambiguity_ratio:.4f}"
+                )
+                return []
 
+    _conf_log.debug(
+        f"  [ConfFilter] PASS — best '{best_label}' score={best_score:.4f} "
+        f"(threshold={primary_threshold:.4f})"
+    )
     return results
 
 
