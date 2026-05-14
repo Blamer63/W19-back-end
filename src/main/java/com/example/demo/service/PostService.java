@@ -9,6 +9,7 @@ import com.example.demo.enums.LocationVisibility;
 import com.example.demo.enums.PostStatus;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.*;
+import com.example.demo.repository.SavedPostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -29,6 +30,7 @@ public class PostService {
         private final PostRepository postRepository;
         private final ProfileRepository profileRepository;
         private final PostReactionRepository postReactionRepository;
+        private final SavedPostRepository savedPostRepository;
         private final PostCommentRepository postCommentRepository;
         private final S3Service s3Service;
 
@@ -125,6 +127,15 @@ public class PostService {
         }
 
         @Transactional(readOnly = true)
+        public Page<PostResponse> getSavedPosts(String currentUserEmail, Pageable pageable) {
+                Profile currentUser = profileRepository.findByEmail(currentUserEmail)
+                                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                Page<com.example.demo.entity.SavedPost> saved = savedPostRepository
+                                .findByUserIdOrderByCreatedAtDesc(currentUser.getId(), pageable);
+                return saved.map(sp -> mapToResponse(sp.getPost(), currentUser, null, null));
+        }
+
+        @Transactional(readOnly = true)
         public Page<PostResponse> getPostsByUser(UUID userId, String currentUserEmail, Pageable pageable) {
                 Profile currentUser = profileRepository.findByEmail(currentUserEmail)
                                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -185,6 +196,15 @@ public class PostService {
                                                                 && author.getLocationVisibility() != LocationVisibility.NOBODY
                                                                 ? author.getLocation()
                                                                 : null)
+                                                .learningLanguages(
+                                                                author.getLanguages().stream()
+                                                                                .filter(UserLanguage::isLearning)
+                                                                                .map(ul -> (PostResponse.LearningLanguage) PostResponse.LearningLanguage.builder()
+                                                                                                .code(ul.getLanguage().getCode())
+                                                                                                .name(ul.getLanguage().getName())
+                                                                                                .flagEmoji(ul.getLanguage().getFlagEmoji())
+                                                                                                .build())
+                                                                                .toList())
                                                 .build())
                                 .content(post.getContent())
                                 .originalLanguage(post.getOriginalLanguage())
@@ -199,6 +219,8 @@ public class PostService {
                                                 .comments((int) postCommentRepository.countByPostId(post.getId()))
                                                 .build())
                                 .userReaction(userReaction)
+                                .isSaved(currentUser != null &&
+                                                savedPostRepository.existsByUserIdAndPostId(currentUser.getId(), post.getId()))
                                 .createdAt(post.getCreatedAt())
                                 .build();
         }

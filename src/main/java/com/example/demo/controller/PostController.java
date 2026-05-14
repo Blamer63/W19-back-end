@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.PostResponse;
 import com.example.demo.service.PostService;
+import com.example.demo.service.SavedPostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,6 +27,7 @@ public class PostController {
     private final com.example.demo.service.TranslationService translationService;
     private final com.example.demo.service.ReportService reportService;
     private final com.example.demo.repository.ProfileRepository profileRepository;
+    private final SavedPostService savedPostService;
 
     @GetMapping
     public ResponseEntity<Page<PostResponse>> getFeed(
@@ -87,5 +89,30 @@ public class PostController {
         request.setPostId(postId);
         reportService.createReport(reporter.getId(), request);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/saved")
+    public ResponseEntity<Page<PostResponse>> getSavedPosts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(postService.getSavedPosts(authentication.getName(), pageable));
+    }
+
+    @PostMapping("/{postId}/save")
+    public ResponseEntity<Void> savePost(
+            @PathVariable UUID postId,
+            Authentication authentication) {
+        savedPostService.savePost(postId, authentication.getName());
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{postId}/save")
+    public ResponseEntity<Void> unsavePost(
+            @PathVariable UUID postId,
+            Authentication authentication) {
+        savedPostService.unsavePost(postId, authentication.getName());
+        return ResponseEntity.noContent().build();
     }
 }

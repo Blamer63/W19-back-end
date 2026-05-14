@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -38,6 +39,9 @@ public class PostResponse {
     @JsonProperty("user_reaction")
     private String userReaction;
 
+    @JsonProperty("is_saved")
+    private Boolean isSaved;
+
     @Data
     @Builder
     @NoArgsConstructor
@@ -58,6 +62,21 @@ public class PostResponse {
         private String flagEmoji;
 
         private String location;
+
+        @JsonProperty("learning_languages")
+        private List<LearningLanguage> learningLanguages;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class LearningLanguage {
+        private String code;
+        private String name;
+
+        @JsonProperty("flag_emoji")
+        private String flagEmoji;
     }
 
     @Data
