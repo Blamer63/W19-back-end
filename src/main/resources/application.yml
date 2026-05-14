@@ -5,7 +5,7 @@ spring:
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:5432/mydatabase
     username: myuser
-    password: secret
+    password: ${DB_PASSWORD:secret}
   docker:
     compose:
       enabled: false
