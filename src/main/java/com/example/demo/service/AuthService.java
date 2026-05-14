@@ -118,7 +118,7 @@ public class AuthService {
                                 .bio(profile.getBio())
                                 .latitude(profile.getLatitude())
                                 .longitude(profile.getLongitude())
-
+                                .location(profile.getLocation())
                                 .createdAt(profile.getCreatedAt() != null ? profile.getCreatedAt()
                                                 .atZone(java.time.ZoneId.systemDefault()).toInstant() : null)
                                 .languages(profile.getLanguages().stream()
@@ -174,6 +174,17 @@ public class AuthService {
                 }
                 if (updates.containsKey("avatarUrl")) {
                         profile.setAvatarUrl((String) updates.get("avatarUrl"));
+                }
+                if (updates.containsKey("location")) {
+                        profile.setLocation((String) updates.get("location"));
+                }
+                if (updates.containsKey("latitude")) {
+                        Object val = updates.get("latitude");
+                        profile.setLatitude(val != null ? ((Number) val).doubleValue() : null);
+                }
+                if (updates.containsKey("longitude")) {
+                        Object val = updates.get("longitude");
+                        profile.setLongitude(val != null ? ((Number) val).doubleValue() : null);
                 }
 
                 return mapToResponse(profileRepository.save(profile));

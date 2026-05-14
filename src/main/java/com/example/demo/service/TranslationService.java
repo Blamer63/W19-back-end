@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.PostTranslationResponse;
+import com.example.demo.dto.TextTranslationResponse;
 import com.example.demo.entity.Post;
 import com.example.demo.entity.PostTranslation;
 import com.example.demo.exception.ResourceNotFoundException;
@@ -60,6 +61,17 @@ public class TranslationService {
 
         PostTranslation saved = postTranslationRepository.save(translation);
         return mapToResponse(saved);
+    }
+
+    public TextTranslationResponse translateText(String text, String sourceLanguage, String targetLanguage) {
+        String normalizedTarget = normalizeLanguageCode(targetLanguage);
+        validateTargetLanguage(normalizedTarget);
+        String normalizedSource = normalizeNullableLanguageCode(sourceLanguage);
+        if (normalizedTarget.equals(normalizedSource)) {
+            return TextTranslationResponse.builder().translatedText(text).build();
+        }
+        TranslationResult result = translationClient.translate(text, normalizedSource, normalizedTarget);
+        return TextTranslationResponse.builder().translatedText(result.getTranslatedText()).build();
     }
 
     private PostTranslationResponse mapToResponse(PostTranslation translation) {

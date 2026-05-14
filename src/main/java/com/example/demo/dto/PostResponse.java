@@ -56,6 +56,8 @@ public class PostResponse {
 
         @JsonProperty("flag_emoji")
         private String flagEmoji;
+
+        private String location;
     }
 
     @Data

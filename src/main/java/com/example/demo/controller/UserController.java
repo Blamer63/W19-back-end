@@ -90,6 +90,7 @@ public class UserController {
                         Authentication authentication,
                         @RequestParam(required = false) String displayName,
                         @RequestParam(required = false) String bio,
+                        @RequestParam(required = false) String location,
                         @RequestParam(required = false) Double latitude,
                         @RequestParam(required = false) Double longitude,
                         @RequestPart(value = "avatar", required = false) MultipartFile avatar) throws IOException {
@@ -117,6 +118,9 @@ public class UserController {
                                         }
                                 }
                         }
+                }
+                if (location != null) {
+                        profile.setLocation(location);
                 }
                 if (latitude != null) {
                         profile.setLatitude(latitude);

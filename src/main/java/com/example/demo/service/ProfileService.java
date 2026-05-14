@@ -39,7 +39,7 @@ public class ProfileService {
                                 .bio(profile.getBio())
                                 .latitude(profile.getLatitude())
                                 .longitude(profile.getLongitude())
-
+                                .location(profile.getLocation())
                                 .createdAt(profile.getCreatedAt() != null ? profile.getCreatedAt()
                                                 .atZone(java.time.ZoneId.systemDefault()).toInstant() : null)
                                 .languages(profile.getLanguages().stream()

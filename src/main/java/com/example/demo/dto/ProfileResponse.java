@@ -27,6 +27,7 @@ public class ProfileResponse {
     private String bio;
     private Double latitude;
     private Double longitude;
+    private String location;
 
     @JsonProperty("created_at")
     private java.time.Instant createdAt;

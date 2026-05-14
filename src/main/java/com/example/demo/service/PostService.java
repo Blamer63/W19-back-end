@@ -5,6 +5,7 @@ import com.example.demo.entity.Post;
 import com.example.demo.entity.Language;
 import com.example.demo.entity.Profile;
 import com.example.demo.entity.UserLanguage;
+import com.example.demo.enums.LocationVisibility;
 import com.example.demo.enums.PostStatus;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.*;
@@ -180,6 +181,10 @@ public class PostService {
                                                 .avatarUrl(author.getAvatarUrl())
                                                 .language(authorLanguageName)
                                                 .flagEmoji(authorFlagEmoji)
+                                                .location(author.getLocationVisibility() != LocationVisibility.FRIENDS_ONLY
+                                                                && author.getLocationVisibility() != LocationVisibility.NOBODY
+                                                                ? author.getLocation()
+                                                                : null)
                                                 .build())
                                 .content(post.getContent())
                                 .originalLanguage(post.getOriginalLanguage())
