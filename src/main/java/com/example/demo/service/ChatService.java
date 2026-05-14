@@ -56,6 +56,18 @@ public class ChatService {
             throw new IllegalArgumentException("Either conversation ID or recipient ID must be provided");
         }
 
+        // If no content provided, just create/find the conversation without sending a message
+        if (request.getContent() == null || request.getContent().isBlank()) {
+            return MessageResponse.builder()
+                    .id(null)
+                    .conversationId(conversation.getId())
+                    .sender(profileService.mapToResponse(sender))
+                    .content("")
+                    .createdAt(LocalDateTime.now())
+                    .isRead(false)
+                    .build();
+        }
+
         Message message = Message.builder()
                 .conversation(conversation)
                 .sender(sender)
