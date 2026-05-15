@@ -1,7 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.ScannerAnalyzeRequest;
-import com.example.demo.dto.DetectedObjectResponse;
+import com.example.demo.dto.ScannerAnalyzeResponse;
 import com.example.demo.service.scanner.ObjectScannerService;
 import com.example.demo.service.scanner.VisionServiceClient;
 import jakarta.validation.Valid;
@@ -27,25 +27,25 @@ public class ScannerController {
     private String visionApiUrl;
 
     @PostMapping("/analyze")
-    public ResponseEntity<DetectedObjectResponse> analyze(@Valid @RequestBody ScannerAnalyzeRequest request) {
+    public ResponseEntity<ScannerAnalyzeResponse> analyze(@Valid @RequestBody ScannerAnalyzeRequest request) {
         log.info("Scanner analyze request received for target language {}", request.getTargetLanguage());
         log.info("Incoming image length: {}", request.getImageBase64() != null ? request.getImageBase64().length() : 0);
         return ResponseEntity.ok(objectScannerService.analyze(request));
     }
 
     /**
-     * Integration smoke-test: calls FastAPI /debug-test (hardcoded response)
-     * via the SAME VisionServiceClient and deserialization path as /analyze.
-     *
+     * Integration smoke-test: calls FastAPI /debug-test (hardcoded response).
      * GET /api/scanner/debug-test
      *
-     * Expected result if transport + Jackson are healthy:
-     *   { "labels": ["chair", "vase"], "description": "objects detected: chair, vase" }
-     *
-     * If this also returns labels=[] then the bug is in VisionResponse
-     * Jackson deserialization (previously caused by @Builder removing the
-     * public no-args constructor). Check Spring Boot logs for
-     * [VisionClient] Jackson deserialization FAILED.
+     * Expected result:
+     *   {
+     *     "detections": [
+     *       {"canonical_label": "chair", "translated_label": "chair"},
+     *       {"canonical_label": "vase",  "translated_label": "vase"}
+     *     ],
+     *     "description": "objects detected: chair, vase",
+     *     "language": "en"
+     *   }
      */
     @GetMapping("/debug-test")
     public ResponseEntity<Map<String, Object>> debugTest() {

@@ -33,7 +33,6 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       GOOGLE_PLACES_KEY: ${GOOGLE_PLACES_KEY}
       VISION_API_URL: http://vision-service:8000
-      TRANSLATION_URL: http://translation-adapter:8001/translate
     env_file:
       - .env
     depends_on:

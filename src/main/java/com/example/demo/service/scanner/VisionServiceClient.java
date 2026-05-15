@@ -1,8 +1,8 @@
 package com.example.demo.service.scanner;
 
+import com.example.demo.dto.DetectedObjectDTO;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.Builder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -42,19 +42,24 @@ public class VisionServiceClient {
 
     /**
      * DTO that maps the FastAPI /analyze response:
-     *   { "labels": [...], "description": "...", "error": "..." }
+     *   {
+     *     "detections": [ {"canonical_label": "chair", "translated_label": "silla"} ],
+     *     "description": "objects detected: silla",
+     *     "language": "es",
+     *     "error": "..."   (only on failure)
+     *   }
      *
-     * IMPORTANT:
-     *   - @JsonIgnoreProperties(ignoreUnknown = true) prevents Jackson from
-     *     failing when FastAPI adds extra fields.
-     *   - No @Builder here — @Builder generates a private no-args constructor
-     *     which breaks Jackson deserialization. Use plain @Data only.
+     * @JsonIgnoreProperties(ignoreUnknown = true) prevents Jackson failures
+     * when FastAPI adds extra fields.
+     * No @Builder — @Builder removes the public no-args constructor which
+     * breaks Jackson deserialization.
      */
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class VisionResponse {
-        private List<String> labels;
+        private List<DetectedObjectDTO> detections;
         private String description;
+        private String language;
         private String error;
     }
 
@@ -95,11 +100,11 @@ public class VisionServiceClient {
 
             if (!raw.getStatusCode().is2xxSuccessful()) {
                 log.error("[VisionClient] Non-2xx status {}. Body: {}", raw.getStatusCode(), raw.getBody());
-                return emptyResponse();
+                return emptyResponse(lang);
             }
             if (raw.getBody() == null || raw.getBody().isBlank()) {
                 log.error("[VisionClient] Empty/null body from vision service.");
-                return emptyResponse();
+                return emptyResponse(lang);
             }
 
             // ── Step 3: Explicit deserialization with exception logging ────────
@@ -109,25 +114,25 @@ public class VisionServiceClient {
             } catch (Exception deserEx) {
                 log.error("[VisionClient] Jackson deserialization FAILED. body='{}' error={}",
                         raw.getBody(), deserEx.getMessage(), deserEx);
-                return emptyResponse();
+                return emptyResponse(lang);
             }
 
-            if (parsed.getLabels() == null || parsed.getLabels().isEmpty()) {
-                log.warn("[VisionClient] Deserialized successfully but labels is empty/null. parsed={}",
+            if (parsed.getDetections() == null || parsed.getDetections().isEmpty()) {
+                log.warn("[VisionClient] Deserialized successfully but detections is empty/null. parsed={}",
                         parsed);
             }
             if (parsed.getError() != null && !parsed.getError().isEmpty()) {
                 log.error("[VisionClient] FastAPI returned error field: {}", parsed.getError());
             }
 
-            log.info("[VisionClient] ✓ parsed labels={} | description={}",
-                    parsed.getLabels(), parsed.getDescription());
+            log.info("[VisionClient] ✓ detections={} | description={}",
+                    parsed.getDetections(), parsed.getDescription());
 
             return parsed;
 
         } catch (Exception e) {
             log.error("[VisionClient] HTTP call to {} FAILED: {}", url, e.getMessage(), e);
-            return emptyResponse();
+            return emptyResponse(lang);
         }
     }
 
@@ -136,10 +141,12 @@ public class VisionServiceClient {
         return analyze(imageBase64, "en");
     }
 
-    private VisionResponse emptyResponse() {
+    private VisionResponse emptyResponse(String language) {
         VisionResponse r = new VisionResponse();
-        r.setLabels(Collections.emptyList());
+        r.setDetections(Collections.emptyList());
         r.setDescription("");
+        r.setLanguage(language);
         return r;
     }
 }
+

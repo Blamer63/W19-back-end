@@ -1,10 +1,16 @@
 """
 main.py — Vision service: SigLIP + FAISS + Hierarchical Taxonomy pipeline.
 
-API contract (UNCHANGED):
+API contract:
   POST /analyze
-  Input:  { "image": "<base64 string>" }
-  Output: { "labels": [...], "description": "..." }
+  Input:  { "image": "<base64 string>", "language": "es" }
+  Output: {
+    "detections": [
+      { "canonical_label": "chair", "translated_label": "silla" }
+    ],
+    "description": "objects detected: silla",
+    "language": "es"
+  }
 
 Architecture:
   YOLOv8m (proposals) → Letterbox crop → SigLIP image encoder
@@ -159,7 +165,7 @@ def analyze_image(req: AnalyzeRequest):
         image_bytes = base64.b64decode(req.image)
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     except Exception as e:
-        return {"error": f"Invalid image data: {e}", "labels": [], "description": ""}
+        return {"error": f"Invalid image data: {e}", "detections": [], "description": "", "language": req.language}
 
     try:
         # ── Step 1: YOLO region proposals ────────────────────────────────────
@@ -259,9 +265,13 @@ def analyze_image(req: AnalyzeRequest):
                 "  All crops rejected by confidence filter — returning UNKNOWN_LABEL. "
                 "Check ConfFilter DEBUG logs above for rejection reasons."
             )
+            unknown_translated = get_translation(UNKNOWN_LABEL, req.language)
             return {
-                "labels":      [UNKNOWN_LABEL],
-                "description": f"objects detected: {UNKNOWN_LABEL}",
+                "detections": [
+                    {"canonical_label": UNKNOWN_LABEL, "translated_label": unknown_translated}
+                ],
+                "description": f"objects detected: {unknown_translated}",
+                "language": req.language,
             }
 
         reranked = context_rerank(valid_crops, crop_importances=valid_importances)
@@ -280,20 +290,28 @@ def analyze_image(req: AnalyzeRequest):
 
         logger.info(f"  FINAL labels (pre-translation): {final_labels}")
 
-        # ── Step 9: Local translation lookup ──────────────────────────────────
-        translated_labels = [get_translation(label, req.language) for label in final_labels]
+        # ── Step 9: Local translation lookup — builds canonical + translated pairs ──
+        detections = [
+            {
+                "canonical_label": label,
+                "translated_label": get_translation(label, req.language),
+            }
+            for label in final_labels
+        ]
 
-        logger.info(f"  FINAL labels (post-translation, lang='{req.language}'): {translated_labels}")
+        translated_labels = [d["translated_label"] for d in detections]
+        logger.info(f"  FINAL detections (lang='{req.language}'): {detections}")
 
         return {
-            "labels":      translated_labels,
+            "detections":  detections,
             "description": "objects detected: " + ", ".join(translated_labels),
+            "language":    req.language,
         }
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return {"error": f"Analysis failed: {e}", "labels": [], "description": ""}
+        return {"error": f"Analysis failed: {e}", "detections": [], "description": "", "language": req.language}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -332,6 +350,10 @@ def debug_test():
     If this returns labels=["chair", "vase"], the bug is in /analyze itself.
     """
     return {
-        "labels":      ["chair", "vase"],
+        "detections": [
+            {"canonical_label": "chair", "translated_label": "chair"},
+            {"canonical_label": "vase",  "translated_label": "vase"},
+        ],
         "description": "objects detected: chair, vase",
+        "language": "en",
     }
