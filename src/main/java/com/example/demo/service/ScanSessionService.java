@@ -9,6 +9,7 @@ import com.example.demo.dto.ScanSessionSummaryResponse;
 import com.example.demo.entity.Profile;
 import com.example.demo.entity.ScanDetection;
 import com.example.demo.entity.ScanSession;
+import com.example.demo.enums.NotificationType;
 import com.example.demo.enums.SourceType;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.ProfileRepository;
@@ -33,6 +34,7 @@ public class ScanSessionService {
     private final ScanSessionRepository scanSessionRepository;
     private final ScanDetectionRepository scanDetectionRepository;
     private final SavedWordService savedWordService;
+    private final NotificationService notificationService;
 
     @Transactional
     public ScanResponse recordScan(String userEmail, List<DetectedObjectDTO> detectedObjects) {
@@ -44,6 +46,15 @@ public class ScanSessionService {
         detectedObjects.forEach(object -> scanSession.addDetection(toEntity(object)));
 
         ScanSession savedSession = scanSessionRepository.save(scanSession);
+        if (!savedSession.getDetections().isEmpty()) {
+            notificationService.createNotification(
+                    user.getId(),
+                    null,
+                    NotificationType.SCAN_DETECTED_WORD,
+                    "Scan completed",
+                    "Detected " + savedSession.getDetections().size() + " word(s) in your scan.",
+                    "/scan/history/" + savedSession.getId());
+        }
         return toScanResponse(savedSession);
     }
 

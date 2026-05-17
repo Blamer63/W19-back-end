@@ -3,6 +3,9 @@ package com.example.demo.controller;
 import com.example.demo.dto.AuthResponse;
 import com.example.demo.dto.LoginRequest;
 import com.example.demo.dto.RegisterRequest;
+import com.example.demo.entity.Conversation;
+import com.example.demo.entity.Friend;
+import com.example.demo.entity.Message;
 import com.example.demo.repository.ProfileRepository;
 import com.example.demo.repository.RefreshTokenRepository;
 import com.example.demo.service.AuthService;
@@ -21,8 +24,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.demo.entity.Profile;
+import com.example.demo.enums.FriendStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.MediaType;
+import java.util.List;
 import java.util.UUID;
 
 @SpringBootTest
@@ -69,11 +74,20 @@ public class UserControllerTest {
     private com.example.demo.repository.FollowRepository followRepository;
     @Autowired
     private com.example.demo.repository.LanguageRepository languageRepository;
+    @Autowired
+    private com.example.demo.repository.FriendRepository friendRepository;
+    @Autowired
+    private com.example.demo.repository.ConversationRepository conversationRepository;
+    @Autowired
+    private com.example.demo.repository.MessageRepository messageRepository;
 
     private String token;
 
     @BeforeEach
     void setup() {
+        messageRepository.deleteAll();
+        conversationRepository.deleteAll();
+        friendRepository.deleteAll();
         contentReportRepository.deleteAll();
         postTranslationRepository.deleteAll();
         postReactionRepository.deleteAll();
@@ -164,6 +178,59 @@ public class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.show_activity").value(false))
                 .andExpect(jsonPath("$.show_saved_words").value(true));
+    }
+
+    @Test
+    void shouldGetNotificationSummary() throws Exception {
+        if (token == null)
+            return;
+
+        Profile currentUser = profileRepository.findByEmail("user_me@example.com").orElseThrow();
+        Profile otherUser = Profile.builder()
+                .username("notification_sender")
+                .email("notification-sender@example.com")
+                .displayName("Notification Sender")
+                .passwordHash("hash")
+                .build();
+        otherUser = profileRepository.save(otherUser);
+
+        friendRepository.save(Friend.builder()
+                .requester(otherUser)
+                .receiver(currentUser)
+                .status(FriendStatus.PENDING)
+                .build());
+
+        Conversation conversation = Conversation.builder()
+                .participants(List.of(currentUser, otherUser))
+                .lastMessagePreview("Unread")
+                .build();
+        conversation = conversationRepository.save(conversation);
+
+        messageRepository.save(Message.builder()
+                .conversation(conversation)
+                .sender(otherUser)
+                .content("Unread one")
+                .isRead(false)
+                .build());
+        messageRepository.save(Message.builder()
+                .conversation(conversation)
+                .sender(otherUser)
+                .content("Unread two")
+                .isRead(false)
+                .build());
+        messageRepository.save(Message.builder()
+                .conversation(conversation)
+                .sender(currentUser)
+                .content("Own unread should not count")
+                .isRead(false)
+                .build());
+
+        mockMvc.perform(get("/api/users/me/notification-summary")
+                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.incoming_friend_requests").value(1))
+                .andExpect(jsonPath("$.unread_messages").value(2))
+                .andExpect(jsonPath("$.total").value(3));
     }
 
     @Test

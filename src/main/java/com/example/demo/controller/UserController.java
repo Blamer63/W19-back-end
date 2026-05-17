@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.ProfileResponse;
 import com.example.demo.dto.UserSettingsDTO;
+import com.example.demo.dto.NotificationSummaryResponse;
 import com.example.demo.dto.PostResponse;
 import com.example.demo.dto.PrivacySettingsDto;
 import com.example.demo.dto.PublicUserProfileDto;
@@ -137,6 +138,13 @@ public class UserController {
                 Profile profile = profileRepository.findByEmail(authentication.getName())
                                 .orElseThrow(() -> new RuntimeException("User not found"));
                 return ResponseEntity.ok(userService.getUserSettings(profile.getId()));
+        }
+
+        @GetMapping("/me/notification-summary")
+        public ResponseEntity<NotificationSummaryResponse> getNotificationSummary(Authentication authentication) {
+                Profile profile = profileRepository.findByEmail(authentication.getName())
+                                .orElseThrow(() -> new RuntimeException("User not found"));
+                return ResponseEntity.ok(userService.getNotificationSummary(profile.getId()));
         }
 
         @PatchMapping("/me/settings")

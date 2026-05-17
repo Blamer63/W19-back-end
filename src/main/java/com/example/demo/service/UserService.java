@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.NotificationSummaryResponse;
 import com.example.demo.dto.UserSettingsDTO;
 import com.example.demo.entity.Profile;
 import com.example.demo.entity.UserBlock;
@@ -14,9 +15,12 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.demo.dto.PrivacySettingsDto;
 import com.example.demo.dto.PublicUserProfileDto;
 import com.example.demo.dto.UserLanguageDTO;
+import com.example.demo.enums.FriendStatus;
 import com.example.demo.enums.LocationVisibility;
 import com.example.demo.enums.PostStatus;
 import com.example.demo.repository.FollowRepository;
+import com.example.demo.repository.FriendRepository;
+import com.example.demo.repository.MessageRepository;
 import com.example.demo.repository.PostRepository;
 import java.util.Map;
 import java.util.UUID;
@@ -31,6 +35,8 @@ public class UserService {
         private final com.example.demo.repository.UserBlockRepository userBlockRepository;
         private final PostRepository postRepository;
         private final FollowRepository followRepository;
+        private final FriendRepository friendRepository;
+        private final MessageRepository messageRepository;
 
         @Transactional(readOnly = true)
         public UserSettingsDTO getUserSettings(UUID userId) {
@@ -41,6 +47,22 @@ public class UserService {
                                 .notificationPrefs(settings.getNotificationPrefs())
                                 .privacySettings(settings.getPrivacySettings())
                                 .theme(settings.getTheme())
+                                .build();
+        }
+
+        @Transactional(readOnly = true)
+        public NotificationSummaryResponse getNotificationSummary(UUID userId) {
+                if (!profileRepository.existsById(userId)) {
+                        throw new ResourceNotFoundException("User not found");
+                }
+
+                long incomingFriendRequests = friendRepository.countByReceiverIdAndStatus(userId, FriendStatus.PENDING);
+                long unreadMessages = messageRepository.countUnreadForUser(userId);
+
+                return NotificationSummaryResponse.builder()
+                                .incomingFriendRequests(incomingFriendRequests)
+                                .unreadMessages(unreadMessages)
+                                .total(incomingFriendRequests + unreadMessages)
                                 .build();
         }
 
