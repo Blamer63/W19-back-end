@@ -1,0 +1,41 @@
+concept_id,canonical_label,aliases,parent,category,tags,visual_description
+5e939c19-1860-54eb-88d7-1046f8d58eae,smartphone,cell phone|mobile phone|cellphone,electronics,electronics,portable|personal,slim touchscreen smartphone device
+1bf994d7-60c6-58f8-b824-2cbeb72f91c7,laptop,notebook computer|laptop computer,electronics,electronics,portable|personal,slim portable computer with keyboard
+84ce1b6f-003e-53a9-b669-d12239a20f0f,tablet,tablet computer|ipad,electronics,electronics,portable|personal,flat touchscreen tablet device
+7e5fa1d4-18ce-5bf6-adc1-f8050158c7ea,smartwatch,smart watch,electronics,electronics,wearable|personal,digital smartwatch with touchscreen display
+074d60b0-5ddd-5a99-a80f-9f903227d3d4,e-reader,ebook reader|kindle,electronics,electronics,portable|personal,slim device for digital book reading
+f3705dc6-6258-5e6a-9112-6360c5d6b43c,television,tv|tv set,electronics,electronics,display|entertainment,large flat-panel television screen
+4d1618af-62fc-5b63-a398-b3e5bbb84a49,computer monitor,desktop monitor|pc screen,electronics,electronics,display|office,flat-panel computer display monitor
+4d6a5a20-64d9-5742-bfa2-40b69ed037a3,projector,video projector,electronics,electronics,display|office,device projecting images onto screen
+3c5a7bff-cfca-5173-ba4d-401f0bd4519b,speaker,audio speaker,electronics,electronics,audio,standalone audio speaker unit
+fb66fc35-7c68-5283-813b-3700300eafa3,bluetooth speaker,wireless speaker|portable speaker,speaker,electronics,audio|portable,portable cylindrical wireless speaker
+83f82bbe-9683-5040-9ec6-6eb19df1c75e,headphones,over-ear headphones,electronics,electronics,audio|wearable,cushioned over-ear audio headphones
+a1448a5b-5751-5e6a-8889-7034ce020c2b,earphones,earbuds|in-ear headphones,electronics,electronics,audio|wearable|portable,small in-ear audio earbuds
+8908cc4f-d90e-56bc-bfc4-9e4bb2c55501,microphone,mic|studio mic,electronics,electronics,audio|recording,standalone directional audio microphone
+438ec088-f2e6-5aa8-aac7-8aa2a2d6a782,subwoofer,bass speaker,electronics,electronics,audio,large enclosure low-frequency bass speaker
+d67a285a-bae4-5862-b585-1b949b50b0a4,keyboard,computer keyboard,electronics,electronics,input|office,rectangular computer input keyboard
+7ff3c843-008c-5f63-a2dd-e7c2e3e7fe44,computer mouse,mouse|wireless mouse,electronics,electronics,input|office,handheld computer pointing device
+918c1ec4-04d1-5701-b087-22001ac1e80d,mousepad,mouse mat,electronics,electronics,input|office,flat desk mat for computer mouse
+ce7f346b-abf3-52dc-b34d-370e11a5d846,webcam,web camera|streaming camera,electronics,electronics,camera|input,clip-on camera for video calls
+86abd476-ce89-513d-9af7-1468529034ac,game controller,gamepad|gaming controller,electronics,electronics,input|gaming,wireless gaming thumbstick controller
+d3055925-039f-5e3f-a70a-7f4d4e89ae9e,joystick,flight stick,electronics,electronics,input|gaming,tall handheld gaming joystick
+eb4dba47-9545-5b66-9dcf-4ace82c8a25e,digital camera,dslr camera|mirrorless camera,electronics,electronics,camera|portable,digital single-lens reflex camera
+fc77140c-774f-51be-9d01-a9f9fe0060d8,video camera,camcorder,electronics,electronics,camera|recording,handheld video recording camcorder
+e4ea28ec-b8a7-5030-a6c5-5fa9e156b16d,action camera,gopro,electronics,electronics,camera|portable|outdoor,compact mountable action camera
+2911b277-f22e-5332-a519-39fac0d4495a,tripod,camera tripod,electronics,electronics,camera|accessories,three-legged adjustable camera support stand
+57c364d8-65b8-53e3-b108-1bed800b5a6e,router,wifi router|wireless router,electronics,electronics,networking,rectangular home wireless router
+00a40b14-8c76-5dd8-b819-4d64e14a5f2e,flash drive,usb drive|thumb drive|usb stick,electronics,electronics,storage|portable,small rectangular usb flash drive
+6bef37ba-7372-539f-92dd-147121c3cd79,external hard drive,portable hard drive,electronics,electronics,storage|portable,compact portable hard disk drive
+70e466ff-1171-55cb-a9ab-277d6dc094bd,power strip,extension cord|power bar,electronics,electronics,power,multi-socket plastic electrical power strip
+d326fe92-cd2c-5221-ba0d-d91bea7171a8,phone charger,usb charger|charging cable,electronics,electronics,power|portable,cable and wall adapter for charging
+a2e62efc-9390-5a0d-bafa-95c45deb1f60,battery pack,power bank|portable charger,electronics,electronics,power|portable,rectangular portable battery charger
+2c84e62d-152a-53f2-9b1d-7b899ea224e2,game console,gaming console|video game console,electronics,electronics,gaming|entertainment,home tabletop video game console
+385a9467-3abe-587b-aea4-17f6f161bb6c,remote control,tv remote|remote,electronics,electronics,input|entertainment,handheld infrared remote control
+73f451f0-fc4b-52f6-8aee-19a221c4c8c3,alarm clock,digital alarm clock|bedside clock,electronics,electronics,timekeeping,small digital bedside alarm clock
+d29ac5a0-4ea8-530c-b479-6e0088b7a16c,radio,fm radio|portable radio,electronics,electronics,audio|entertainment,rectangular portable fm radio receiver
+75fe1953-db6a-54cb-8131-499d078b92d2,record player,turntable|phonograph,electronics,electronics,audio|entertainment,vinyl record turntable player
+a8c366af-7622-5791-838b-8b6636368fc1,smart speaker,voice assistant speaker,electronics,electronics,audio|smart_home,cylindrical voice-controlled smart speaker
+7d4393bd-3f7b-5981-b6b4-03f85d2cfedc,headset,gaming headset|computer headset,electronics,electronics,audio|gaming|wearable,headphones with attached microphone
+3fca6a7d-6d16-536b-aafa-4eef95b0e611,calculator,pocket calculator,electronics,electronics,office|portable,slim handheld digital calculator
+16426181-0566-51d8-8d9b-f92ecedf398f,cd player,disc player,electronics,electronics,audio|entertainment,standalone compact disc audio player
+b26fe61a-0398-59f7-812c-effe6fbf8f70,laptop stand,notebook stand,electronics,electronics,accessories|office,adjustable folding metal laptop stand

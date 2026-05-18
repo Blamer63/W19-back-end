@@ -1,0 +1,62 @@
+concept_id,canonical_label,aliases,parent,category,tags,visual_description
+a181ff04-3bc2-5724-b2df-04c875cf0df4,t-shirt,tshirt|tee shirt,clothing,clothing,tops|casual,short-sleeve plain cotton t-shirt
+135a993a-0b8d-55f8-807e-82e2a648ee0d,dress shirt,button-up shirt|formal shirt,clothing,clothing,tops|formal,collared button-front formal shirt
+32dd4dbf-d546-52a0-b388-a82b97dc87e8,blouse,women's blouse,clothing,clothing,tops|women,lightweight women's fabric blouse
+93a6f07d-8a24-514d-abd6-20943c8633ce,sweater,pullover|jumper,clothing,clothing,tops|winter,knit crew-neck pullover sweater
+3587268f-6e4f-570e-a4af-2cd87c274a30,hoodie,hooded sweatshirt,clothing,clothing,tops|casual,fleece hooded pullover sweatshirt
+f5922087-d129-5a60-aecf-90222d45fd82,jacket,casual jacket,clothing,clothing,tops|outerwear,casual lightweight zip-up jacket
+aa205cd4-87f9-5d2d-8d57-7701112222d1,blazer,sport coat|suit jacket,clothing,clothing,tops|formal,tailored single-button front blazer
+4240edcb-ca06-5b3f-abd2-149ba2a18fa6,coat,winter coat|overcoat,clothing,clothing,tops|outerwear|winter,long heavy belted overcoat
+eedd347d-d0ff-58d3-a192-e390dc96ba83,trench coat,mac coat,clothing,clothing,tops|outerwear,double-breasted belted trench coat
+d1967592-193a-59fe-91f2-ae0bb4c3212a,raincoat,waterproof jacket|anorak,clothing,clothing,tops|outerwear,hooded waterproof rain jacket
+382e058f-63a8-5ec8-97fb-61b546073fd1,parka,padded jacket|down jacket,clothing,clothing,tops|outerwear|winter,insulated hooded winter parka
+55298b93-8206-56d0-bc81-178c1d44cc1a,vest,waistcoat|gilet,clothing,clothing,tops|formal,sleeveless formal waistcoat vest
+1681c177-de4c-518c-a45b-02705d8dc07f,tank top,sleeveless top|singlet,clothing,clothing,tops|casual,sleeveless fitted ribbed tank top
+c7164987-9053-5a87-8484-2f1e79a6ef81,polo shirt,polo|golf shirt,clothing,clothing,tops|smart_casual,short-sleeve collared polo shirt
+6a273c28-f9f7-56b6-840f-22681bd59786,cardigan,knit cardigan|open cardigan,clothing,clothing,tops|casual,open-front knit button cardigan
+24a02778-dc6e-5bb7-86c8-dbc7777a5a63,sweatshirt,crewneck sweatshirt,clothing,clothing,tops|casual,plain crew-neck cotton sweatshirt
+d554265f-22e9-56b6-a1b3-abd023117b13,turtleneck,polo neck,clothing,clothing,tops|winter,high-neck fitted turtleneck top
+17a6e268-27d9-59dc-b6e2-7cc7a3ec98e4,jeans,denim jeans|blue jeans,clothing,clothing,bottoms|casual,classic five-pocket blue denim jeans
+3c98d2f8-af79-5271-b9e3-51708893bf94,trousers,pants|slacks,clothing,clothing,bottoms|formal,straight-leg formal fabric trousers
+fceba068-0db1-54e7-addc-07322984d57c,shorts,short pants,clothing,clothing,bottoms|casual,above-knee casual shorts
+e5e1eb01-480f-5fb1-ab05-efa5abda8d4c,skirt,midi skirt|pencil skirt,clothing,clothing,bottoms|women,women's fabric knee-length skirt
+81452b77-a7e6-5561-9b2b-24f1e5fbe0f9,leggings,,clothing,clothing,bottoms|women|activewear,tight stretch fabric leggings
+04e6136f-c475-5646-9382-e118b9b6e162,sweatpants,joggers|track pants,clothing,clothing,bottoms|casual,loose fleece drawstring sweatpants
+b8d0cd6c-f4a8-50aa-9a06-da4914cba2da,dress,sundress|summer dress,clothing,clothing,full_outfit|women,women's one-piece fabric dress
+c933fe80-3bfa-5084-9002-cee930b9a606,jumpsuit,romper|one-piece suit,clothing,clothing,full_outfit,one-piece top-and-trousers jumpsuit
+c2d2d150-502c-51b4-9325-17cf47d20097,overalls,dungarees|bib overalls,clothing,clothing,full_outfit|workwear,bib-front denim overalls
+f3fc50ed-844d-5510-96f6-eeee2289cbe8,suit,business suit,clothing,clothing,full_outfit|formal,matching jacket-and-trousers business suit
+300568da-8eab-50f8-afb4-d71ccee2fc55,tuxedo,dinner suit|black tie,clothing,clothing,full_outfit|formal,formal black satin-lapel tuxedo
+4152e62c-b794-509e-bea8-4eaa70e7a7a7,pajamas,pyjamas|sleepwear,clothing,clothing,full_outfit|sleepwear,matching loose cotton pajama set
+d9f82742-a671-5167-a8b8-e625b6d8320b,swimsuit,bathing suit|swimming costume,clothing,clothing,full_outfit|swimwear,one or two-piece swimsuit
+3aba5fa0-5528-55dd-9afe-6dde1ebc36bc,bathrobe,robe|dressing gown,clothing,clothing,full_outfit|sleepwear,thick terry-cloth bathrobe
+461ca1d2-096b-585b-8cbb-cc003faac71e,sneaker,tennis shoe|trainer|running shoe,clothing,clothing,footwear|casual,rubber-soled lace-up sneaker
+c25f3c6c-4750-5e16-919f-26893046764e,boot,ankle boot|leather boot,clothing,clothing,footwear,lace-up leather ankle or knee boot
+e9d29c97-41f9-56c1-ab64-e76a9256497a,sandal,summer sandal|flat sandal,clothing,clothing,footwear|summer,open-toe strappy flat sandal
+58d8af39-bdfc-51fc-88cc-15348eccbb2e,slipper,house slipper,clothing,clothing,footwear|indoor,soft indoor terry-cloth house slipper
+643c123c-10b9-5524-aa9c-50fb2409f315,flip-flop,thong sandal|jandal,clothing,clothing,footwear|summer,flat rubber Y-strap flip-flop
+9dad79dc-a44a-534c-b09b-3a3f0b2a21c8,hat,sun hat|wide-brim hat,clothing,clothing,headwear,wide-brimmed woven sun hat
+f3a88e3d-e464-59eb-8b97-ddbaec4793e3,baseball cap,cap|snapback,clothing,clothing,headwear|casual,curved-brim adjustable baseball cap
+af550cbd-9667-5117-b826-5d76fb0fd3c9,beanie,knit hat|winter hat,clothing,clothing,headwear|winter,close-fitting ribbed knit wool beanie
+55cf9f26-6df1-55e5-8ac3-868dc2398ffa,scarf,neck scarf|winter scarf,clothing,clothing,accessories|winter,long soft woven neck scarf
+3798e686-954c-5883-9fc6-3409a3cbc01b,glove,winter glove|leather glove,clothing,clothing,accessories|winter,fitted warm winter glove
+be42d1b1-140a-5994-b636-123d7feaeb75,belt,leather belt|fabric belt,clothing,clothing,accessories,flat leather or fabric waist belt
+0107bdd5-7919-5a76-ba37-52917bce563d,necktie,tie|neck tie,clothing,clothing,accessories|formal,long silk or woven neck tie
+39eedcd8-c9eb-5f56-96b1-30ab9f2c0b2e,bow tie,bowtie,clothing,clothing,accessories|formal,small clip-on or tied bow tie
+e0f79305-2b03-5dff-87ff-1328a6ee7e8c,sunglasses,shades|sunnies,clothing,clothing,accessories|eyewear,tinted UV-protective sunglasses
+2185b2df-d8cd-5769-85e5-27c9e86992d6,eyeglasses,glasses|spectacles,clothing,clothing,accessories|eyewear,corrective lens eyeglasses frame
+2f33f6e9-d42d-56b8-a13f-2d857bd18792,watch,wristwatch,clothing,clothing,accessories|electronics,wrist-worn analog or digital watch
+1a896f49-c6b0-5b93-9fdd-ec3f6ff51e08,bracelet,bangle|wrist bracelet,clothing,clothing,accessories|jewelry,decorative metal or bead bracelet
+9097e3c0-a1f8-5817-80bb-02fc6a5dacad,necklace,neck chain,clothing,clothing,accessories|jewelry,beaded or chain necklace
+420e8732-b265-55b7-aadf-e7e605481693,earring,stud earring|hoop earring,clothing,clothing,accessories|jewelry,small metal or gemstone earring
+83644334-e5d4-5dc7-ad8f-c512c0044ff8,ring,finger ring,clothing,clothing,accessories|jewelry,small metal finger ring
+670eee47-15be-5eca-bab9-3628504c8c50,backpack,rucksack|knapsack,clothing,clothing,accessories|bags,zippered multi-pocket fabric backpack
+e1bf1fe0-de7f-57f0-b53e-34aff6901d34,handbag,purse|pocketbook,clothing,clothing,accessories|bags,handled women's fabric or leather bag
+9f2e5130-ef9f-586d-be71-6439d27c2065,tote bag,shopping tote,clothing,clothing,accessories|bags,large open-top canvas tote bag
+8591e328-72c6-5256-a935-7ca956d9b013,shoulder bag,cross-body bag|satchel,clothing,clothing,accessories|bags,strap-worn shoulder or cross-body bag
+fe5518f1-d997-570a-9469-4993df3946ba,wallet,billfold,clothing,clothing,accessories|bags,slim bi-fold leather wallet
+47bb839b-d2a2-500d-9918-b37dff43dd44,suitcase,luggage|travel bag,clothing,clothing,accessories|bags,hard or soft-shell rolling suitcase
+3c2ed059-e70d-5338-a82d-a698ede82c02,sock,ankle sock|knee sock,clothing,clothing,footwear,short or long knit cotton sock
+5f2cdedc-4ccb-503b-8624-c20bc651d890,underwear,underpants|briefs,clothing,clothing,base_layer,elasticated cotton underwear briefs
+adeaa965-ac39-546c-af6f-ae7a526b5ae9,bra,brassiere,clothing,clothing,base_layer|women,women's supportive underwire bra
+91628a08-8864-5d7e-8882-f50a0711a4a3,tights,pantyhose|stockings,clothing,clothing,base_layer|women,sheer or opaque nylon tights
