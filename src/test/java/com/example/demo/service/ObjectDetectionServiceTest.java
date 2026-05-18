@@ -56,6 +56,7 @@ class ObjectDetectionServiceTest {
                 profileRepository,
                 scannerVocabularyService);
         ReflectionTestUtils.setField(objectDetectionService, "supportedTaxonomyLanguages", "en,es,fr,ja");
+        objectDetectionService.parseSupportedTaxonomyLanguages();
     }
 
     @Test

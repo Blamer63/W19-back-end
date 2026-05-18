@@ -7,6 +7,7 @@ import com.example.demo.enums.ScannerTranslationSource;
 import com.example.demo.repository.ProfileRepository;
 import com.example.demo.service.scanner.VisionDetection;
 import com.example.demo.service.scanner.VisionServiceClient;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -50,6 +51,16 @@ public class ObjectDetectionService {
 
     @Value("${app.vision.supported-languages:en,es,fr,ja}")
     private String supportedTaxonomyLanguages;
+
+    private Set<String> supportedTaxonomyLanguageCodes;
+
+    @PostConstruct
+    void parseSupportedTaxonomyLanguages() {
+        supportedTaxonomyLanguageCodes = Arrays.stream(supportedTaxonomyLanguages.split(","))
+                .map(code -> code.trim().toLowerCase(Locale.ROOT))
+                .filter(code -> !code.isBlank())
+                .collect(Collectors.toUnmodifiableSet());
+    }
 
     private void validateImage(MultipartFile file) {
         if (file == null || file.isEmpty())
@@ -125,7 +136,7 @@ public class ObjectDetectionService {
             String normalizedLabel,
             String languageCode,
             Map<String, ScannerVocabularyService.VocabularyMatch> vocabularyCache) {
-        if (taxonomySupportedLanguageCodes().contains(languageCode)) {
+        if (supportedTaxonomyLanguageCodes.contains(languageCode)) {
             String learningWord = detection.getTranslatedLabel();
             if (learningWord == null || learningWord.isBlank()) {
                 learningWord = normalizedLabel;
@@ -139,13 +150,6 @@ public class ObjectDetectionService {
         return vocabularyCache.computeIfAbsent(
                 normalizedLabel + ":" + languageCode,
                 ignored -> scannerVocabularyService.resolve(normalizedLabel, languageCode));
-    }
-
-    private Set<String> taxonomySupportedLanguageCodes() {
-        return Arrays.stream(supportedTaxonomyLanguages.split(","))
-                .map(code -> code.trim().toLowerCase(Locale.ROOT))
-                .filter(code -> !code.isBlank())
-                .collect(Collectors.toSet());
     }
 
     private String normalizeLabel(String label) {
