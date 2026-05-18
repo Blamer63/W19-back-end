@@ -19,18 +19,9 @@ RUN apt-get update && apt-get install -y \
 # ── Python packages ───────────────────────────────────────────────────────────
 RUN pip install --upgrade pip
 
-RUN pip install --no-cache-dir \
-    numpy==1.26.4 \
-    torch==2.1.2 \
-    torchvision==0.16.2 \
-    ultralytics==8.1.0 \
-    transformers==4.38.2 \
-    fastapi==0.103.1 \
-    uvicorn==0.23.2 \
-    pillow==10.0.0 \
-    faiss-cpu==1.13.2 \
-    sentencepiece \
-    protobuf
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
 
 # ── Verify core imports ───────────────────────────────────────────────────────
 RUN python -c "import numpy, torch, faiss; print('Core deps OK — numpy:', numpy.__version__, 'faiss:', faiss.__version__)"
