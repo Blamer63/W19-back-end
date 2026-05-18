@@ -27,7 +27,7 @@ Determine the appropriate category and add a new row to the corresponding CSV fi
 concept_id,canonical_label,aliases,parent,category,tags,visual_description
 f5a91b2c-...,gaming chair,gamer chair|ergonomic gaming chair,chair,furniture,seating|office|gaming,black gaming chair with headrest
 ```
-*   `concept_id`: A newly generated UUIDv4.
+*   `concept_id`: A deterministic UUIDv5 derived from the canonical label. Do not generate this manually; use `scripts/build_taxonomy.py` so IDs remain stable across rebuilds.
 *   `canonical_label`: The primary English label. Must be lowercase and exact.
 *   `aliases`: Pipe-separated synonyms (e.g., `gamer chair`) used to improve retrieval robustness. These are *never* returned to the user.
 *   `visual_description`: Detailed prompt-like description used to generate the text embedding.
@@ -125,7 +125,20 @@ POST /analyze
 
 Response:
 {
-    "labels": ["silla de gaming"],
-    "description": "objects detected: silla de gaming"
+    "language": "es",
+    "description": "objects detected: silla de gaming",
+    "detections": [
+        {
+            "canonical_label": "gaming chair",
+            "translated_label": "silla de gaming",
+            "confidence": 0.12,
+            "box": {
+                "x": 0.15,
+                "y": 0.10,
+                "width": 0.62,
+                "height": 0.88
+            }
+        }
+    ]
 }
 ```
