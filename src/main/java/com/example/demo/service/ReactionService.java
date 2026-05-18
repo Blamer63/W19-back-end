@@ -26,6 +26,7 @@ public class ReactionService {
     private final ProfileRepository profileRepository;
     private final PostCommentRepository postCommentRepository;
     private final NotificationService notificationService;
+    private final ProfileService profileService;
 
     @Transactional
     public PostReactionResponse reactToPost(UUID postId, PostReactionRequest request, String currentUserEmail) {
@@ -55,7 +56,7 @@ public class ReactionService {
                     currentUser.getId(),
                     NotificationType.POST_LIKE,
                     "New reaction",
-                    displayName(currentUser) + " reacted to your post.",
+                    profileService.displayName(currentUser) + " reacted to your post.",
                     "/posts/" + post.getId());
         }
 
@@ -83,10 +84,4 @@ public class ReactionService {
                 .build();
     }
 
-    private String displayName(Profile profile) {
-        if (profile.getDisplayName() != null && !profile.getDisplayName().isBlank()) {
-            return profile.getDisplayName();
-        }
-        return profile.getUsername();
-    }
 }

@@ -65,7 +65,7 @@ public class FriendService {
                 sender.getId(),
                 NotificationType.FRIEND_REQUEST,
                 "New friend request",
-                displayName(sender) + " sent you a friend request.",
+                profileService.displayName(sender) + " sent you a friend request.",
                 "/friends/requests");
         return mapToResponse(saved, sender.getId());
     }
@@ -102,7 +102,7 @@ public class FriendService {
                     responder.getId(),
                     NotificationType.FRIEND_ACCEPTED,
                     "Friend request accepted",
-                    displayName(responder) + " accepted your friend request.",
+                    profileService.displayName(responder) + " accepted your friend request.",
                     "/users/" + responder.getId());
         }
         return mapToResponse(updated, responder.getId());
@@ -180,10 +180,4 @@ public class FriendService {
                 .build();
     }
 
-    private String displayName(Profile profile) {
-        if (profile.getDisplayName() != null && !profile.getDisplayName().isBlank()) {
-            return profile.getDisplayName();
-        }
-        return profile.getUsername();
-    }
 }

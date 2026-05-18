@@ -374,7 +374,7 @@ public class ChatService {
         String title = conversation.isGroup() && conversation.getGroupName() != null
                 ? "New message in " + conversation.getGroupName()
                 : "New message";
-        String body = displayName(sender) + ": " + preview;
+        String body = profileService.displayName(sender) + ": " + preview;
         String targetUrl = "/conversations/" + conversation.getId();
 
         conversation.getParticipants().stream()
@@ -386,13 +386,6 @@ public class ChatService {
                         title,
                         body,
                         targetUrl));
-    }
-
-    private String displayName(Profile profile) {
-        if (profile.getDisplayName() != null && !profile.getDisplayName().isBlank()) {
-            return profile.getDisplayName();
-        }
-        return profile.getUsername();
     }
 
     private ConversationResponse mapToConversationResponse(Conversation conversation, UUID requesterId) {

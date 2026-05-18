@@ -28,6 +28,7 @@ public class MeetupService {
     private final ProfileRepository profileRepository;
     private final LanguageRepository languageRepository;
     private final NotificationService notificationService;
+    private final ProfileService profileService;
 
     @Transactional
     public MeetupResponse createMeetup(CreateMeetupRequest request, String organizerEmail) {
@@ -197,7 +198,7 @@ public class MeetupService {
                 attendee.getId(),
                 NotificationType.MEETUP_JOINED,
                 "New meetup attendee",
-                displayName(attendee) + " joined your meetup \"" + meetup.getTitle() + "\".",
+                profileService.displayName(attendee) + " joined your meetup \"" + meetup.getTitle() + "\".",
                 "/meetups/" + meetup.getId());
     }
 
@@ -280,10 +281,4 @@ public class MeetupService {
                         "/meetups/" + meetup.getId()));
     }
 
-    private String displayName(Profile profile) {
-        if (profile.getDisplayName() != null && !profile.getDisplayName().isBlank()) {
-            return profile.getDisplayName();
-        }
-        return profile.getUsername();
-    }
 }

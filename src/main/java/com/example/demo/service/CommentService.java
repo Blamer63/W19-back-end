@@ -25,6 +25,7 @@ public class CommentService {
     private final PostRepository postRepository;
     private final ProfileRepository profileRepository;
     private final NotificationService notificationService;
+    private final ProfileService profileService;
 
     @Transactional(readOnly = true)
     public Page<CommentResponse> getComments(UUID postId, Pageable pageable) {
@@ -52,7 +53,7 @@ public class CommentService {
                 currentUser.getId(),
                 NotificationType.POST_COMMENT,
                 "New comment",
-                displayName(currentUser) + " commented on your post.",
+                profileService.displayName(currentUser) + " commented on your post.",
                 "/posts/" + post.getId());
 
         return mapToResponse(saved);
@@ -88,10 +89,4 @@ public class CommentService {
                 .build();
     }
 
-    private String displayName(Profile profile) {
-        if (profile.getDisplayName() != null && !profile.getDisplayName().isBlank()) {
-            return profile.getDisplayName();
-        }
-        return profile.getUsername();
-    }
 }

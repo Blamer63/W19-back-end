@@ -59,4 +59,11 @@ public class ProfileService {
                                 .followersCount(followRepository.countByFollowingId(profile.getId()))
                                 .build();
         }
+
+        public String displayName(Profile profile) {
+                if (profile.getDisplayName() != null && !profile.getDisplayName().isBlank()) {
+                        return profile.getDisplayName();
+                }
+                return profile.getUsername();
+        }
 }
