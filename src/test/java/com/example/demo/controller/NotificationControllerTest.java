@@ -142,7 +142,7 @@ public class NotificationControllerTest {
 
         saveNotification(currentUser, NotificationType.FRIEND_REQUEST, "Friend request", null);
         saveNotification(currentUser, NotificationType.MESSAGE, "New message", null);
-        saveNotification(otherRecipient, NotificationType.POST_LIKE, "Other user notification", null);
+        saveNotification(otherRecipient, NotificationType.POST_REACTION, "Other user notification", null);
 
         mockMvc.perform(get("/api/notifications")
                 .header("Authorization", "Bearer " + token))

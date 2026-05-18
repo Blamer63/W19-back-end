@@ -54,7 +54,7 @@ public class ReactionService {
             notificationService.createNotification(
                     post.getAuthor().getId(),
                     currentUser.getId(),
-                    NotificationType.POST_LIKE,
+                    NotificationType.POST_REACTION,
                     "New reaction",
                     profileService.displayName(currentUser) + " reacted to your post.",
                     "/posts/" + post.getId());

@@ -225,6 +225,28 @@ public class UserControllerTest {
                 .isRead(false)
                 .build());
 
+        Profile groupMember = Profile.builder()
+                .username("group_member")
+                .email("group-member@example.com")
+                .displayName("Group Member")
+                .passwordHash("hash")
+                .build();
+        groupMember = profileRepository.save(groupMember);
+
+        Conversation groupConversation = Conversation.builder()
+                .participants(List.of(currentUser, otherUser, groupMember))
+                .isGroup(true)
+                .lastMessagePreview("Group unread")
+                .build();
+        groupConversation = conversationRepository.save(groupConversation);
+
+        messageRepository.save(Message.builder()
+                .conversation(groupConversation)
+                .sender(otherUser)
+                .content("Group unread should not count yet")
+                .isRead(false)
+                .build());
+
         mockMvc.perform(get("/api/users/me/notification-summary")
                 .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())

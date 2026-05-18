@@ -103,7 +103,8 @@ public class NotificationService {
     @Transactional
     public NotificationCenterSummaryResponse markAllRead(String email) {
         Profile recipient = getProfileByEmail(email);
-        notificationRepository.markAllRead(recipient.getId(), LocalDateTime.now());
+        LocalDateTime readAt = LocalDateTime.now();
+        notificationRepository.markAllRead(recipient.getId(), readAt, readAt);
         long total = notificationRepository.countByRecipientId(recipient.getId());
         return NotificationCenterSummaryResponse.builder()
                 .unreadNotifications(0)
@@ -117,7 +118,7 @@ public class NotificationService {
                 .orElseGet(NotificationPrefs::new);
 
         return switch (type) {
-            case POST_LIKE -> prefs.isLikeNotifications();
+            case POST_REACTION -> prefs.isLikeNotifications();
             case POST_COMMENT -> prefs.isCommentNotifications();
             case MEETUP_JOINED, MEETUP_UPDATED, MEETUP_REMINDER -> prefs.isMeetupNotifications();
             case SAVED_WORD, SCAN_DETECTED_WORD -> prefs.isPushEnabled();

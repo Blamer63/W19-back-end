@@ -160,7 +160,7 @@ class NotificationEventIntegrationTest {
                 .build(), otherUser.getEmail());
 
         Notification reaction = latestNotificationFor(currentUser);
-        assertThat(reaction.getType()).isEqualTo(NotificationType.POST_LIKE);
+        assertThat(reaction.getType()).isEqualTo(NotificationType.POST_REACTION);
 
         commentService.addComment(post.getId(), CreateCommentRequest.builder()
                 .content("Nice post")
