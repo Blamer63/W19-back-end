@@ -7,8 +7,10 @@ import com.example.demo.dto.DetectedObjectDTO;
 import com.example.demo.dto.PostReactionRequest;
 import com.example.demo.entity.Conversation;
 import com.example.demo.entity.Notification;
+import com.example.demo.entity.NotificationPrefs;
 import com.example.demo.entity.Post;
 import com.example.demo.entity.Profile;
+import com.example.demo.entity.UserSettings;
 import com.example.demo.enums.NotificationType;
 import com.example.demo.enums.ReactionType;
 import com.example.demo.enums.ScannerTranslationSource;
@@ -199,6 +201,43 @@ class NotificationEventIntegrationTest {
         Notification scan = latestNotificationFor(currentUser);
         assertThat(scan.getType()).isEqualTo(NotificationType.SCAN_DETECTED_WORD);
         assertThat(scan.getActor()).isNull();
+    }
+
+    @Test
+    void shouldNotCreateSavedWordAndScanNotificationsWhenPushDisabled() {
+        userSettingsRepository.save(UserSettings.builder()
+                .profile(currentUser)
+                .notificationPrefs(NotificationPrefs.builder()
+                        .pushEnabled(false)
+                        .build())
+                .build());
+
+        savedWordService.saveWord(currentUser.getEmail(), CreateWordRequest.builder()
+                .word("bonjour")
+                .translation("hello")
+                .languageCode("fr")
+                .source(SourceType.MANUAL)
+                .build());
+
+        scanSessionService.recordScan(currentUser.getEmail(), List.of(DetectedObjectDTO.builder()
+                .label("book")
+                .confidence(0.95)
+                .nativeWord("book")
+                .learningWord("livre")
+                .languageCode("fr")
+                .translationSource(ScannerTranslationSource.DICTIONARY)
+                .box(BoundingBoxDTO.builder()
+                        .x(1)
+                        .y(2)
+                        .width(3)
+                        .height(4)
+                        .build())
+                .build()));
+
+        assertThat(notificationRepository
+                .findByRecipientIdOrderByCreatedAtDesc(currentUser.getId(), PageRequest.of(0, 10))
+                .getContent())
+                .isEmpty();
     }
 
     private Notification latestNotificationFor(Profile recipient) {
