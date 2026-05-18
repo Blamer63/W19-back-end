@@ -9,7 +9,6 @@ If indexes are missing, raises a clear error with instructions.
 """
 
 import json
-import pickle
 from pathlib import Path
 from typing import Any
 
@@ -118,14 +117,12 @@ def load_indexes(indexes_dir: Path = INDEXES_DIR) -> TaxonomyIndexes:
 
 def verify_model_compatibility(indexes: TaxonomyIndexes, runtime_model_id: str) -> None:
     """
-    Warn if the model used to build indexes differs from the runtime model.
-    This is a critical mismatch — embeddings from different models are incompatible.
+    Fail if the model used to build indexes differs from the runtime model.
+    Embeddings from different models are incompatible.
     """
     if indexes.model_id and indexes.model_id != runtime_model_id:
-        print(
-            f"\n  [CRITICAL WARNING] Model mismatch detected!\n"
-            f"  Indexes built with:  {indexes.model_id}\n"
-            f"  Runtime model:       {runtime_model_id}\n"
-            f"  Retrieval results will be INCORRECT.\n"
-            f"  Rebuild indexes: python scripts/build_indexes.py --model {runtime_model_id}\n"
+        raise ValueError(
+            f"Model mismatch: indexes built with '{indexes.model_id}', "
+            f"runtime is '{runtime_model_id}'. "
+            f"Rebuild: python scripts/build_indexes.py --model {runtime_model_id}"
         )
