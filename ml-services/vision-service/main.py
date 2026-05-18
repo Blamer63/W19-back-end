@@ -45,6 +45,7 @@ logger = logging.getLogger("vision.main")
 
 import torch
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from PIL import Image
 from pydantic import BaseModel
 from transformers import AutoModel, AutoProcessor
@@ -233,7 +234,10 @@ def analyze_image(req: AnalyzeRequest):
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     except Exception as e:
         logger.warning("Image decode failed: %s", e)
-        return {"error": "Invalid image data", "detections": [], "description": "", "language": req.language}
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Invalid image data", "detections": [], "description": "", "language": req.language},
+        )
 
     try:
         # ── Step 1: YOLO region proposals ────────────────────────────────────
@@ -247,7 +251,7 @@ def analyze_image(req: AnalyzeRequest):
         )
 
         boxes = results[0].boxes if results and len(results) > 0 else []
-        print(f"  YOLO: {len(boxes)} proposal(s)")
+        logger.debug("  YOLO: %s proposal(s)", len(boxes))
 
         # Extract raw box coordinates (pixel space) for importance scoring
         # before cropping — importance is computed on the original image geometry.
@@ -271,12 +275,18 @@ def analyze_image(req: AnalyzeRequest):
             crop_importances.append(imp_score)
 
             x1, y1, x2, y2 = box_coords
-            print(
-                f"  Crop {i} bbox=({x1:.0f},{y1:.0f},{x2:.0f},{y2:.0f})  "
-                f"importance: center={imp_info['center_score']}  "
-                f"size={imp_info['size_score']}  "
-                f"completeness={imp_info['completeness_score']}  "
-                f"final={imp_info['importance']}"
+            logger.debug(
+                "  Crop %s bbox=(%.0f,%.0f,%.0f,%.0f)  "
+                "importance: center=%s  size=%s  completeness=%s  final=%s",
+                i,
+                x1,
+                y1,
+                x2,
+                y2,
+                imp_info["center_score"],
+                imp_info["size_score"],
+                imp_info["completeness_score"],
+                imp_info["importance"],
             )
 
             # 2. Letterbox crop already done in extract_crop()
@@ -288,7 +298,7 @@ def analyze_image(req: AnalyzeRequest):
                 image_embed,
                 taxonomy_indexes.category_centroids,
             )
-            print(f"  Crop {i}: coarse route → {top_categories}")
+            logger.debug("  Crop %s: coarse route -> %s", i, top_categories)
 
             # 5. Fine-grained FAISS retrieval within top categories
             raw_results = fine_retrieve(
@@ -297,19 +307,23 @@ def analyze_image(req: AnalyzeRequest):
                 taxonomy_indexes.faiss_indexes,
                 taxonomy_indexes.id_maps,
             )
-            print(f"  Crop {i}: top candidates → {[(l, f'{s:.3f}') for l, s, _ in raw_results[:3]]}")
+            logger.debug(
+                "  Crop %s: top candidates -> %s",
+                i,
+                [(label, f"{score:.3f}") for label, score, _ in raw_results[:3]],
+            )
 
             # 6. Confidence filtering (per crop)
             filtered = apply_confidence_filter(raw_results)
             if filtered:
-                logger.info(
+                logger.debug(
                     f"  Crop {i}: confidence PASS — "
                     f"top='{filtered[0][0]}' score={filtered[0][1]:.4f}"
                 )
             else:
                 top_label = raw_results[0][0] if raw_results else "n/a"
                 top_score = raw_results[0][1] if raw_results else 0.0
-                logger.info(
+                logger.debug(
                     f"  Crop {i}: confidence REJECT — "
                     f"top='{top_label}' score={top_score:.4f} (see ConfFilter debug log)"
                 )
@@ -322,7 +336,7 @@ def analyze_image(req: AnalyzeRequest):
             crop_importances[i] for i, r in enumerate(per_crop_results) if r
         ]
 
-        logger.info(
+        logger.debug(
             f"  Rerank input: {len(valid_crops)} valid crop(s) "
             f"of {len(per_crop_results)} total — importances={[round(w,3) for w in valid_importances]}"
         )
@@ -351,7 +365,7 @@ def analyze_image(req: AnalyzeRequest):
             }
 
         reranked = context_rerank(valid_crops, crop_importances=valid_importances)
-        logger.info(
+        logger.debug(
             f"  Rerank output: {len(reranked)} candidate(s) — "
             f"top={[(l, f'{s:.4f}') for l, s, _ in reranked[:3]]}"
         )
@@ -364,7 +378,7 @@ def analyze_image(req: AnalyzeRequest):
         if not final_labels:
             final_labels = [UNKNOWN_LABEL]
 
-        logger.info(f"  FINAL labels (pre-translation): {final_labels}")
+        logger.debug(f"  FINAL labels (pre-translation): {final_labels}")
 
         # ── Step 9: Local translation lookup — builds canonical + translated pairs ──
         detection_metadata = build_detection_metadata(
@@ -386,7 +400,7 @@ def analyze_image(req: AnalyzeRequest):
         ]
 
         translated_labels = [d["translated_label"] for d in detections]
-        logger.info(f"  FINAL detections (lang='{req.language}'): {detections}")
+        logger.debug(f"  FINAL detections (lang='{req.language}'): {detections}")
 
         return {
             "detections":  detections,
@@ -396,7 +410,10 @@ def analyze_image(req: AnalyzeRequest):
 
     except Exception:
         logger.exception("Analysis failed")
-        return {"error": "Analysis failed", "detections": [], "description": "", "language": req.language}
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Analysis failed", "detections": [], "description": "", "language": req.language},
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
