@@ -183,7 +183,7 @@ public class NotificationControllerTest {
                 .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.unread_notifications").value(2))
-                .andExpect(jsonPath("$.total").value(2));
+                .andExpect(jsonPath("$.total").value(3));
     }
 
     @Test
@@ -213,12 +213,13 @@ public class NotificationControllerTest {
                 .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.unread_notifications").value(0))
-                .andExpect(jsonPath("$.total").value(0));
+                .andExpect(jsonPath("$.total").value(2));
 
         mockMvc.perform(get("/api/notifications/summary")
                 .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.unread_notifications").value(0));
+                .andExpect(jsonPath("$.unread_notifications").value(0))
+                .andExpect(jsonPath("$.total").value(2));
     }
 
     private Notification saveNotification(

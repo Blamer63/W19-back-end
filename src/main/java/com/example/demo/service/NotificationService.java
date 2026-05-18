@@ -80,9 +80,10 @@ public class NotificationService {
     public NotificationCenterSummaryResponse getSummary(String email) {
         Profile recipient = getProfileByEmail(email);
         long unread = notificationRepository.countByRecipientIdAndReadAtIsNull(recipient.getId());
+        long total = notificationRepository.countByRecipientId(recipient.getId());
         return NotificationCenterSummaryResponse.builder()
                 .unreadNotifications(unread)
-                .total(unread)
+                .total(total)
                 .build();
     }
 
@@ -103,9 +104,10 @@ public class NotificationService {
     public NotificationCenterSummaryResponse markAllRead(String email) {
         Profile recipient = getProfileByEmail(email);
         notificationRepository.markAllRead(recipient.getId(), LocalDateTime.now());
+        long total = notificationRepository.countByRecipientId(recipient.getId());
         return NotificationCenterSummaryResponse.builder()
                 .unreadNotifications(0)
-                .total(0)
+                .total(total)
                 .build();
     }
 
