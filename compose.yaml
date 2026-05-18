@@ -61,6 +61,8 @@ services:
       FORCE_CPU: ${VISION_FORCE_CPU:-0}
       YOLO_MODEL: ${VISION_YOLO_MODEL:-yolov8m.pt}
       SIGLIP_MODEL: ${VISION_SIGLIP_MODEL:-google/siglip-base-patch16-224}
+      LOG_LEVEL: ${VISION_LOG_LEVEL:-INFO}
+      DEBUG_ENDPOINTS: ${VISION_DEBUG_ENDPOINTS:-0}
     healthcheck:
       test: [ "CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)\" || exit 1" ]
       interval: 30s

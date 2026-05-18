@@ -36,8 +36,9 @@ import io
 import logging
 import os
 
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger("vision.main")
@@ -231,7 +232,8 @@ def analyze_image(req: AnalyzeRequest):
         image_bytes = base64.b64decode(req.image)
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     except Exception as e:
-        return {"error": f"Invalid image data: {e}", "detections": [], "description": "", "language": req.language}
+        logger.warning("Image decode failed: %s", e)
+        return {"error": "Invalid image data", "detections": [], "description": "", "language": req.language}
 
     try:
         # ── Step 1: YOLO region proposals ────────────────────────────────────
@@ -392,10 +394,9 @@ def analyze_image(req: AnalyzeRequest):
             "language":    req.language,
         }
 
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return {"error": f"Analysis failed: {e}", "detections": [], "description": "", "language": req.language}
+    except Exception:
+        logger.exception("Analysis failed")
+        return {"error": "Analysis failed", "detections": [], "description": "", "language": req.language}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -418,36 +419,37 @@ def health():
 # Debug / integration test endpoint
 # ─────────────────────────────────────────────────────────────────────────────
 
-@app.get("/debug-test")
-def debug_test():
-    """
-    Returns a hardcoded response that exactly matches the /analyze schema.
+if os.getenv("DEBUG_ENDPOINTS", "0") == "1":
+    @app.get("/debug-test")
+    def debug_test():
+        """
+        Returns a hardcoded response that exactly matches the /analyze schema.
 
-    Use this from Spring Boot (via VisionServiceClient) to verify:
-      - the HTTP transport works
-      - Jackson can deserialize VisionResponse correctly
-      - detections arrive with labels, confidence, and box fields
+        Use this from Spring Boot (via VisionServiceClient) to verify:
+          - the HTTP transport works
+          - Jackson can deserialize VisionResponse correctly
+          - detections arrive with labels, confidence, and box fields
 
-    If this returns labels=[] in Spring Boot, the bug is 100% in
-    VisionResponse DTO / Jackson deserialization, NOT in the ML pipeline.
+        If this returns labels=[] in Spring Boot, the bug is 100% in
+        VisionResponse DTO / Jackson deserialization, NOT in the ML pipeline.
 
-    If this returns labels=["chair", "vase"], the bug is in /analyze itself.
-    """
-    return {
-        "detections": [
-            {
-                "canonical_label": "chair",
-                "translated_label": "chair",
-                "confidence": 0.12,
-                "box": {"x": 0.1, "y": 0.2, "width": 0.3, "height": 0.4},
-            },
-            {
-                "canonical_label": "vase",
-                "translated_label": "vase",
-                "confidence": 0.09,
-                "box": {"x": 0.55, "y": 0.25, "width": 0.2, "height": 0.35},
-            },
-        ],
-        "description": "objects detected: chair, vase",
-        "language": "en",
-    }
+        If this returns labels=["chair", "vase"], the bug is in /analyze itself.
+        """
+        return {
+            "detections": [
+                {
+                    "canonical_label": "chair",
+                    "translated_label": "chair",
+                    "confidence": 0.12,
+                    "box": {"x": 0.1, "y": 0.2, "width": 0.3, "height": 0.4},
+                },
+                {
+                    "canonical_label": "vase",
+                    "translated_label": "vase",
+                    "confidence": 0.09,
+                    "box": {"x": 0.55, "y": 0.25, "width": 0.2, "height": 0.35},
+                },
+            ],
+            "description": "objects detected: chair, vase",
+            "language": "en",
+        }
