@@ -28,13 +28,13 @@ Fill in the values your teammate shared with you (JWT secret, Google Places key,
 docker compose up --build
 ```
 
-This spins up **3 containers**:
+This spins up the app stack:
 | Container | URL |
 |---|---|
 | Frontend (React) | http://localhost:8080 |
 | Backend (Spring Boot) | http://localhost:8081 |
-| PostgreSQL | localhost:5432 |
-| YOLO scanner service | http://localhost:5001 |
+| PostgreSQL | localhost:5433 |
+| Vision scanner service | http://localhost:8000 |
 
 The database is **automatically seeded** with demo data on first start.
 
@@ -77,21 +77,27 @@ Required environment variables:
 | `JWT_SECRET` | Signs JWT access tokens |
 | `GOOGLE_PLACES_KEY` | Calls Google Places proxy endpoints |
 | `GOOGLE_TRANSLATE_API_KEY` | Calls Google Cloud Translation for post translations |
-| `YOLO_ENDPOINT` | Scanner object detection endpoint, defaults to `http://localhost:5001/detect` |
-| `YOLO_MODEL` | YOLO model loaded by the Python scanner service, defaults to `yolov8n.pt` |
-| `YOLO_TIMEOUT_MS` | Backend timeout for scanner requests, defaults to `5000` |
+| `VISION_API_URL` | Scanner vision-service base URL, defaults to `http://localhost:8000` |
+| `VISION_TIMEOUT_MS` | Backend timeout for scanner requests, defaults to `60000` |
+| `VISION_SUPPORTED_LANGUAGES` | Taxonomy languages served directly by vision-service, defaults to `en,es,fr,ja` |
+| `VISION_YOLO_MODEL` | YOLO proposal model loaded by vision-service, defaults to `yolov8m.pt` |
+| `VISION_SIGLIP_MODEL` | SigLIP reranking/index model, defaults to `google/siglip-base-patch16-224` |
 
 ## AI Object Scanner Runtime
 
-The scanner uses the Spring Boot backend plus the Python YOLO service in `yolo_service/`.
-Docker Compose starts both services together and points the backend at `http://yolo:5001/detect`.
+The scanner uses the Spring Boot backend plus the Python ML vision-service in `ml-services/vision-service/`.
+Docker Compose starts both services together and points the backend at `http://vision-service:8000`.
+The backend appends `/analyze` in Spring config, so `VISION_API_URL` should be the base URL only.
 
 Useful scanner settings:
 
 | Setting | Where | Purpose |
 |---|---|---|
-| `YOLO_MODEL` | `.env` / compose | Upgrade detection breadth without Java code changes, for example `yolov8s.pt` for better accuracy than `yolov8n.pt` |
-| `YOLO_TIMEOUT_MS` | `.env` / Spring config | Caps backend wait time for object detection calls |
-| `app.yolo.confidence-threshold` | `application.yml` | Filters low-confidence detections in Spring after YOLO returns results |
+| `VISION_API_URL` | `.env` / compose | Base URL for vision-service; Docker uses `http://vision-service:8000` |
+| `VISION_TIMEOUT_MS` | `.env` / Spring config | Caps backend wait time for object detection calls |
+| `VISION_SUPPORTED_LANGUAGES` | `.env` / Spring config | Languages that use vision-service taxonomy translations directly |
+| `VISION_YOLO_MODEL` | `.env` / compose | YOLO proposal model used by vision-service |
+| `VISION_SIGLIP_MODEL` | `.env` / compose | SigLIP model used for retrieval/reranking and indexes |
 
-The YOLO service exposes `GET /health`. The backend exposes Actuator `GET /actuator/health` for Docker healthchecks.
+The vision-service exposes `GET /health`. The backend exposes Actuator `GET /actuator/health` for Docker healthchecks.
+Vision-service confidence scores are SigLIP/FAISS similarity scores, not classic YOLO confidence. Do not restore the old `0.60` Java post-filter for scanner results.
