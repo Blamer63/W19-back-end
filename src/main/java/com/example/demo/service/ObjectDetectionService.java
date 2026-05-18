@@ -1,39 +1,26 @@
 package com.example.demo.service;
 
-import com.example.demo.dto.BoundingBoxDTO;
 import com.example.demo.dto.DetectedObjectDTO;
 import com.example.demo.entity.Profile;
 import com.example.demo.entity.UserLanguage;
-import com.example.demo.exception.ObjectDetectionUnavailableException;
+import com.example.demo.enums.ScannerTranslationSource;
 import com.example.demo.repository.ProfileRepository;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.example.demo.service.scanner.VisionDetection;
+import com.example.demo.service.scanner.VisionServiceClient;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -48,24 +35,21 @@ public class ObjectDetectionService {
 
     private static final String DEFAULT_LANGUAGE_CODE = "en";
 
-    private final RestTemplate restTemplate;
+    private final VisionServiceClient visionServiceClient;
     private final ProfileRepository profileRepository;
     private final ScannerVocabularyService scannerVocabularyService;
 
     public ObjectDetectionService(
-            @Qualifier("yoloRestTemplate") RestTemplate restTemplate,
+            VisionServiceClient visionServiceClient,
             ProfileRepository profileRepository,
             ScannerVocabularyService scannerVocabularyService) {
-        this.restTemplate = restTemplate;
+        this.visionServiceClient = visionServiceClient;
         this.profileRepository = profileRepository;
         this.scannerVocabularyService = scannerVocabularyService;
     }
 
-    @Value("${app.yolo.endpoint}")
-    private String yoloEndpoint;
-
-    @Value("${app.yolo.confidence-threshold}")
-    private double confidenceThreshold;
+    @Value("${app.vision.supported-languages:en,es,fr,ja}")
+    private String supportedTaxonomyLanguages;
 
     private void validateImage(MultipartFile file) {
         if (file == null || file.isEmpty())
@@ -80,60 +64,25 @@ public class ObjectDetectionService {
     public List<DetectedObjectDTO> detect(MultipartFile image, String currentUserEmail) throws IOException {
         validateImage(image);
         String languageCode = resolveLearningLanguageCode(currentUserEmail);
-        List<YoloLabel> labels = requestDetections(image);
+        String imageBase64 = Base64.getEncoder().encodeToString(image.getBytes());
+        List<VisionDetection> detections = visionServiceClient.analyze(imageBase64, languageCode);
         Map<String, ScannerVocabularyService.VocabularyMatch> vocabularyCache = new HashMap<>();
 
-        return labels.stream()
-                .filter(label -> label.getLabel() != null)
-                .filter(label -> !normalizeLabel(label.getLabel()).isBlank())
-                .filter(label -> label.getConfidence() >= confidenceThreshold)
+        return detections.stream()
+                .filter(detection -> detection.getCanonicalLabel() != null)
+                .filter(detection -> !normalizeLabel(detection.getCanonicalLabel()).isBlank())
                 .collect(Collectors.toMap(
-                        label -> normalizeLabel(label.getLabel()),
+                        detection -> normalizeLabel(detection.getCanonicalLabel()),
                         Function.identity(),
                         (existing, candidate) -> existing.getConfidence() >= candidate.getConfidence()
                                 ? existing
                                 : candidate))
                 .values()
                 .stream()
-                .sorted(Comparator.comparingDouble(YoloLabel::getConfidence).reversed())
+                .sorted(Comparator.comparingDouble(VisionDetection::getConfidence).reversed())
                 .limit(MAX_DETECTED_OBJECTS)
-                .map(label -> toDetectedObject(label, languageCode, vocabularyCache))
+                .map(detection -> toDetectedObject(detection, languageCode, vocabularyCache))
                 .toList();
-    }
-
-    private List<YoloLabel> requestDetections(MultipartFile image) throws IOException {
-        HttpHeaders imageHeaders = new HttpHeaders();
-        imageHeaders.setContentType(MediaType.parseMediaType(
-                Optional.ofNullable(image.getContentType()).orElse(MediaType.APPLICATION_OCTET_STREAM_VALUE)));
-
-        ByteArrayResource imageResource = new ByteArrayResource(image.getBytes()) {
-            @Override
-            public String getFilename() {
-                return Optional.ofNullable(image.getOriginalFilename()).orElse("scan-image");
-            }
-        };
-
-        MultipartBodyBuilder bodyBuilder = new MultipartBodyBuilder();
-        bodyBuilder.part("image", imageResource)
-                .filename(imageResource.getFilename())
-                .contentType(imageHeaders.getContentType());
-        MultiValueMap<String, HttpEntity<?>> body = bodyBuilder.build();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-
-        try {
-            ResponseEntity<List<YoloLabel>> response = restTemplate.exchange(
-                    yoloEndpoint,
-                    HttpMethod.POST,
-                    new HttpEntity<>(body, headers),
-                    new ParameterizedTypeReference<>() {
-                    });
-            return Optional.ofNullable(response.getBody()).orElse(List.of());
-        } catch (RestClientException ex) {
-            log.warn("YOLO object detection request failed for endpoint {}: {}", yoloEndpoint, ex.getMessage());
-            throw new ObjectDetectionUnavailableException("Object detection service unavailable", ex);
-        }
     }
 
     private String resolveLearningLanguageCode(String currentUserEmail) {
@@ -150,42 +99,58 @@ public class ObjectDetectionService {
     }
 
     private DetectedObjectDTO toDetectedObject(
-            YoloLabel label,
+            VisionDetection detection,
             String languageCode,
             Map<String, ScannerVocabularyService.VocabularyMatch> vocabularyCache) {
-        String normalizedLabel = normalizeLabel(label.getLabel());
-        ScannerVocabularyService.VocabularyMatch vocabulary = vocabularyCache.computeIfAbsent(
-                normalizedLabel + ":" + languageCode,
-                ignored -> scannerVocabularyService.resolve(normalizedLabel, languageCode));
+        String normalizedLabel = normalizeLabel(detection.getCanonicalLabel());
+        ScannerVocabularyService.VocabularyMatch vocabulary = resolveVocabulary(
+                detection,
+                normalizedLabel,
+                languageCode,
+                vocabularyCache);
 
         return DetectedObjectDTO.builder()
                 .label(normalizedLabel)
-                .confidence(label.getConfidence())
+                .confidence(detection.getConfidence())
                 .nativeWord(normalizedLabel)
                 .learningWord(vocabulary.getLearningWord())
                 .languageCode(languageCode)
                 .translationSource(vocabulary.getTranslationSource())
-                .box(label.getBox())
+                .box(detection.getBox())
                 .build();
+    }
+
+    private ScannerVocabularyService.VocabularyMatch resolveVocabulary(
+            VisionDetection detection,
+            String normalizedLabel,
+            String languageCode,
+            Map<String, ScannerVocabularyService.VocabularyMatch> vocabularyCache) {
+        if (taxonomySupportedLanguageCodes().contains(languageCode)) {
+            String learningWord = detection.getTranslatedLabel();
+            if (learningWord == null || learningWord.isBlank()) {
+                learningWord = normalizedLabel;
+            }
+            return ScannerVocabularyService.VocabularyMatch.builder()
+                    .learningWord(learningWord)
+                    .translationSource(ScannerTranslationSource.TAXONOMY)
+                    .build();
+        }
+
+        return vocabularyCache.computeIfAbsent(
+                normalizedLabel + ":" + languageCode,
+                ignored -> scannerVocabularyService.resolve(normalizedLabel, languageCode));
+    }
+
+    private Set<String> taxonomySupportedLanguageCodes() {
+        return Arrays.stream(supportedTaxonomyLanguages.split(","))
+                .map(code -> code.trim().toLowerCase(Locale.ROOT))
+                .filter(code -> !code.isBlank())
+                .collect(Collectors.toSet());
     }
 
     private String normalizeLabel(String label) {
         return label.trim()
                 .replace('_', ' ')
                 .toLowerCase(Locale.ROOT);
-    }
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    static class YoloLabel {
-        private String label;
-        private double confidence;
-        private BoundingBoxDTO box;
-
-        YoloLabel(String label, double confidence) {
-            this.label = label;
-            this.confidence = confidence;
-        }
     }
 }

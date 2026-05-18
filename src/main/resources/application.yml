@@ -43,7 +43,7 @@ app:
     api-key: ${GOOGLE_TRANSLATE_API_KEY:}
     base-url: https://translation.googleapis.com/language/translate/v2
     timeout-ms: 5000
-  yolo:
-    endpoint: ${YOLO_ENDPOINT:http://localhost:5001/detect}
-    confidence-threshold: 0.60
-    timeout-ms: ${YOLO_TIMEOUT_MS:5000}
+  vision:
+    endpoint: ${VISION_API_URL:http://localhost:8000}/analyze
+    timeout-ms: ${VISION_TIMEOUT_MS:60000}
+    supported-languages: ${VISION_SUPPORTED_LANGUAGES:en,es,fr,ja}

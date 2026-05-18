@@ -38,7 +38,7 @@ app:
     api-key: "test-translation-api-key-not-used-in-tests"
     base-url: "https://translation.googleapis.com/language/translate/v2"
     timeout-ms: 1000
-  yolo:
-    endpoint: "http://localhost:5001/detect"
-    confidence-threshold: 0.60
+  vision:
+    endpoint: "http://localhost:8000/analyze"
     timeout-ms: 1000
+    supported-languages: "en,es,fr,ja"

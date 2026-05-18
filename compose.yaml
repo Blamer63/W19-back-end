@@ -32,14 +32,15 @@ services:
       SPRING_DATASOURCE_PASSWORD: secret
       JWT_SECRET: ${JWT_SECRET}
       GOOGLE_PLACES_KEY: ${GOOGLE_PLACES_KEY}
-      YOLO_ENDPOINT: http://yolo:5001/detect
-      YOLO_TIMEOUT_MS: ${YOLO_TIMEOUT_MS:-5000}
+      VISION_API_URL: http://vision-service:8000
+      VISION_TIMEOUT_MS: ${VISION_TIMEOUT_MS:-60000}
+      VISION_SUPPORTED_LANGUAGES: ${VISION_SUPPORTED_LANGUAGES:-en,es,fr,ja}
     env_file:
       - .env
     depends_on:
       postgres:
         condition: service_healthy
-      yolo:
+      vision-service:
         condition: service_started
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1" ]
@@ -48,17 +49,20 @@ services:
       retries: 5
 
   # ── YOLO Object Detection Service ──────────────────────────────────────────
-  yolo:
+  # Vision ML Service (replaces the old simple YOLO service)
+  vision-service:
     build:
-      context: ./yolo_service
+      context: ./ml-services/vision-service
       dockerfile: Dockerfile
     ports:
-      - "5001:5001"
+      - "8000:8000"
     environment:
-      PORT: 5001
-      YOLO_MODEL: ${YOLO_MODEL:-yolov8n.pt}
+      ENABLE_CUDA: ${VISION_ENABLE_CUDA:-0}
+      FORCE_CPU: ${VISION_FORCE_CPU:-0}
+      YOLO_MODEL: ${VISION_YOLO_MODEL:-yolov8m.pt}
+      SIGLIP_MODEL: ${VISION_SIGLIP_MODEL:-google/siglip-base-patch16-224}
     healthcheck:
-      test: [ "CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:5001/health', timeout=5)\" || exit 1" ]
+      test: [ "CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)\" || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 5
