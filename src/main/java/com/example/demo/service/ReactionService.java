@@ -6,6 +6,7 @@ import com.example.demo.entity.Post;
 import com.example.demo.entity.PostReaction;
 import com.example.demo.entity.PostReaction.PostReactionId;
 import com.example.demo.entity.Profile;
+import com.example.demo.enums.NotificationType;
 import com.example.demo.repository.PostCommentRepository;
 import com.example.demo.repository.PostReactionRepository;
 import com.example.demo.repository.PostRepository;
@@ -24,6 +25,8 @@ public class ReactionService {
     private final PostRepository postRepository;
     private final ProfileRepository profileRepository;
     private final PostCommentRepository postCommentRepository;
+    private final NotificationService notificationService;
+    private final ProfileService profileService;
 
     @Transactional
     public PostReactionResponse reactToPost(UUID postId, PostReactionRequest request, String currentUserEmail) {
@@ -35,6 +38,8 @@ public class ReactionService {
 
         PostReactionId reactionId = new PostReactionId(postId, currentUser.getId());
 
+        boolean isNewReaction = postReactionRepository.findById(reactionId).isEmpty();
+
         PostReaction reaction = postReactionRepository.findById(reactionId)
                 .orElse(PostReaction.builder()
                         .id(reactionId)
@@ -44,6 +49,16 @@ public class ReactionService {
 
         reaction.setType(request.getReaction());
         postReactionRepository.save(reaction);
+
+        if (isNewReaction) {
+            notificationService.createNotification(
+                    post.getAuthor().getId(),
+                    currentUser.getId(),
+                    NotificationType.POST_REACTION,
+                    "New reaction",
+                    profileService.displayName(currentUser) + " reacted to your post.",
+                    "/posts/" + post.getId());
+        }
 
         return buildResponse(postId, currentUser.getId());
     }
@@ -68,4 +83,5 @@ public class ReactionService {
                         .orElse(null))
                 .build();
     }
+
 }

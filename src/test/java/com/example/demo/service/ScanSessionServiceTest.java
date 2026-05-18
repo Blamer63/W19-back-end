@@ -38,6 +38,7 @@ class ScanSessionServiceTest {
     @Mock private ScanSessionRepository scanSessionRepository;
     @Mock private ScanDetectionRepository scanDetectionRepository;
     @Mock private SavedWordService savedWordService;
+    @Mock private NotificationService notificationService;
 
     private ScanSessionService scanSessionService;
     private Profile user;
@@ -48,7 +49,8 @@ class ScanSessionServiceTest {
                 profileRepository,
                 scanSessionRepository,
                 scanDetectionRepository,
-                savedWordService);
+                savedWordService,
+                notificationService);
         user = Profile.builder()
                 .email("test@example.com")
                 .build();

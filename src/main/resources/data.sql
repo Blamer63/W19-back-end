@@ -1,6 +1,29 @@
 -- =============================================================
 -- Schema patches (idempotent — safe to re-run on every boot)
 -- =============================================================
+-- Notification center table. Production does not run data.sql; keep the
+-- matching manual production script in docs/sql/create_notifications_table.sql.
+CREATE TABLE IF NOT EXISTS notifications (
+    id UUID PRIMARY KEY,
+    recipient_id UUID NOT NULL REFERENCES profiles(id),
+    actor_id UUID REFERENCES profiles(id),
+    type VARCHAR(255) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    body TEXT,
+    target_url VARCHAR(255),
+    read_at TIMESTAMP,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_recipient_created
+    ON notifications (recipient_id, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_recipient_read
+    ON notifications (recipient_id, read_at);
+
+UPDATE notifications SET type = 'POST_REACTION' WHERE type = 'POST_LIKE';
+
 -- Allow image-only messages: content can be NULL when imageUrl is set.
 -- ddl-auto:update never removes NOT NULL, so we do it here once.
 ALTER TABLE messages ALTER COLUMN content DROP NOT NULL;

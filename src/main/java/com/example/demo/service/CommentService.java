@@ -5,6 +5,7 @@ import com.example.demo.dto.CreateCommentRequest;
 import com.example.demo.entity.Post;
 import com.example.demo.entity.PostComment;
 import com.example.demo.entity.Profile;
+import com.example.demo.enums.NotificationType;
 import com.example.demo.repository.PostCommentRepository;
 import com.example.demo.repository.PostRepository;
 import com.example.demo.repository.ProfileRepository;
@@ -23,6 +24,8 @@ public class CommentService {
     private final PostCommentRepository postCommentRepository;
     private final PostRepository postRepository;
     private final ProfileRepository profileRepository;
+    private final NotificationService notificationService;
+    private final ProfileService profileService;
 
     @Transactional(readOnly = true)
     public Page<CommentResponse> getComments(UUID postId, Pageable pageable) {
@@ -44,7 +47,16 @@ public class CommentService {
                 .content(request.getContent())
                 .build();
 
-        return mapToResponse(postCommentRepository.save(comment));
+        PostComment saved = postCommentRepository.save(comment);
+        notificationService.createNotification(
+                post.getAuthor().getId(),
+                currentUser.getId(),
+                NotificationType.POST_COMMENT,
+                "New comment",
+                profileService.displayName(currentUser) + " commented on your post.",
+                "/posts/" + post.getId());
+
+        return mapToResponse(saved);
     }
 
     @Transactional
@@ -76,4 +88,5 @@ public class CommentService {
                 .createdAt(comment.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant())
                 .build();
     }
+
 }

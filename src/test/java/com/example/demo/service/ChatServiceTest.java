@@ -41,6 +41,7 @@ class ChatServiceTest {
     @Mock private ProfileRepository profileRepository;
     @Mock private ProfileService profileService;
     @Mock private S3Service s3Service;
+    @Mock private NotificationService notificationService;
 
     // Constructed explicitly in setUp() so the exact @Mock instances above are injected.
     // @InjectMocks was removed because Mockito's constructor-injection strategy can silently
@@ -60,7 +61,8 @@ class ChatServiceTest {
                 messageRepository,
                 profileRepository,
                 profileService,
-                s3Service
+                s3Service,
+                notificationService
         );
 
         sender = new Profile();

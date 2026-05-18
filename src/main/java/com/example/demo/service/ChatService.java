@@ -8,6 +8,7 @@ import com.example.demo.dto.MessageResponse;
 import com.example.demo.entity.Conversation;
 import com.example.demo.entity.Message;
 import com.example.demo.entity.Profile;
+import com.example.demo.enums.NotificationType;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.ConversationRepository;
 import com.example.demo.repository.MessageRepository;
@@ -38,6 +39,7 @@ public class ChatService {
     private final ProfileRepository profileRepository;
     private final ProfileService profileService;
     private final S3Service s3Service;
+    private final NotificationService notificationService;
 
     // Used by the WebSocket endpoint (text only — WS cannot carry multipart)
     @Transactional
@@ -109,6 +111,8 @@ public class ChatService {
             conversation.setLastMessagePreview(preview);
             conversation.setLastMessageAt(LocalDateTime.now());
             conversationRepository.save(conversation);
+
+            createMessageNotifications(conversation, sender, preview);
 
             return mapToMessageResponse(message);
         } catch (Exception e) {
@@ -364,6 +368,24 @@ public class ChatService {
                 .createdAt(message.getCreatedAt())
                 .isRead(message.isRead())
                 .build();
+    }
+
+    private void createMessageNotifications(Conversation conversation, Profile sender, String preview) {
+        String title = conversation.isGroup() && conversation.getGroupName() != null
+                ? "New message in " + conversation.getGroupName()
+                : "New message";
+        String body = profileService.displayName(sender) + ": " + preview;
+        String targetUrl = "/conversations/" + conversation.getId();
+
+        conversation.getParticipants().stream()
+                .filter(participant -> !participant.getId().equals(sender.getId()))
+                .forEach(participant -> notificationService.createNotification(
+                        participant.getId(),
+                        sender.getId(),
+                        NotificationType.MESSAGE,
+                        title,
+                        body,
+                        targetUrl));
     }
 
     private ConversationResponse mapToConversationResponse(Conversation conversation, UUID requesterId) {

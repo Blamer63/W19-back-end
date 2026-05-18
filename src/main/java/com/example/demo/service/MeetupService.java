@@ -3,6 +3,7 @@ package com.example.demo.service;
 import com.example.demo.dto.*;
 import com.example.demo.entity.*;
 import com.example.demo.enums.MeetupStatus;
+import com.example.demo.enums.NotificationType;
 import com.example.demo.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,6 +27,8 @@ public class MeetupService {
     private final MeetupAttendeeRepository meetupAttendeeRepository;
     private final ProfileRepository profileRepository;
     private final LanguageRepository languageRepository;
+    private final NotificationService notificationService;
+    private final ProfileService profileService;
 
     @Transactional
     public MeetupResponse createMeetup(CreateMeetupRequest request, String organizerEmail) {
@@ -48,7 +51,7 @@ public class MeetupService {
                 .status(MeetupStatus.UPCOMING)
                 .build();
 
-        meetupRepository.save(meetup);
+        meetup = meetupRepository.save(meetup);
 
         // Auto-add organizer as first attendee
         MeetupAttendee organizerAttendee = MeetupAttendee.builder()
@@ -139,7 +142,8 @@ public class MeetupService {
             meetup.setMaxAttendees(request.getMaxAttendees());
         }
 
-        meetupRepository.save(meetup);
+        meetup = meetupRepository.save(meetup);
+        notifyMeetupUpdated(meetup, userId);
         return mapToResponse(meetup, userId);
     }
 
@@ -189,6 +193,13 @@ public class MeetupService {
                 .build();
 
         meetupAttendeeRepository.save(meetupAttendee);
+        notificationService.createNotification(
+                meetup.getOrganizer().getId(),
+                attendee.getId(),
+                NotificationType.MEETUP_JOINED,
+                "New meetup attendee",
+                profileService.displayName(attendee) + " joined your meetup \"" + meetup.getTitle() + "\".",
+                "/meetups/" + meetup.getId());
     }
 
     @Transactional
@@ -256,4 +267,18 @@ public class MeetupService {
                 .joinedAt(attendee.getJoinedAt())
                 .build();
     }
+
+    private void notifyMeetupUpdated(Meetup meetup, UUID organizerId) {
+        meetupAttendeeRepository.findByMeetupId(meetup.getId()).stream()
+                .map(MeetupAttendee::getAttendee)
+                .filter(attendee -> !attendee.getId().equals(organizerId))
+                .forEach(attendee -> notificationService.createNotification(
+                        attendee.getId(),
+                        organizerId,
+                        NotificationType.MEETUP_UPDATED,
+                        "Meetup updated",
+                        "The meetup \"" + meetup.getTitle() + "\" has been updated.",
+                        "/meetups/" + meetup.getId()));
+    }
+
 }

@@ -6,6 +6,7 @@ import com.example.demo.dto.UpdateWordRequest;
 import com.example.demo.entity.Language;
 import com.example.demo.entity.Profile;
 import com.example.demo.entity.SavedWord;
+import com.example.demo.enums.NotificationType;
 import com.example.demo.exception.DuplicateSavedWordException;
 import com.example.demo.repository.LanguageRepository;
 import com.example.demo.repository.ProfileRepository;
@@ -27,6 +28,7 @@ public class SavedWordService {
     private final SavedWordRepository savedWordRepository;
     private final ProfileRepository profileRepository;
     private final LanguageRepository languageRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public SavedWordResponse saveWord(String userEmail, CreateWordRequest request) {
@@ -50,6 +52,13 @@ public class SavedWordService {
                 .build();
 
         SavedWord saved = savedWordRepository.save(savedWord);
+        notificationService.createNotification(
+                user.getId(),
+                null,
+                NotificationType.SAVED_WORD,
+                "Word saved",
+                "You saved \"" + saved.getWord() + "\" to your vocabulary.",
+                "/saved-words/" + saved.getId());
         return mapToResponse(saved);
     }
 
