@@ -71,9 +71,9 @@ class ScanSessionServiceTest {
                 .label("apple")
                 .confidence(0.94d)
                 .nativeWord("apple")
-                .learningWord("\uC0AC\uACFC")
-                .languageCode("ko")
-                .translationSource(ScannerTranslationSource.DICTIONARY)
+                .learningWord("manzana")
+                .languageCode("es")
+                .translationSource(ScannerTranslationSource.TAXONOMY)
                 .box(BoundingBoxDTO.builder()
                         .x(0.25d)
                         .y(0.30d)
@@ -92,6 +92,7 @@ class ScanSessionServiceTest {
         ScanDetection savedDetection = captor.getValue().getDetections().get(0);
         assertThat(savedDetection.getScanSession()).isEqualTo(captor.getValue());
         assertThat(savedDetection.getLabel()).isEqualTo("apple");
+        assertThat(savedDetection.getTranslationSource()).isEqualTo(ScannerTranslationSource.TAXONOMY);
         assertThat(savedDetection.getBoxWidth()).isEqualTo(0.40d);
     }
 
