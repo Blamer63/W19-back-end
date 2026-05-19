@@ -74,9 +74,19 @@ SIGLIP_MODEL_ID      = os.getenv("SIGLIP_MODEL", DEFAULT_SIGLIP_MODEL)
 YOLO_MODEL_NAME      = os.getenv("YOLO_MODEL",   "yolov8m.pt")
 YOLO_CONF_THRESHOLD  = float(os.getenv("YOLO_CONF",    "0.10"))
 YOLO_IOU_THRESHOLD   = float(os.getenv("YOLO_IOU",     "0.50"))
-YOLO_MAX_DET         = int(os.getenv("YOLO_MAX_DET",   "5"))
+YOLO_MAX_DET         = int(os.getenv("YOLO_MAX_DET",   "10"))
 
-MAX_OUTPUT_LABELS    = int(os.getenv("MAX_LABELS",     "3"))
+MAX_OUTPUT_LABELS    = int(os.getenv("MAX_LABELS",     "6"))
+MIN_OUTPUT_CONFIDENCE = float(os.getenv("MIN_OUTPUT_CONF", "0.02"))
+MIN_BOX_AREA_RATIO    = float(os.getenv("MIN_BOX_AREA",   "0.0015"))
+MAX_BOX_ASPECT_RATIO  = float(os.getenv("MAX_BOX_ASPECT", "8.0"))
+
+# Some fine-grained taxonomy concepts are too specific for noisy YOLO crops.
+# Return user-facing, general vocabulary unless the app later adds stronger
+# context-aware disambiguation for these subclasses.
+CANONICAL_LABEL_OVERRIDES = {
+    "piano stool": "stool",
+}
 
 
 def resolve_device() -> str:
@@ -165,6 +175,56 @@ def normalize_box(
     }
 
 
+def normalize_output_label(label: str) -> str:
+    return CANONICAL_LABEL_OVERRIDES.get(label, label)
+
+
+def is_supported_box(
+    box_xyxy: tuple[float, float, float, float],
+    image_size: tuple[int, int],
+) -> bool:
+    image_width, image_height = float(image_size[0]), float(image_size[1])
+    if image_width <= 0 or image_height <= 0:
+        return False
+
+    x1, y1, x2, y2 = box_xyxy
+    box_width = max(0.0, x2 - x1)
+    box_height = max(0.0, y2 - y1)
+    if box_width <= 0 or box_height <= 0:
+        return False
+
+    area_ratio = (box_width * box_height) / (image_width * image_height)
+    aspect_ratio = max(box_width / box_height, box_height / box_width)
+
+    return area_ratio >= MIN_BOX_AREA_RATIO and aspect_ratio <= MAX_BOX_ASPECT_RATIO
+
+
+def normalize_retrieval_results(
+    results: list[tuple[str, float, str]],
+) -> list[tuple[str, float, str]]:
+    normalized: list[tuple[str, float, str]] = []
+    best_by_label: dict[str, tuple[str, float, str]] = {}
+
+    for label, score, category in results:
+        normalized_label = normalize_output_label(label)
+        candidate = (normalized_label, score, category)
+        current = best_by_label.get(normalized_label)
+        if current is None or score > current[1]:
+            best_by_label[normalized_label] = candidate
+
+    seen: set[str] = set()
+    for label, _, _ in results:
+        normalized_label = normalize_output_label(label)
+        if normalized_label in seen:
+            continue
+        candidate = best_by_label.get(normalized_label)
+        if candidate is not None:
+            normalized.append(candidate)
+            seen.add(normalized_label)
+
+    return normalized
+
+
 def build_detection_metadata(
     final_labels: list[str],
     reranked: list[tuple[str, float, str]],
@@ -203,6 +263,17 @@ def build_detection_metadata(
         })
         for label in final_labels
     }
+
+
+def filter_final_labels(
+    final_labels: list[str],
+    detection_metadata: dict[str, dict],
+) -> list[str]:
+    return [
+        label
+        for label in final_labels
+        if float(detection_metadata.get(label, {}).get("confidence", 0.0)) >= MIN_OUTPUT_CONFIDENCE
+    ]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -262,8 +333,28 @@ def analyze_image(req: AnalyzeRequest):
             crops          = [image]
             raw_box_coords = [(0.0, 0.0, float(image_wh[0]), float(image_wh[1]))]
         else:
-            crops          = [extract_crop(image, box, target_size=INPUT_SIZE) for box in boxes]
-            raw_box_coords = [tuple(box.xyxy[0].tolist()) for box in boxes]
+            candidate_boxes = [
+                (box, tuple(box.xyxy[0].tolist()))
+                for box in boxes
+            ]
+            supported_boxes = [
+                (box, box_coords)
+                for box, box_coords in candidate_boxes
+                if is_supported_box(box_coords, image_wh)
+            ]
+            logger.debug(
+                "  Geometry filter: kept %s/%s proposal(s)",
+                len(supported_boxes),
+                len(candidate_boxes),
+            )
+
+            if not supported_boxes:
+                # Fallback: all YOLO proposals were too small/thin to be useful.
+                crops          = [image]
+                raw_box_coords = [(0.0, 0.0, float(image_wh[0]), float(image_wh[1]))]
+            else:
+                crops          = [extract_crop(image, box, target_size=INPUT_SIZE) for box, _ in supported_boxes]
+                raw_box_coords = [box_coords for _, box_coords in supported_boxes]
 
         # ── Step 2 → 5: Per-crop embedding + retrieval ────────────────────────
         per_crop_results  = []
@@ -314,7 +405,7 @@ def analyze_image(req: AnalyzeRequest):
             )
 
             # 6. Confidence filtering (per crop)
-            filtered = apply_confidence_filter(raw_results)
+            filtered = normalize_retrieval_results(apply_confidence_filter(raw_results))
             if filtered:
                 logger.debug(
                     f"  Crop {i}: confidence PASS — "
@@ -327,7 +418,10 @@ def analyze_image(req: AnalyzeRequest):
                     f"  Crop {i}: confidence REJECT — "
                     f"top='{top_label}' score={top_score:.4f} (see ConfFilter debug log)"
                 )
-            per_crop_results.append(filtered if filtered else [])
+            # Keep only the strongest interpretation for each crop. Returning
+            # top-N alternatives from one crop produced confusing duplicates
+            # such as "bar stool", "stool", and "piano stool" for the same box.
+            per_crop_results.append(filtered[:1] if filtered else [])
 
         # ── Step 7: Context re-ranking across all crops ───────────────────────
         # Boosts the dominant co-occurring category across crops
@@ -375,12 +469,6 @@ def analyze_image(req: AnalyzeRequest):
         # Canonical labels only — never aliases.
         final_labels = deduplicate_labels(reranked, max_labels=MAX_OUTPUT_LABELS)
 
-        if not final_labels:
-            final_labels = [UNKNOWN_LABEL]
-
-        logger.debug(f"  FINAL labels (pre-translation): {final_labels}")
-
-        # ── Step 9: Local translation lookup — builds canonical + translated pairs ──
         detection_metadata = build_detection_metadata(
             final_labels,
             reranked,
@@ -389,6 +477,26 @@ def analyze_image(req: AnalyzeRequest):
             crop_importances,
             image_wh,
         )
+        final_labels = filter_final_labels(final_labels, detection_metadata)
+
+        if not final_labels:
+            logger.warning(
+                "  Final labels fell below MIN_OUTPUT_CONF=%.3f — returning UNKNOWN_LABEL.",
+                MIN_OUTPUT_CONFIDENCE,
+            )
+            final_labels = [UNKNOWN_LABEL]
+            detection_metadata = build_detection_metadata(
+                final_labels,
+                reranked,
+                per_crop_results,
+                raw_box_coords,
+                crop_importances,
+                image_wh,
+            )
+
+        logger.debug(f"  FINAL labels (pre-translation): {final_labels}")
+
+        # ── Step 9: Local translation lookup — builds canonical + translated pairs ──
         detections = [
             {
                 "canonical_label": label,
