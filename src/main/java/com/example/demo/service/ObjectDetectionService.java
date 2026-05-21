@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 public class ObjectDetectionService {
 
     private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
-    private static final long MAX_SCAN_SIZE = 5L * 1024 * 1024;
+    private static final long MAX_SCAN_SIZE = 10L * 1024 * 1024;
     private static final int MAX_DETECTED_OBJECTS = 10;
 
     private static final String DEFAULT_LANGUAGE_CODE = "en";
