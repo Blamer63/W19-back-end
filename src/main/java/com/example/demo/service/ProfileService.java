@@ -10,7 +10,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 @Service
@@ -50,6 +52,13 @@ public class ProfileService {
                                                                 .proficiency(ul.getProficiency())
                                                                 .isLearning(ul.isLearning())
                                                                 .build())
+                                                .collect(Collectors.toMap(
+                                                                dto -> dto.getCode().trim().toLowerCase(Locale.ROOT),
+                                                                dto -> dto,
+                                                                (first, ignored) -> first,
+                                                                LinkedHashMap::new))
+                                                .values()
+                                                .stream()
                                                 .collect(Collectors.toList()))
                                 .roles(profile.getRoles().stream()
                                                 .map(role -> role.getRole().name())

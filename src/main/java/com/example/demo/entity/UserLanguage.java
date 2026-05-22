@@ -6,7 +6,11 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "user_languages")
+@Table(
+        name = "user_languages",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_user_languages_profile_language",
+                columnNames = {"profile_id", "language_code"}))
 @Getter
 @Setter
 @NoArgsConstructor

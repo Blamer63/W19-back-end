@@ -13,7 +13,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 @RestController
@@ -31,13 +33,14 @@ public class UserLanguageController {
                                 .orElseThrow(() -> new RuntimeException("User not found"));
 
                 List<UserLanguageDTO> languages = profile.getLanguages().stream()
-                                .map(ul -> UserLanguageDTO.builder()
-                                                .code(ul.getLanguage().getCode())
-                                                .name(ul.getLanguage().getName())
-                                                .flagEmoji(ul.getLanguage().getFlagEmoji())
-                                                .proficiency(ul.getProficiency())
-                                                .isLearning(ul.isLearning())
-                                                .build())
+                                .map(this::toDto)
+                                .collect(Collectors.toMap(
+                                                dto -> normalizeLanguageCode(dto.getCode()),
+                                                dto -> dto,
+                                                (first, ignored) -> first,
+                                                LinkedHashMap::new))
+                                .values()
+                                .stream()
                                 .collect(Collectors.toList());
 
                 return ResponseEntity.ok(languages);
@@ -52,14 +55,26 @@ public class UserLanguageController {
                 Profile profile = profileRepository.findByEmail(authentication.getName())
                                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+                List<UserLanguageDTO> uniqueLanguages = languages.stream()
+                                .filter(dto -> dto.getCode() != null && !dto.getCode().isBlank())
+                                .collect(Collectors.toMap(
+                                                dto -> normalizeLanguageCode(dto.getCode()),
+                                                dto -> dto,
+                                                (first, ignored) -> first,
+                                                LinkedHashMap::new))
+                                .values()
+                                .stream()
+                                .collect(Collectors.toList());
+
                 // Clear existing languages
                 userLanguageRepository.deleteByProfileId(profile.getId());
 
                 // Add new languages
-                List<UserLanguage> newLanguages = languages.stream().map(dto -> {
-                        Language lang = languageRepository.findByCode(dto.getCode())
+                List<UserLanguage> newLanguages = uniqueLanguages.stream().map(dto -> {
+                        String languageCode = normalizeLanguageCode(dto.getCode());
+                        Language lang = languageRepository.findByCode(languageCode)
                                         .orElseThrow(() -> new RuntimeException(
-                                                        "Language not found: " + dto.getCode()));
+                                                        "Language not found: " + languageCode));
 
                         return UserLanguage.builder()
                                         .profile(profile)
@@ -71,12 +86,20 @@ public class UserLanguageController {
 
                 List<UserLanguage> saved = userLanguageRepository.saveAll(newLanguages);
 
-                return ResponseEntity.ok(saved.stream().map(ul -> UserLanguageDTO.builder()
-                                .code(ul.getLanguage().getCode())
-                                .name(ul.getLanguage().getName())
-                                .flagEmoji(ul.getLanguage().getFlagEmoji())
-                                .proficiency(ul.getProficiency())
-                                .isLearning(ul.isLearning())
-                                .build()).collect(Collectors.toList()));
+                return ResponseEntity.ok(saved.stream().map(this::toDto).collect(Collectors.toList()));
+        }
+
+        private UserLanguageDTO toDto(UserLanguage userLanguage) {
+                return UserLanguageDTO.builder()
+                                .code(userLanguage.getLanguage().getCode())
+                                .name(userLanguage.getLanguage().getName())
+                                .flagEmoji(userLanguage.getLanguage().getFlagEmoji())
+                                .proficiency(userLanguage.getProficiency())
+                                .isLearning(userLanguage.isLearning())
+                                .build();
+        }
+
+        private String normalizeLanguageCode(String code) {
+                return code.trim().toLowerCase(Locale.ROOT);
         }
 }

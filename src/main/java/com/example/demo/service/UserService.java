@@ -22,6 +22,8 @@ import com.example.demo.repository.FollowRepository;
 import com.example.demo.repository.FriendRepository;
 import com.example.demo.repository.MessageRepository;
 import com.example.demo.repository.PostRepository;
+import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -205,6 +207,13 @@ public class UserService {
                                                                 .proficiency(ul.getProficiency())
                                                                 .isLearning(ul.isLearning())
                                                                 .build())
+                                                .collect(Collectors.toMap(
+                                                                dto -> dto.getCode().trim().toLowerCase(Locale.ROOT),
+                                                                dto -> dto,
+                                                                (first, ignored) -> first,
+                                                                LinkedHashMap::new))
+                                                .values()
+                                                .stream()
                                                 .collect(Collectors.toList()))
                                 .followersCount((int) followersCount)
                                 .followingCount((int) followingCount)
