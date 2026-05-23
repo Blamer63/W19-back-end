@@ -34,6 +34,18 @@ ALTER TABLE conversations ADD COLUMN IF NOT EXISTS is_group BOOLEAN NOT NULL DEF
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS group_name VARCHAR(255);
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS group_avatar VARCHAR(255);
 
+CREATE TABLE IF NOT EXISTS post_images (
+    id UUID PRIMARY KEY,
+    post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    image_url VARCHAR(255) NOT NULL,
+    position INTEGER NOT NULL,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_post_images_post_position
+    ON post_images (post_id, position);
+
 -- =============================================================
 -- W19 LOCALE APP - SEED DATA
 -- All demo users have password: demo123

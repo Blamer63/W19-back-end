@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 public class ObjectDetectionService {
 
     private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
-    private static final long MAX_SCAN_SIZE = 10L * 1024 * 1024;
+    private static final long MAX_SCAN_SIZE = 5L * 1024 * 1024;
     private static final int MAX_DETECTED_OBJECTS = 10;
 
     private static final String DEFAULT_LANGUAGE_CODE = "en";
@@ -74,8 +74,14 @@ public class ObjectDetectionService {
     @Transactional(readOnly = true)
     public List<DetectedObjectDTO> detect(MultipartFile image, String currentUserEmail) throws IOException {
         validateImage(image);
+        return detect(image.getBytes(), image.getContentType(), currentUserEmail);
+    }
+
+    @Transactional(readOnly = true)
+    public List<DetectedObjectDTO> detect(byte[] imageBytes, String contentType, String currentUserEmail) {
+        validateImage(imageBytes, contentType);
         String languageCode = resolveLearningLanguageCode(currentUserEmail);
-        String imageBase64 = Base64.getEncoder().encodeToString(image.getBytes());
+        String imageBase64 = Base64.getEncoder().encodeToString(imageBytes);
         List<VisionDetection> detections = visionServiceClient.analyze(imageBase64, languageCode);
         Map<String, ScannerVocabularyService.VocabularyMatch> vocabularyCache = new HashMap<>();
 
@@ -94,6 +100,15 @@ public class ObjectDetectionService {
                 .limit(MAX_DETECTED_OBJECTS)
                 .map(detection -> toDetectedObject(detection, languageCode, vocabularyCache))
                 .toList();
+    }
+
+    private void validateImage(byte[] imageBytes, String contentType) {
+        if (imageBytes == null || imageBytes.length == 0)
+            throw new IllegalArgumentException("Image must not be empty");
+        if (!ALLOWED_IMAGE_TYPES.contains(contentType))
+            throw new IllegalArgumentException("Unsupported image type. Allowed: jpeg, png, webp");
+        if (imageBytes.length > MAX_SCAN_SIZE)
+            throw new IllegalArgumentException("Image exceeds 5 MB limit");
     }
 
     private String resolveLearningLanguageCode(String currentUserEmail) {

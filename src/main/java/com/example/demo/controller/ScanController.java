@@ -4,6 +4,7 @@ import com.example.demo.dto.ScanResponse;
 import com.example.demo.dto.ScanSessionSummaryResponse;
 import com.example.demo.dto.SavedWordResponse;
 import com.example.demo.service.ObjectDetectionService;
+import com.example.demo.service.PostImageScanService;
 import com.example.demo.service.ScanSessionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,6 +28,7 @@ public class ScanController {
 
     private final ObjectDetectionService objectDetectionService;
     private final ScanSessionService scanSessionService;
+    private final PostImageScanService postImageScanService;
 
     @PostMapping(value = "/api/scan", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ScanResponse> scan(
@@ -35,6 +37,13 @@ public class ScanController {
         return ResponseEntity.ok(scanSessionService.recordScan(
                 authentication.getName(),
                 objectDetectionService.detect(image, authentication.getName())));
+    }
+
+    @PostMapping("/api/scan/post-image/{postId}")
+    public ResponseEntity<ScanResponse> scanPostImage(
+            @PathVariable UUID postId,
+            Authentication authentication) {
+        return ResponseEntity.ok(postImageScanService.scanPostImage(postId, authentication.getName()));
     }
 
     @GetMapping("/api/scan/sessions")

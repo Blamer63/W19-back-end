@@ -24,6 +24,9 @@ public class PostResponse {
     @JsonProperty("image_url")
     private String imageUrl;
 
+    @JsonProperty("image_urls")
+    private List<String> imageUrls;
+
     private Double latitude;
     private Double longitude;
     private String location;
