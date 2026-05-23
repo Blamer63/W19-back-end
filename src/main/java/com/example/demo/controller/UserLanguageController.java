@@ -7,6 +7,7 @@ import com.example.demo.entity.UserLanguage;
 import com.example.demo.repository.LanguageRepository;
 import com.example.demo.repository.ProfileRepository;
 import com.example.demo.repository.UserLanguageRepository;
+import com.example.demo.service.DemoLearningSeedService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -26,6 +27,7 @@ public class UserLanguageController {
         private final ProfileRepository profileRepository;
         private final LanguageRepository languageRepository;
         private final UserLanguageRepository userLanguageRepository;
+        private final DemoLearningSeedService demoLearningSeedService;
 
         @GetMapping("/me/languages")
         public ResponseEntity<List<UserLanguageDTO>> getUserLanguages(Authentication authentication) {
@@ -85,6 +87,11 @@ public class UserLanguageController {
                 }).collect(Collectors.toList());
 
                 List<UserLanguage> saved = userLanguageRepository.saveAll(newLanguages);
+                List<String> learningLanguageCodes = saved.stream()
+                                .filter(UserLanguage::isLearning)
+                                .map(userLanguage -> userLanguage.getLanguage().getCode())
+                                .collect(Collectors.toList());
+                demoLearningSeedService.seedForLearningLanguages(profile, learningLanguageCodes);
 
                 return ResponseEntity.ok(saved.stream().map(this::toDto).collect(Collectors.toList()));
         }
