@@ -23,3 +23,18 @@ CREATE INDEX IF NOT EXISTS idx_notifications_recipient_read
     ON notifications (recipient_id, read_at);
 
 UPDATE notifications SET type = 'POST_REACTION' WHERE type = 'POST_LIKE';
+
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
+ALTER TABLE notifications ADD CONSTRAINT notifications_type_check CHECK (type IN (
+    'FRIEND_REQUEST',
+    'FRIEND_ACCEPTED',
+    'MESSAGE',
+    'FRIEND_POST',
+    'POST_REACTION',
+    'POST_COMMENT',
+    'MEETUP_JOINED',
+    'MEETUP_UPDATED',
+    'MEETUP_REMINDER',
+    'SAVED_WORD',
+    'SCAN_DETECTED_WORD'
+));

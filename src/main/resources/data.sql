@@ -24,6 +24,30 @@ CREATE INDEX IF NOT EXISTS idx_notifications_recipient_read
 
 UPDATE notifications SET type = 'POST_REACTION' WHERE type = 'POST_LIKE';
 
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
+ALTER TABLE notifications ADD CONSTRAINT notifications_type_check CHECK (type IN (
+    'FRIEND_REQUEST',
+    'FRIEND_ACCEPTED',
+    'MESSAGE',
+    'FRIEND_POST',
+    'POST_REACTION',
+    'POST_COMMENT',
+    'MEETUP_JOINED',
+    'MEETUP_UPDATED',
+    'MEETUP_REMINDER',
+    'SAVED_WORD',
+    'SCAN_DETECTED_WORD'
+));
+
+ALTER TABLE scan_detections DROP CONSTRAINT IF EXISTS scan_detections_translation_source_check;
+ALTER TABLE scan_detections ADD CONSTRAINT scan_detections_translation_source_check CHECK (translation_source IN (
+    'DICTIONARY',
+    'TRANSLATION_CACHE',
+    'TRANSLATION_API',
+    'TAXONOMY',
+    'FALLBACK'
+));
+
 -- Allow image-only messages: content can be NULL when imageUrl is set.
 -- ddl-auto:update never removes NOT NULL, so we do it here once.
 ALTER TABLE messages ALTER COLUMN content DROP NOT NULL;
