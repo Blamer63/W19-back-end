@@ -43,6 +43,9 @@ class SavedWordServiceTest {
     @Mock
     private LanguageRepository languageRepository;
 
+    @Mock
+    private NotificationService notificationService;
+
     @InjectMocks
     private SavedWordService savedWordService;
 

@@ -70,6 +70,8 @@ public class SavedWordControllerTest {
     private com.example.demo.repository.FollowRepository followRepository;
     @Autowired
     private com.example.demo.repository.RefreshTokenRepository refreshTokenRepository;
+    @Autowired
+    private com.example.demo.repository.NotificationRepository notificationRepository;
 
     private Profile testUser;
     private Language japanese;
@@ -89,6 +91,7 @@ public class SavedWordControllerTest {
         userBlockRepository.deleteAll();
         followRepository.deleteAll();
         refreshTokenRepository.deleteAll();
+        notificationRepository.deleteAll();
         scannerTranslationCacheRepository.deleteAll();
         profileRepository.deleteAll();
         languageRepository.deleteAll();
