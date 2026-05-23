@@ -7,6 +7,7 @@ import com.example.demo.entity.PostImage;
 import com.example.demo.entity.Profile;
 import com.example.demo.entity.UserLanguage;
 import com.example.demo.enums.LocationVisibility;
+import com.example.demo.enums.NotificationType;
 import com.example.demo.enums.PostStatus;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.*;
@@ -36,6 +37,8 @@ public class PostService {
         private final SavedPostRepository savedPostRepository;
         private final PostCommentRepository postCommentRepository;
         private final S3Service s3Service;
+        private final FriendRepository friendRepository;
+        private final NotificationService notificationService;
         private static final int MAX_POST_IMAGES = 3;
 
         @Transactional(readOnly = true)
@@ -88,7 +91,9 @@ public class PostService {
                                                 .position(i)
                                                 .build());
                         }
-                        return mapToResponse(postRepository.save(post), currentUser, latitude, longitude);
+                        Post saved = postRepository.save(post);
+                        createFriendPostNotifications(saved);
+                        return mapToResponse(saved, currentUser, latitude, longitude);
                 } catch (Exception e) {
                         for (String uploadedImageUrl : imageUrls) {
                                 String key = s3Service.extractKey(uploadedImageUrl);
@@ -194,6 +199,37 @@ public class PostService {
                         return imageUrls;
                 }
                 return post.getImageUrl() == null ? List.of() : List.of(post.getImageUrl());
+        }
+
+        private void createFriendPostNotifications(Post post) {
+                Profile author = post.getAuthor();
+                String resolvedDisplayName = author.getDisplayName() != null && !author.getDisplayName().isBlank()
+                                ? author.getDisplayName()
+                                : author.getUsername();
+                if (resolvedDisplayName == null || resolvedDisplayName.isBlank()) {
+                        resolvedDisplayName = "A friend";
+                }
+                final String displayName = resolvedDisplayName;
+
+                String resolvedBody = post.getContent() == null || post.getContent().isBlank()
+                                ? displayName + " shared a new post"
+                                : post.getContent();
+                if (resolvedBody.length() > 120) {
+                        resolvedBody = resolvedBody.substring(0, 117) + "...";
+                }
+
+                final String body = resolvedBody;
+                final String title = "New post from " + displayName;
+                final String targetUrl = "/posts/" + post.getId();
+
+                friendRepository.findAcceptedFriendIds(author.getId()).forEach(friendId ->
+                                notificationService.createNotification(
+                                                friendId,
+                                                author.getId(),
+                                                NotificationType.FRIEND_POST,
+                                                title,
+                                                body,
+                                                targetUrl));
         }
 
         private PostResponse mapToResponse(Post post, Profile currentUser, Double lat, Double lon) {

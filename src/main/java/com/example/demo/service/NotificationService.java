@@ -121,7 +121,7 @@ public class NotificationService {
             case POST_REACTION -> prefs.isLikeNotifications();
             case POST_COMMENT -> prefs.isCommentNotifications();
             case MEETUP_JOINED, MEETUP_UPDATED, MEETUP_REMINDER -> prefs.isMeetupNotifications();
-            case SAVED_WORD, SCAN_DETECTED_WORD -> prefs.isPushEnabled();
+            case FRIEND_POST, SAVED_WORD, SCAN_DETECTED_WORD -> prefs.isPushEnabled();
             default -> true;
         };
     }

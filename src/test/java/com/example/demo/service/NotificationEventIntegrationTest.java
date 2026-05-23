@@ -55,6 +55,8 @@ class NotificationEventIntegrationTest {
     @Autowired
     private ChatService chatService;
     @Autowired
+    private PostService postService;
+    @Autowired
     private ReactionService reactionService;
     @Autowired
     private CommentService commentService;
@@ -222,6 +224,57 @@ class NotificationEventIntegrationTest {
 
         Notification comment = latestNotificationFor(currentUser);
         assertThat(comment.getType()).isEqualTo(NotificationType.POST_COMMENT);
+    }
+
+    @Test
+    void shouldCreateFriendPostNotificationsForAcceptedFriendsOnly() throws Exception {
+        Profile stranger = profileRepository.save(Profile.builder()
+                .username("event_stranger")
+                .email("event-stranger@example.com")
+                .displayName("Event Stranger")
+                .passwordHash("hash")
+                .build());
+
+        friendRepository.save(Friend.builder()
+                .requester(currentUser)
+                .receiver(otherUser)
+                .status(FriendStatus.ACCEPTED)
+                .build());
+        friendRepository.save(Friend.builder()
+                .requester(currentUser)
+                .receiver(stranger)
+                .status(FriendStatus.PENDING)
+                .build());
+
+        postService.createPost("New friend-visible post", "en", null, null, null, currentUser.getEmail());
+
+        Notification notification = latestNotificationFor(otherUser);
+        assertThat(notification.getType()).isEqualTo(NotificationType.FRIEND_POST);
+        assertThat(notification.getActor().getId()).isEqualTo(currentUser.getId());
+        assertThat(notification.getTitle()).contains("Event User");
+        assertThat(notification.getBody()).contains("New friend-visible post");
+        assertThat(notification.getTargetUrl()).startsWith("/posts/");
+        assertThat(notificationRepository.countByRecipientId(stranger.getId())).isZero();
+        assertThat(notificationRepository.countByRecipientId(currentUser.getId())).isZero();
+    }
+
+    @Test
+    void shouldNotCreateFriendPostNotificationWhenPushDisabled() throws Exception {
+        friendRepository.save(Friend.builder()
+                .requester(currentUser)
+                .receiver(otherUser)
+                .status(FriendStatus.ACCEPTED)
+                .build());
+        userSettingsRepository.save(UserSettings.builder()
+                .profile(otherUser)
+                .notificationPrefs(NotificationPrefs.builder()
+                        .pushEnabled(false)
+                        .build())
+                .build());
+
+        postService.createPost("Muted friend post", "en", null, null, null, currentUser.getEmail());
+
+        assertThat(notificationRepository.countByRecipientId(otherUser.getId())).isZero();
     }
 
     @Test
