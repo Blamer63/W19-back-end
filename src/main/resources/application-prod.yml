@@ -7,8 +7,8 @@ spring:
     show-sql: false
   sql:
     init:
-      # "never": do not re-run import.sql on every boot.
-      # import.sql is for development seeding only.
+      # "never": do not re-run data.sql on every boot.
+      # data.sql is for development seeding only.
       mode: never
 
 app:

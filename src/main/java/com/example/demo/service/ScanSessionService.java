@@ -86,8 +86,8 @@ public class ScanSessionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Scan detection not found"));
 
         CreateWordRequest request = CreateWordRequest.builder()
-                .word(detection.getNativeWord())
-                .translation(detection.getLearningWord())
+                .word(detection.getLearningWord())
+                .translation(detection.getNativeWord())
                 .languageCode(detection.getLanguageCode())
                 .source(SourceType.SCANNER)
                 .sourceId(detection.getId())

@@ -2,6 +2,7 @@ package com.example.demo.exception;
 
 import com.example.demo.service.translation.TranslationProviderException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -14,6 +15,12 @@ import java.util.Map;
 @ControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
+    @Value("${spring.servlet.multipart.max-file-size:10MB}")
+    private String maxMultipartFileSize;
+
+    @Value("${spring.servlet.multipart.max-request-size:15MB}")
+    private String maxMultipartRequestSize;
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleResourceNotFoundException(ResourceNotFoundException ex) {
@@ -47,7 +54,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<Map<String, String>> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex) {
         Map<String, String> error = new HashMap<>();
-        error.put("error", "Image exceeds the maximum allowed size of 5 MB");
+        error.put("error", "Upload exceeds the multipart limit of " + maxMultipartFileSize
+                + " per file or " + maxMultipartRequestSize + " per request");
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 

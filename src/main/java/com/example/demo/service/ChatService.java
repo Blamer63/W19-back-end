@@ -420,7 +420,13 @@ public class ChatService {
             case "everyone":
                 return;
             case "friends":
+                if (friendRepository.areFriends(sender.getId(), recipient.getId())) {
+                    return;
+                }
+                throw new IllegalArgumentException("Recipient only accepts messages from friends");
             case "following":
+                log.warn("Legacy message privacy setting 'following' for profile {}; treating it as friends",
+                        recipient.getId());
                 if (friendRepository.areFriends(sender.getId(), recipient.getId())) {
                     return;
                 }

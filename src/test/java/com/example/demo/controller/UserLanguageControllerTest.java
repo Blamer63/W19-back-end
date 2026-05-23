@@ -142,7 +142,7 @@ class UserLanguageControllerTest {
                         """))
                 .andExpect(status().isOk());
 
-        assertThat(savedWordRepository.countByUserIdAndLanguageCode(learner.getId(), "ja")).isEqualTo(5);
+        assertThat(savedWordRepository.countByUserIdAndLanguageCode(learner.getId(), "ja")).isEqualTo(6);
         assertThat(friendRepository.findAcceptedFriendIds(learner.getId())).hasSize(3);
         assertThat(postRepository.count()).isEqualTo(3);
         assertThat(meetupRepository.count()).isEqualTo(3);

@@ -142,8 +142,8 @@ class ScanSessionServiceTest {
                 .thenReturn(Optional.of(detection));
         when(savedWordService.saveWord(any(), any()))
                 .thenReturn(SavedWordResponse.builder()
-                        .word("apple")
-                        .translation("\uC0AC\uACFC")
+                        .word("\uC0AC\uACFC")
+                        .translation("apple")
                         .languageCode("ko")
                         .source(SourceType.SCANNER)
                         .sourceId(detectionId)
@@ -154,8 +154,8 @@ class ScanSessionServiceTest {
         assertThat(response.getSource()).isEqualTo(SourceType.SCANNER);
         assertThat(response.getSourceId()).isEqualTo(detectionId);
         verify(savedWordService).saveWord(any(), org.mockito.ArgumentMatchers.argThat(request ->
-                request.getWord().equals("apple")
-                        && request.getTranslation().equals("\uC0AC\uACFC")
+                request.getWord().equals("\uC0AC\uACFC")
+                        && request.getTranslation().equals("apple")
                         && request.getLanguageCode().equals("ko")
                         && request.getSource() == SourceType.SCANNER
                         && request.getSourceId().equals(detectionId)

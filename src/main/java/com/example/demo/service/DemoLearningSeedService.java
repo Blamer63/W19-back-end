@@ -224,9 +224,9 @@ public class DemoLearningSeedService {
     private List<DemoMessage> demoMessages(String languageCode) {
         if (languageCode.equals("ja")) {
             return List.of(
-                    new DemoMessage("Want to practise ordering coffee in Japanese this week?", "Yes, I want to try the counter phrases."),
-                    new DemoMessage("I saved a few kanji signs from Central station.", "Great, send them through before the meetup."),
-                    new DemoMessage("Do you prefer hiragana drills or short dialogues today?", "Short dialogues, please."));
+                    new DemoMessage("今週、カフェで「コーヒーをください」を練習しませんか？", "Yes, I want to try the counter phrases."),
+                    new DemoMessage("中央駅で「出口」と「改札」の漢字を保存しました。", "Great, send them through before the meetup."),
+                    new DemoMessage("今日はひらがな練習と短い会話、どちらがいいですか？", "Short dialogues, please."));
         }
 
         return List.of(
@@ -238,11 +238,11 @@ public class DemoLearningSeedService {
     private List<DemoPost> demoPosts(String languageCode) {
         if (languageCode.equals("ja")) {
             return List.of(
-                    new DemoPost("Found a quiet ramen spot for practising menu vocabulary: ramen, kaedama, ocha.",
+                    new DemoPost("静かなラーメン屋を見つけました。メニューの言葉を練習しました：ラーメン、替え玉、お茶。",
                             "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=900&h=600&fit=crop", -33.8705, 151.2089),
-                    new DemoPost("Today I practised asking for directions near the train platform: eki wa doko desu ka?",
+                    new DemoPost("今日は駅のホームで道を聞く練習をしました：「駅はどこですか？」",
                             "https://images.unsplash.com/photo-1542051841857-5f90071e7989?w=900&h=600&fit=crop", -33.8734, 151.2067),
-                    new DemoPost("Japanese label hunt at the grocery store. I finally remembered mizu and ocha.",
+                    new DemoPost("スーパーで日本語ラベルを探しました。「水」と「お茶」を覚えました。",
                             "https://images.unsplash.com/photo-1542838132-92c53300491e?w=900&h=600&fit=crop", -33.8661, 151.2131));
         }
 
@@ -276,6 +276,7 @@ public class DemoLearningSeedService {
                     new DemoWord("ありがとう", "thank you", "Useful after ordering or receiving help.", 70, 7200),
                     new DemoWord("駅", "station", "Ask for directions around transport.", 35, 10800),
                     new DemoWord("水", "water", "Read labels or order a drink.", 55, 14400),
+                    new DemoWord("本当に？", "really?", "Useful when reacting to surprising news.", 58, 16200),
                     new DemoWord("お願いします", "please", "Polite ending for requests.", 25, 18000));
         }
 

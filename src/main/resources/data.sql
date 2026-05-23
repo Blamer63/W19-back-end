@@ -48,6 +48,13 @@ ALTER TABLE scan_detections ADD CONSTRAINT scan_detections_translation_source_ch
     'FALLBACK'
 ));
 
+ALTER TABLE saved_words DROP CONSTRAINT IF EXISTS saved_words_source_check;
+ALTER TABLE saved_words ADD CONSTRAINT saved_words_source_check CHECK (source IN (
+    'MANUAL',
+    'POST',
+    'SCANNER'
+));
+
 -- Allow image-only messages: content can be NULL when imageUrl is set.
 -- ddl-auto:update never removes NOT NULL, so we do it here once.
 ALTER TABLE messages ALTER COLUMN content DROP NOT NULL;
@@ -72,7 +79,7 @@ CREATE INDEX IF NOT EXISTS idx_post_images_post_position
 
 -- =============================================================
 -- W19 LOCALE APP - SEED DATA
--- All demo users have password: demo123
+-- All demo users have password: 123456
 -- UUIDs are fixed so cross-table references are stable
 -- All inserts use ON CONFLICT DO NOTHING (idempotent)
 -- =============================================================
@@ -93,43 +100,43 @@ ON CONFLICT (code) DO NOTHING;
 
 -- -------------------------------------------------------
 -- STEP 2: Profiles (Users)
--- Password hash for "demo123":
---   $2a$10$DbTwm5BsRd1G9ABkQ7yEbeAiyyPrkiaVoXNuiwH943iCnsVy6sv3S
+-- Password hash for "123456":
+--   $2a$10$Ze27I4zi6v3wpsPWNpxvuOv8O9q9Z14LwrFy1ON04R.XotUJRpdMa
 -- -------------------------------------------------------
 INSERT INTO profiles (id, username, email, password_hash, display_name, location, latitude, longitude, bio,
                       location_visibility, show_activity, show_saved_words, followers_count, following_count,
                       created_at, updated_at) VALUES
 -- Minso (Korean native, learning English)
 ('10000000-0000-0000-0000-000000000001', 'minso_k', 'minso@locale.app',
- '$2a$10$DbTwm5BsRd1G9ABkQ7yEbeAiyyPrkiaVoXNuiwH943iCnsVy6sv3S',
+ '$2a$10$Ze27I4zi6v3wpsPWNpxvuOv8O9q9Z14LwrFy1ON04R.XotUJRpdMa',
  'Minso Kim', 'Seoul, South Korea', 37.5665, 126.9780,
  'Hello! I am a Korean native looking to improve my English. Coffee lover ☕',
  'PUBLIC', true, false, 3, 2, NOW(), NOW()),
 
 -- Emma (English native, learning Korean & French)
 ('10000000-0000-0000-0000-000000000002', 'emma_uk', 'emma@locale.app',
- '$2a$10$DbTwm5BsRd1G9ABkQ7yEbeAiyyPrkiaVoXNuiwH943iCnsVy6sv3S',
+ '$2a$10$Ze27I4zi6v3wpsPWNpxvuOv8O9q9Z14LwrFy1ON04R.XotUJRpdMa',
  'Emma Smith', 'London, UK', 51.5074, -0.1278,
  'Learning Korean and French! Big fan of K-dramas 🎬',
  'PUBLIC', true, true, 2, 3, NOW(), NOW()),
 
 -- Linh (Vietnamese native, learning English)
 ('10000000-0000-0000-0000-000000000003', 'linh_vn', 'linh@locale.app',
- '$2a$10$DbTwm5BsRd1G9ABkQ7yEbeAiyyPrkiaVoXNuiwH943iCnsVy6sv3S',
+ '$2a$10$Ze27I4zi6v3wpsPWNpxvuOv8O9q9Z14LwrFy1ON04R.XotUJRpdMa',
  'Linh Nguyen', 'Hanoi, Vietnam', 21.0285, 105.8542,
  'Native Vietnamese, improving my English. Love street food 🍜',
  'FRIENDS_ONLY', true, false, 1, 1, NOW(), NOW()),
 
 -- Wei (Japanese native, learning English & Korean)
 ('10000000-0000-0000-0000-000000000004', 'wei_cn', 'wei@locale.app',
- '$2a$10$DbTwm5BsRd1G9ABkQ7yEbeAiyyPrkiaVoXNuiwH943iCnsVy6sv3S',
+ '$2a$10$Ze27I4zi6v3wpsPWNpxvuOv8O9q9Z14LwrFy1ON04R.XotUJRpdMa',
  'Wei Chen', 'Tokyo, Japan', 35.6762, 139.6503,
  'Always happy to chat and practice languages. 東京在住 🇯🇵',
  'PUBLIC', true, true, 2, 2, NOW(), NOW()),
 
 -- Demo Account (Generic)
 ('10000000-0000-0000-0000-000000000005', 'demo_user', 'demo@locale.app',
- '$2a$10$DbTwm5BsRd1G9ABkQ7yEbeAiyyPrkiaVoXNuiwH943iCnsVy6sv3S',
+ '$2a$10$Ze27I4zi6v3wpsPWNpxvuOv8O9q9Z14LwrFy1ON04R.XotUJRpdMa',
  'Demo User', 'San Francisco, CA', 37.7749, -122.4194,
  'I am just looking around! 👋',
  'PUBLIC', true, false, 0, 0, NOW(), NOW())
