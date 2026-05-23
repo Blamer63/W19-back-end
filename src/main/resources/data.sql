@@ -58,10 +58,12 @@ CREATE INDEX IF NOT EXISTS idx_post_images_post_position
 -- -------------------------------------------------------
 INSERT INTO languages (code, name, native_name, flag_emoji) VALUES
 ('en', 'English',    'English',    '🇺🇸'),
+('es', 'Spanish',    'Español',    '🇪🇸'),
+('fr', 'French',     'Français',   '🇫🇷'),
+('ja', 'Japanese',   '日本語',      '🇯🇵'),
+('pt', 'Portuguese', 'Português',  '🇵🇹'),
 ('ko', 'Korean',     '한국어',      '🇰🇷'),
-('vi', 'Vietnamese', 'Tiếng Việt', '🇻🇳'),
-('zh', 'Chinese',    '中文',        '🇨🇳'),
-('ja', 'Japanese',   '日本語',      '🇯🇵')
+('vi', 'Vietnamese', 'Tiếng Việt', '🇻🇳')
 ON CONFLICT (code) DO NOTHING;
 
 
@@ -80,11 +82,11 @@ INSERT INTO profiles (id, username, email, password_hash, display_name, location
  'Hello! I am a Korean native looking to improve my English. Coffee lover ☕',
  'PUBLIC', true, false, 3, 2, NOW(), NOW()),
 
--- Emma (English native, learning Korean & Chinese)
+-- Emma (English native, learning Korean & French)
 ('10000000-0000-0000-0000-000000000002', 'emma_uk', 'emma@locale.app',
  '$2a$10$DbTwm5BsRd1G9ABkQ7yEbeAiyyPrkiaVoXNuiwH943iCnsVy6sv3S',
  'Emma Smith', 'London, UK', 51.5074, -0.1278,
- 'Learning Korean and Chinese! Big fan of K-dramas 🎬',
+ 'Learning Korean and French! Big fan of K-dramas 🎬',
  'PUBLIC', true, true, 2, 3, NOW(), NOW()),
 
 -- Linh (Vietnamese native, learning English)
@@ -94,11 +96,11 @@ INSERT INTO profiles (id, username, email, password_hash, display_name, location
  'Native Vietnamese, improving my English. Love street food 🍜',
  'FRIENDS_ONLY', true, false, 1, 1, NOW(), NOW()),
 
--- Wei (Chinese native, learning English & Korean)
+-- Wei (Japanese native, learning English & Korean)
 ('10000000-0000-0000-0000-000000000004', 'wei_cn', 'wei@locale.app',
  '$2a$10$DbTwm5BsRd1G9ABkQ7yEbeAiyyPrkiaVoXNuiwH943iCnsVy6sv3S',
- 'Wei Chen', 'Beijing, China', 39.9042, 116.4074,
- 'Always happy to chat and practice languages. 北京人 🇨🇳',
+ 'Wei Chen', 'Tokyo, Japan', 35.6762, 139.6503,
+ 'Always happy to chat and practice languages. 東京在住 🇯🇵',
  'PUBLIC', true, true, 2, 2, NOW(), NOW()),
 
 -- Demo Account (Generic)
@@ -131,17 +133,17 @@ INSERT INTO user_languages (id, profile_id, language_code, proficiency, is_learn
 ('50000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'ko', 'NATIVE',       false, NOW(), NOW()),
 ('50000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', 'en', 'INTERMEDIATE', true,  NOW(), NOW()),
 
--- Emma: native English, learning Korean (beginner) + Chinese (beginner)
+-- Emma: native English, learning Korean (beginner) + French (beginner)
 ('50000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000002', 'en', 'NATIVE',       false, NOW(), NOW()),
 ('50000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000002', 'ko', 'BEGINNER',     true,  NOW(), NOW()),
-('50000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000002', 'zh', 'BEGINNER',     true,  NOW(), NOW()),
+('50000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000002', 'fr', 'BEGINNER',     true,  NOW(), NOW()),
 
 -- Linh: native Vietnamese, learning English (intermediate)
 ('50000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000003', 'vi', 'NATIVE',       false, NOW(), NOW()),
 ('50000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000003', 'en', 'INTERMEDIATE', true,  NOW(), NOW()),
 
--- Wei: native Chinese, learning English (advanced) + Korean (beginner)
-('50000000-0000-0000-0000-000000000008', '10000000-0000-0000-0000-000000000004', 'zh', 'NATIVE',       false, NOW(), NOW()),
+-- Wei: native Japanese, learning English (advanced) + Korean (beginner)
+('50000000-0000-0000-0000-000000000008', '10000000-0000-0000-0000-000000000004', 'ja', 'NATIVE',       false, NOW(), NOW()),
 ('50000000-0000-0000-0000-000000000009', '10000000-0000-0000-0000-000000000004', 'en', 'ADVANCED',     true,  NOW(), NOW()),
 ('50000000-0000-0000-0000-000000000010', '10000000-0000-0000-0000-000000000004', 'ko', 'BEGINNER',     true,  NOW(), NOW())
 ON CONFLICT DO NOTHING;
@@ -159,7 +161,7 @@ INSERT INTO user_settings (id, profile_id,
 ('60000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002',
  true, false, true, true, true, 'PUBLIC', 'everyone', 'light',  NOW(), NOW()),
 ('60000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000003',
- true, true, false, true, true, 'FRIENDS_ONLY', 'following', 'system', NOW(), NOW()),
+ true, true, false, true, true, 'FRIENDS_ONLY', 'friends', 'system', NOW(), NOW()),
 ('60000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000004',
  false, false, true, false, true, 'PUBLIC', 'everyone', 'dark',  NOW(), NOW())
 ON CONFLICT DO NOTHING;
@@ -190,7 +192,7 @@ INSERT INTO posts (id, author_id, content, original_language, latitude, longitud
 
 -- Emma posts
 ('30000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000002',
- 'Visiting London Tower today! Does anyone here speak Chinese? I need practice partner 😅', 'en', 51.5080, -0.0763, 'ACTIVE', NOW() - INTERVAL '3 days', NOW()),
+ 'Visiting London Tower today! Does anyone here speak French? I need practice partner 😅', 'en', 51.5080, -0.0763, 'ACTIVE', NOW() - INTERVAL '3 days', NOW()),
 
 -- Linh posts
 ('30000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000003',
@@ -198,7 +200,7 @@ INSERT INTO posts (id, author_id, content, original_language, latitude, longitud
 
 -- Wei posts
 ('30000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000004',
- '今天天气很好，在北京的胡同里散步。Have you ever visited Beijing?', 'zh', 39.9042, 116.4074, 'ACTIVE', NOW() - INTERVAL '4 hours', NOW())
+ '今日は天気がよくて、東京を散歩しました。Have you ever visited Tokyo?', 'ja', 35.6762, 139.6503, 'ACTIVE', NOW() - INTERVAL '4 hours', NOW())
 ON CONFLICT DO NOTHING;
 
 
@@ -211,7 +213,7 @@ INSERT INTO post_translations (id, post_id, language_code, translated_content, c
 ('80000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000004', 'en',
  'Pho is the best food in the world. Can''t deny it! 🍜', NOW(), NOW()),
 ('80000000-0000-0000-0000-000000000004', '30000000-0000-0000-0000-000000000005', 'en',
- 'Great weather today, walking through the hutongs of Beijing. Have you ever visited Beijing?', NOW(), NOW())
+ 'Great weather today, walking through Tokyo. Have you ever visited Tokyo?', NOW(), NOW())
 ON CONFLICT DO NOTHING;
 
 
@@ -244,7 +246,7 @@ INSERT INTO post_comments (id, post_id, author_id, parent_comment_id, content, c
  '90000000-0000-0000-0000-000000000001', 'That is great Emma! Let us set up a meetup 🙌', NOW() - INTERVAL '3 days', NOW()),
 -- Wei comments on Emma's London post
 ('90000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000004',
- NULL, 'I speak Chinese! 我可以帮你练习 😄', NOW() - INTERVAL '2 days', NOW()),
+ NULL, 'I speak French! Je peux t''aider à pratiquer 😄', NOW() - INTERVAL '2 days', NOW()),
 -- Linh comments on Wei's Beijing post
 ('90000000-0000-0000-0000-000000000004', '30000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000003',
  NULL, 'Beijing looks beautiful! I want to visit someday 🌸', NOW() - INTERVAL '3 hours', NOW())
@@ -267,9 +269,9 @@ INSERT INTO meetups (id, organizer_id, title, description, language_code, meetup
  'vi', NOW() + INTERVAL '1 week', 'Old Quarter, Hanoi', 21.0335, 105.8506, 5, 'UPCOMING', NOW(), NOW()),
 
 ('40000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000004',
- 'Beijing Chinese Practice Session',
- 'Open for all foreigners wanting to practice Mandarin. 欢迎大家！',
- 'zh', NOW() + INTERVAL '2 days', 'Sanlitun, Beijing', 39.9329, 116.4477, 8, 'UPCOMING', NOW(), NOW()),
+ 'Tokyo Japanese Practice Session',
+ 'Open for all learners wanting to practice Japanese. ようこそ！',
+ 'ja', NOW() + INTERVAL '2 days', 'Shibuya, Tokyo', 35.6595, 139.7005, 8, 'UPCOMING', NOW(), NOW()),
 
 ('40000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000002',
  'London Korean Study Group',
@@ -336,11 +338,11 @@ ON CONFLICT DO NOTHING;
 
 INSERT INTO messages (id, conversation_id, sender_id, content, is_read, created_at, updated_at) VALUES
 ('c0000000-0000-0000-0000-000000000005', 'b0000000-0000-0000-0000-000000000002',
- '10000000-0000-0000-0000-000000000002', 'Hi Wei! I saw your offer to help with Chinese. Can we practice?', true, NOW() - INTERVAL '1 day', NOW()),
+ '10000000-0000-0000-0000-000000000002', 'Hi Wei! I saw your offer to help with Japanese. Can we practice?', true, NOW() - INTERVAL '1 day', NOW()),
 ('c0000000-0000-0000-0000-000000000006', 'b0000000-0000-0000-0000-000000000002',
  '10000000-0000-0000-0000-000000000004', '当然可以！Let''s start. 你会说多少中文？', true, NOW() - INTERVAL '23 hours', NOW()),
 ('c0000000-0000-0000-0000-000000000007', 'b0000000-0000-0000-0000-000000000002',
- '10000000-0000-0000-0000-000000000002', '我喜欢学中文！(I think that means I like learning Chinese 😂)', true, NOW() - INTERVAL '22 hours', NOW()),
+ '10000000-0000-0000-0000-000000000002', '日本語を勉強するのが好きです！(I hope that means I like learning Japanese 😂)', true, NOW() - INTERVAL '22 hours', NOW()),
 ('c0000000-0000-0000-0000-000000000008', 'b0000000-0000-0000-0000-000000000002',
  '10000000-0000-0000-0000-000000000004', '谢谢！你的中文很好！', false, NOW() - INTERVAL '30 minutes', NOW())
 ON CONFLICT DO NOTHING;
@@ -428,7 +430,7 @@ INSERT INTO saved_words (id, user_id, word, translation, language_code, source, 
 ('d0000000-0000-0000-0000-000000000037', '10000000-0000-0000-0000-000000000003', 'consistent', 'nhất quán', 'en', 'MANUAL', 2, NOW() + INTERVAL '3 days', NOW() - INTERVAL '4 days'),
 ('d0000000-0000-0000-0000-000000000038', '10000000-0000-0000-0000-000000000003', 'improvement', 'sự cải thiện', 'en', 'POST', 1, NOW() + INTERVAL '1 day', NOW() - INTERVAL '2 days'),
 
--- Extra words for Wei (Chinese native, learning English)
+-- Extra words for Wei (Japanese native, learning English)
 ('d0000000-0000-0000-0000-000000000039', '10000000-0000-0000-0000-000000000004', 'fascinating', '迷人的', 'en', 'MANUAL', 3, NOW() + INTERVAL '5 days', NOW() - INTERVAL '6 days'),
 ('d0000000-0000-0000-0000-000000000040', '10000000-0000-0000-0000-000000000004', 'architecture', '建筑', 'en', 'POST', 2, NOW() + INTERVAL '2 days', NOW() - INTERVAL '3 days'),
 ('d0000000-0000-0000-0000-000000000041', '10000000-0000-0000-0000-000000000004', 'tradition', '传统', 'en', 'MANUAL', 4, NOW() + INTERVAL '7 days', NOW() - INTERVAL '8 days'),

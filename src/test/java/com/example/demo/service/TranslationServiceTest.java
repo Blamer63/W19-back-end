@@ -19,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -124,6 +125,22 @@ class TranslationServiceTest {
 
         assertEquals("Unsupported target language: xx", ex.getMessage());
         verifyNoInteractions(postRepository, postTranslationRepository, translationClient);
+    }
+
+    @Test
+    void translateText_AllowsCanonicalFallbackLanguagesWhenSeeded() {
+        Stream.of("pt", "ko", "vi").forEach(languageCode -> {
+            when(languageRepository.existsById(languageCode)).thenReturn(true);
+            when(translationClient.translate("Hello world", "en", languageCode))
+                    .thenReturn(TranslationResult.builder()
+                            .translatedText("translated-" + languageCode)
+                            .detectedSourceLanguage("en")
+                            .build());
+
+            assertEquals(
+                    "translated-" + languageCode,
+                    translationService.translateText("Hello world", "en", languageCode).getTranslatedText());
+        });
     }
 
     @Test
