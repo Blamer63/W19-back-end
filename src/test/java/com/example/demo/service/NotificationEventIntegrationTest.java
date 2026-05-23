@@ -6,11 +6,14 @@ import com.example.demo.dto.CreateWordRequest;
 import com.example.demo.dto.DetectedObjectDTO;
 import com.example.demo.dto.PostReactionRequest;
 import com.example.demo.entity.Conversation;
+import com.example.demo.entity.Friend;
 import com.example.demo.entity.Notification;
 import com.example.demo.entity.NotificationPrefs;
 import com.example.demo.entity.Post;
 import com.example.demo.entity.Profile;
+import com.example.demo.entity.PrivacySettings;
 import com.example.demo.entity.UserSettings;
+import com.example.demo.enums.FriendStatus;
 import com.example.demo.enums.NotificationType;
 import com.example.demo.enums.ReactionType;
 import com.example.demo.enums.ScannerTranslationSource;
@@ -40,6 +43,7 @@ import org.springframework.test.context.ActiveProfiles;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -145,6 +149,56 @@ class NotificationEventIntegrationTest {
         assertThat(notification.getType()).isEqualTo(NotificationType.MESSAGE);
         assertThat(notification.getBody()).contains("Event User").contains("hello");
         assertThat(notificationRepository.countByRecipientIdAndReadAtIsNull(currentUser.getId())).isZero();
+    }
+
+    @Test
+    void shouldBlockDirectMessageAndNotificationWhenRecipientAcceptsNone() {
+        userSettingsRepository.save(UserSettings.builder()
+                .profile(otherUser)
+                .privacySettings(PrivacySettings.builder()
+                        .allowMessages("none")
+                        .build())
+                .build());
+
+        assertThatThrownBy(() -> chatService.sendMessage(
+                currentUser.getEmail(), null, otherUser.getId(), "blocked", null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Recipient is not accepting direct messages");
+
+        assertThat(messageRepository.count()).isZero();
+        assertThat(conversationRepository.count()).isZero();
+        assertThat(notificationRepository.count()).isZero();
+    }
+
+    @Test
+    void shouldEnforceFriendsOnlyMessagePrivacy() throws Exception {
+        userSettingsRepository.save(UserSettings.builder()
+                .profile(otherUser)
+                .privacySettings(PrivacySettings.builder()
+                        .allowMessages("friends")
+                        .build())
+                .build());
+
+        assertThatThrownBy(() -> chatService.sendMessage(
+                currentUser.getEmail(), null, otherUser.getId(), "blocked", null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Recipient only accepts messages from friends");
+
+        assertThat(messageRepository.count()).isZero();
+        assertThat(notificationRepository.count()).isZero();
+
+        friendRepository.save(Friend.builder()
+                .requester(currentUser)
+                .receiver(otherUser)
+                .status(FriendStatus.ACCEPTED)
+                .build());
+
+        chatService.sendMessage(currentUser.getEmail(), null, otherUser.getId(), "allowed", null);
+
+        assertThat(messageRepository.count()).isEqualTo(1);
+        Notification notification = latestNotificationFor(otherUser);
+        assertThat(notification.getType()).isEqualTo(NotificationType.MESSAGE);
+        assertThat(notification.getBody()).contains("allowed");
     }
 
     @Test
