@@ -1,8 +1,12 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.NotificationSummaryResponse;
+import com.example.demo.dto.NotificationPrefsDto;
+import com.example.demo.dto.SettingsPrivacyDto;
 import com.example.demo.dto.UserSettingsDTO;
+import com.example.demo.entity.NotificationPrefs;
 import com.example.demo.entity.Profile;
+import com.example.demo.entity.PrivacySettings;
 import com.example.demo.entity.UserBlock;
 import com.example.demo.entity.UserSettings;
 import com.example.demo.exception.ResourceNotFoundException;
@@ -42,12 +46,14 @@ public class UserService {
 
         @Transactional(readOnly = true)
         public UserSettingsDTO getUserSettings(UUID userId) {
-                UserSettings settings = userSettingsRepository.findByProfileId(userId)
-                                .orElse(getSafeDefaultSettings(userId));
+                Profile profile = profileRepository.findById(userId)
+                                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                UserSettings settings = userSettingsRepository.findByProfile(profile)
+                                .orElseGet(() -> getSafeDefaultSettings(profile));
 
                 return UserSettingsDTO.builder()
-                                .notificationPrefs(settings.getNotificationPrefs())
-                                .privacySettings(settings.getPrivacySettings())
+                                .notificationPrefs(NotificationPrefsDto.fromEntity(settings.getNotificationPrefs()))
+                                .privacySettings(SettingsPrivacyDto.fromEntity(settings.getPrivacySettings()))
                                 .theme(settings.getTheme())
                                 .build();
         }
@@ -70,14 +76,20 @@ public class UserService {
 
         @Transactional
         public UserSettingsDTO updateUserSettings(UUID userId, UserSettingsDTO updates) {
-                UserSettings settings = userSettingsRepository.findByProfileId(userId)
-                                .orElse(getSafeDefaultSettings(userId));
+                Profile profile = profileRepository.findById(userId)
+                                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                UserSettings settings = userSettingsRepository.findByProfile(profile)
+                                .orElseGet(() -> getSafeDefaultSettings(profile));
 
                 if (updates.getNotificationPrefs() != null) {
-                        settings.setNotificationPrefs(updates.getNotificationPrefs());
+                        settings.setNotificationPrefs(mergeNotificationPrefs(
+                                        settings.getNotificationPrefs(),
+                                        updates.getNotificationPrefs()));
                 }
                 if (updates.getPrivacySettings() != null) {
-                        settings.setPrivacySettings(updates.getPrivacySettings());
+                        settings.setPrivacySettings(mergePrivacySettings(
+                                        settings.getPrivacySettings(),
+                                        updates.getPrivacySettings()));
                 }
                 if (updates.getTheme() != null) {
                         settings.setTheme(updates.getTheme());
@@ -85,17 +97,48 @@ public class UserService {
 
                 UserSettings saved = userSettingsRepository.save(settings);
                 return UserSettingsDTO.builder()
-                                .notificationPrefs(saved.getNotificationPrefs())
-                                .privacySettings(saved.getPrivacySettings())
+                                .notificationPrefs(NotificationPrefsDto.fromEntity(saved.getNotificationPrefs()))
+                                .privacySettings(SettingsPrivacyDto.fromEntity(saved.getPrivacySettings()))
                                 .theme(saved.getTheme())
                                 .build();
         }
 
-        private UserSettings getSafeDefaultSettings(UUID userId) {
-                // If settings don't exist, create default ones linked to profile
-                Profile profile = profileRepository.findById(userId)
-                                .orElseThrow(() -> new RuntimeException("User not found"));
+        private NotificationPrefs mergeNotificationPrefs(
+                        NotificationPrefs existing,
+                        NotificationPrefsDto updates) {
+                NotificationPrefs merged = existing != null ? existing : new NotificationPrefs();
+                if (updates.getPushEnabled() != null) {
+                        merged.setPushEnabled(updates.getPushEnabled());
+                }
+                if (updates.getEmailEnabled() != null) {
+                        merged.setEmailEnabled(updates.getEmailEnabled());
+                }
+                if (updates.getLikeNotifications() != null) {
+                        merged.setLikeNotifications(updates.getLikeNotifications());
+                }
+                if (updates.getCommentNotifications() != null) {
+                        merged.setCommentNotifications(updates.getCommentNotifications());
+                }
+                if (updates.getMeetupNotifications() != null) {
+                        merged.setMeetupNotifications(updates.getMeetupNotifications());
+                }
+                return merged;
+        }
 
+        private PrivacySettings mergePrivacySettings(
+                        PrivacySettings existing,
+                        SettingsPrivacyDto updates) {
+                PrivacySettings merged = existing != null ? existing : new PrivacySettings();
+                if (updates.getLocationVisibility() != null) {
+                        merged.setLocationVisibility(updates.getLocationVisibility());
+                }
+                if (updates.getAllowMessages() != null) {
+                        merged.setAllowMessages(updates.getAllowMessages());
+                }
+                return merged;
+        }
+
+        private UserSettings getSafeDefaultSettings(Profile profile) {
                 UserSettings newSettings = UserSettings.builder()
                                 .profile(profile)
                                 .build();

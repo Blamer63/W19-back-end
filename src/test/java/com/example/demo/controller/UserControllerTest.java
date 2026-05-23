@@ -6,6 +6,7 @@ import com.example.demo.dto.RegisterRequest;
 import com.example.demo.entity.Conversation;
 import com.example.demo.entity.Friend;
 import com.example.demo.entity.Message;
+import com.example.demo.entity.UserSettings;
 import com.example.demo.repository.ProfileRepository;
 import com.example.demo.repository.RefreshTokenRepository;
 import com.example.demo.service.AuthService;
@@ -178,6 +179,60 @@ public class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.show_activity").value(false))
                 .andExpect(jsonPath("$.show_saved_words").value(true));
+    }
+
+    @Test
+    void shouldPersistNotificationSettingsPatchAndPreserveUnspecifiedPreferences() throws Exception {
+        if (token == null)
+            return;
+
+        String initialJson = """
+                {
+                  "notification_prefs": {
+                    "push_enabled": true,
+                    "email_enabled": true,
+                    "like_notifications": false,
+                    "comment_notifications": true,
+                    "meetup_notifications": true
+                  }
+                }
+                """;
+
+        mockMvc.perform(patch("/api/users/me/settings")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(initialJson))
+                .andExpect(status().isOk());
+
+        String json = "{\"notification_prefs\":{\"push_enabled\":false}}";
+
+        mockMvc.perform(patch("/api/users/me/settings")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.notification_prefs.push_enabled").value(false))
+                .andExpect(jsonPath("$.notification_prefs.email_enabled").value(true))
+                .andExpect(jsonPath("$.notification_prefs.like_notifications").value(false))
+                .andExpect(jsonPath("$.notification_prefs.comment_notifications").value(true))
+                .andExpect(jsonPath("$.notification_prefs.meetup_notifications").value(true));
+
+        mockMvc.perform(get("/api/users/me/settings")
+                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.notification_prefs.push_enabled").value(false))
+                .andExpect(jsonPath("$.notification_prefs.email_enabled").value(true))
+                .andExpect(jsonPath("$.notification_prefs.like_notifications").value(false))
+                .andExpect(jsonPath("$.notification_prefs.comment_notifications").value(true))
+                .andExpect(jsonPath("$.notification_prefs.meetup_notifications").value(true));
+
+        Profile currentUser = profileRepository.findByEmail("user_me@example.com").orElseThrow();
+        UserSettings persisted = userSettingsRepository.findByProfileId(currentUser.getId()).orElseThrow();
+        org.assertj.core.api.Assertions.assertThat(persisted.getNotificationPrefs().isPushEnabled()).isFalse();
+        org.assertj.core.api.Assertions.assertThat(persisted.getNotificationPrefs().isEmailEnabled()).isTrue();
+        org.assertj.core.api.Assertions.assertThat(persisted.getNotificationPrefs().isLikeNotifications()).isFalse();
+        org.assertj.core.api.Assertions.assertThat(persisted.getNotificationPrefs().isCommentNotifications()).isTrue();
+        org.assertj.core.api.Assertions.assertThat(persisted.getNotificationPrefs().isMeetupNotifications()).isTrue();
     }
 
     @Test
