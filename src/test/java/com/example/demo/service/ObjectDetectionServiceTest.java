@@ -1,7 +1,7 @@
 package com.example.demo.service;
 
-import com.example.demo.dto.DetectedObjectDTO;
 import com.example.demo.dto.BoundingBoxDTO;
+import com.example.demo.dto.DetectedObjectDTO;
 import com.example.demo.entity.Language;
 import com.example.demo.entity.Profile;
 import com.example.demo.entity.UserLanguage;
@@ -9,22 +9,17 @@ import com.example.demo.enums.ScannerTranslationSource;
 import com.example.demo.exception.ObjectDetectionUnavailableException;
 import com.example.demo.repository.ProfileRepository;
 import com.example.demo.repository.ScannerTranslationCacheRepository;
+import com.example.demo.service.scanner.VisionDetection;
+import com.example.demo.service.scanner.VisionServiceClient;
 import com.example.demo.service.translation.TranslationClient;
 import com.example.demo.service.translation.TranslationResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.client.ResourceAccessException;
-import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -35,6 +30,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -44,7 +40,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ObjectDetectionServiceTest {
 
-    @Mock private RestTemplate restTemplate;
+    @Mock private VisionServiceClient visionServiceClient;
     @Mock private ProfileRepository profileRepository;
     @Mock private TranslationClient translationClient;
     @Mock private ScannerTranslationCacheRepository scannerTranslationCacheRepository;
@@ -55,33 +51,44 @@ class ObjectDetectionServiceTest {
     void setUp() {
         ScannerVocabularyService scannerVocabularyService =
                 new ScannerVocabularyService(translationClient, scannerTranslationCacheRepository);
-        objectDetectionService = new ObjectDetectionService(restTemplate, profileRepository, scannerVocabularyService);
-        ReflectionTestUtils.setField(objectDetectionService, "yoloEndpoint", "http://localhost:5001/detect");
-        ReflectionTestUtils.setField(objectDetectionService, "confidenceThreshold", 0.60d);
+        objectDetectionService = new ObjectDetectionService(
+                visionServiceClient,
+                profileRepository,
+                scannerVocabularyService);
+        ReflectionTestUtils.setField(objectDetectionService, "supportedTaxonomyLanguages", "en,es,fr,ja");
+        objectDetectionService.parseSupportedTaxonomyLanguages();
     }
 
-    // -------------------------------------------------------------------------
-    // Dictionary hits — translation API must NOT be called
-    // -------------------------------------------------------------------------
-
     @Test
-    void detectFiltersLowConfidenceObjectsAndTranslatesToLearningLanguage() throws IOException {
-        Profile profile = profileWithLearningLanguage("test@example.com", "ko");
+    void detectUsesTaxonomyTranslationForSupportedLanguage() throws IOException {
+        Profile profile = profileWithLearningLanguage("test@example.com", "es");
         when(profileRepository.findByEmail("test@example.com")).thenReturn(Optional.of(profile));
-        whenYoloReturns(List.of(
-                new ObjectDetectionService.YoloLabel("apple", 0.94d),
-                new ObjectDetectionService.YoloLabel("chair", 0.59d)));
+        whenVisionReturns("es", List.of(visionDetection("apple", "manzana", 0.08d)));
 
         List<DetectedObjectDTO> detectedObjects = objectDetectionService.detect(image(), "test@example.com");
 
         assertThat(detectedObjects).hasSize(1);
         assertThat(detectedObjects.get(0).getLabel()).isEqualTo("apple");
-        assertThat(detectedObjects.get(0).getConfidence()).isEqualTo(0.94d);
+        assertThat(detectedObjects.get(0).getConfidence()).isEqualTo(0.08d);
         assertThat(detectedObjects.get(0).getNativeWord()).isEqualTo("apple");
-        assertThat(detectedObjects.get(0).getLearningWord()).isEqualTo("사과"); // 사과
+        assertThat(detectedObjects.get(0).getLearningWord()).isEqualTo("manzana");
+        assertThat(detectedObjects.get(0).getLanguageCode()).isEqualTo("es");
+        assertThat(detectedObjects.get(0).getTranslationSource()).isEqualTo(ScannerTranslationSource.TAXONOMY);
+        verify(translationClient, never()).translate(any(), any(), any());
+    }
+
+    @Test
+    void detectUsesVocabularyForUnsupportedLanguage() throws IOException {
+        Profile profile = profileWithLearningLanguage("test@example.com", "ko");
+        when(profileRepository.findByEmail("test@example.com")).thenReturn(Optional.of(profile));
+        whenVisionReturns("ko", List.of(visionDetection("apple", "apple", 0.08d)));
+
+        List<DetectedObjectDTO> detectedObjects = objectDetectionService.detect(image(), "test@example.com");
+
+        assertThat(detectedObjects).hasSize(1);
+        assertThat(detectedObjects.get(0).getLearningWord()).isEqualTo("사과");
         assertThat(detectedObjects.get(0).getLanguageCode()).isEqualTo("ko");
         assertThat(detectedObjects.get(0).getTranslationSource()).isEqualTo(ScannerTranslationSource.DICTIONARY);
-        // dictionary hit — translation API must not be called
         verify(translationClient, never()).translate(any(), any(), any());
     }
 
@@ -89,26 +96,25 @@ class ObjectDetectionServiceTest {
     void detectDeduplicatesNormalizedLabelsAndKeepsHighestConfidence() throws IOException {
         Profile profile = profileWithLearningLanguage("test@example.com", "ko");
         when(profileRepository.findByEmail("test@example.com")).thenReturn(Optional.of(profile));
-        whenYoloReturns(List.of(
-                new ObjectDetectionService.YoloLabel("chair", 0.72d),
-                new ObjectDetectionService.YoloLabel(" Chair ", 0.91d),
-                new ObjectDetectionService.YoloLabel("CHAIR", 0.68d),
-                new ObjectDetectionService.YoloLabel("apple", 0.80d)));
+        whenVisionReturns("ko", List.of(
+                visionDetection("chair", "chair", 0.07d),
+                visionDetection(" Chair ", "chair", 0.11d),
+                visionDetection("CHAIR", "chair", 0.06d),
+                visionDetection("apple", "apple", 0.09d)));
 
         List<DetectedObjectDTO> detectedObjects = objectDetectionService.detect(image(), "test@example.com");
 
         assertThat(detectedObjects).hasSize(2);
         assertThat(detectedObjects.get(0).getLabel()).isEqualTo("chair");
-        assertThat(detectedObjects.get(0).getNativeWord()).isEqualTo("chair");
-        assertThat(detectedObjects.get(0).getConfidence()).isEqualTo(0.91d);
+        assertThat(detectedObjects.get(0).getConfidence()).isEqualTo(0.11d);
         assertThat(detectedObjects.get(1).getLabel()).isEqualTo("apple");
-        assertThat(detectedObjects.get(1).getConfidence()).isEqualTo(0.80d);
+        assertThat(detectedObjects.get(1).getConfidence()).isEqualTo(0.09d);
         verify(translationClient, never()).translate(any(), any(), any());
     }
 
     @Test
     void detectMapsOptionalBoundingBox() throws IOException {
-        Profile profile = profileWithLearningLanguage("test@example.com", "ko");
+        Profile profile = profileWithLearningLanguage("test@example.com", "es");
         when(profileRepository.findByEmail("test@example.com")).thenReturn(Optional.of(profile));
         BoundingBoxDTO box = BoundingBoxDTO.builder()
                 .x(0.25d)
@@ -116,7 +122,7 @@ class ObjectDetectionServiceTest {
                 .width(0.40d)
                 .height(0.50d)
                 .build();
-        whenYoloReturns(List.of(new ObjectDetectionService.YoloLabel("apple", 0.94d, box)));
+        whenVisionReturns("es", List.of(visionDetection("apple", "manzana", 0.08d, box)));
 
         List<DetectedObjectDTO> detectedObjects = objectDetectionService.detect(image(), "test@example.com");
 
@@ -129,82 +135,73 @@ class ObjectDetectionServiceTest {
     }
 
     @Test
-    void detectSortsByConfidenceAndLimitsResults() throws IOException {
+    void detectSortsByConfidenceAndLimitsResultsWithoutPostFilteringLowVisionScores() throws IOException {
         Profile profile = Profile.builder()
                 .email("test@example.com")
                 .languages(new ArrayList<>())
                 .build();
         when(profileRepository.findByEmail("test@example.com")).thenReturn(Optional.of(profile));
-        whenYoloReturns(List.of(
-                new ObjectDetectionService.YoloLabel("object_00", 0.60d),
-                new ObjectDetectionService.YoloLabel("object_01", 0.61d),
-                new ObjectDetectionService.YoloLabel("object_02", 0.62d),
-                new ObjectDetectionService.YoloLabel("object_03", 0.63d),
-                new ObjectDetectionService.YoloLabel("object_04", 0.64d),
-                new ObjectDetectionService.YoloLabel("object_05", 0.65d),
-                new ObjectDetectionService.YoloLabel("object_06", 0.66d),
-                new ObjectDetectionService.YoloLabel("object_07", 0.67d),
-                new ObjectDetectionService.YoloLabel("object_08", 0.68d),
-                new ObjectDetectionService.YoloLabel("object_09", 0.69d),
-                new ObjectDetectionService.YoloLabel("object_10", 0.70d),
-                new ObjectDetectionService.YoloLabel("object_11", 0.71d)));
+        whenVisionReturns("en", List.of(
+                visionDetection("object_00", "object 00", 0.050d),
+                visionDetection("object_01", "object 01", 0.060d),
+                visionDetection("object_02", "object 02", 0.070d),
+                visionDetection("object_03", "object 03", 0.080d),
+                visionDetection("object_04", "object 04", 0.090d),
+                visionDetection("object_05", "object 05", 0.100d),
+                visionDetection("object_06", "object 06", 0.110d),
+                visionDetection("object_07", "object 07", 0.120d),
+                visionDetection("object_08", "object 08", 0.130d),
+                visionDetection("object_09", "object 09", 0.140d),
+                visionDetection("object_10", "object 10", 0.150d),
+                visionDetection("object_11", "object 11", 0.160d)));
 
         List<DetectedObjectDTO> detectedObjects = objectDetectionService.detect(image(), "test@example.com");
 
         assertThat(detectedObjects).hasSize(10);
         assertThat(detectedObjects.get(0).getLabel()).isEqualTo("object 11");
-        assertThat(detectedObjects.get(0).getConfidence()).isEqualTo(0.71d);
+        assertThat(detectedObjects.get(0).getConfidence()).isEqualTo(0.160d);
         assertThat(detectedObjects.get(9).getLabel()).isEqualTo("object 02");
-        assertThat(detectedObjects.get(9).getConfidence()).isEqualTo(0.62d);
+        assertThat(detectedObjects.get(9).getConfidence()).isEqualTo(0.070d);
         assertThat(detectedObjects)
                 .extracting(DetectedObjectDTO::getLabel)
                 .doesNotContain("object 00", "object 01");
         verify(translationClient, never()).translate(any(), any(), any());
     }
 
-    // -------------------------------------------------------------------------
-    // English fallback — translation API must NOT be called
-    // -------------------------------------------------------------------------
-
     @Test
-    void detectFallsBackToEnglishWhenProfileHasNoLearningLanguage() throws IOException {
+    void detectFallsBackToEnglishTaxonomyWhenProfileHasNoLearningLanguage() throws IOException {
         Profile profile = Profile.builder()
                 .email("test@example.com")
                 .languages(new ArrayList<>())
                 .build();
         when(profileRepository.findByEmail("test@example.com")).thenReturn(Optional.of(profile));
-        whenYoloReturns(List.of(new ObjectDetectionService.YoloLabel("bottle", 0.91d)));
+        whenVisionReturns("en", List.of(visionDetection("bottle", "Bottle", 0.08d)));
 
         List<DetectedObjectDTO> detectedObjects = objectDetectionService.detect(image(), "test@example.com");
 
         assertThat(detectedObjects).hasSize(1);
         assertThat(detectedObjects.get(0).getLabel()).isEqualTo("bottle");
-        assertThat(detectedObjects.get(0).getLearningWord()).isEqualTo("bottle");
+        assertThat(detectedObjects.get(0).getLearningWord()).isEqualTo("Bottle");
         assertThat(detectedObjects.get(0).getLanguageCode()).isEqualTo("en");
-        assertThat(detectedObjects.get(0).getTranslationSource()).isEqualTo(ScannerTranslationSource.FALLBACK);
-        // language is "en" — translation API must not be called
+        assertThat(detectedObjects.get(0).getTranslationSource()).isEqualTo(ScannerTranslationSource.TAXONOMY);
         verify(translationClient, never()).translate(any(), any(), any());
     }
 
-    // -------------------------------------------------------------------------
-    // Translation API fallback — label not in dictionary, non-English target
-    // -------------------------------------------------------------------------
-
     @Test
-    void detectTranslatesUnknownLabelViaTranslationClient() throws IOException {
+    void detectTranslatesUnknownLabelViaTranslationClientForUnsupportedLanguage() throws IOException {
         Profile profile = profileWithLearningLanguage("test@example.com", "ko");
         when(profileRepository.findByEmail("test@example.com")).thenReturn(Optional.of(profile));
-        whenYoloReturns(List.of(new ObjectDetectionService.YoloLabel("backpack", 0.91d)));
+        whenVisionReturns("ko", List.of(visionDetection("backpack", "backpack", 0.09d)));
         when(scannerTranslationCacheRepository.findByLabelAndLanguageCode("backpack", "ko"))
                 .thenReturn(Optional.empty());
         when(translationClient.translate("backpack", "en", "ko"))
-                .thenReturn(TranslationResult.builder().translatedText("병").build());
+                .thenReturn(TranslationResult.builder().translatedText("배낭").build());
 
         List<DetectedObjectDTO> detectedObjects = objectDetectionService.detect(image(), "test@example.com");
 
         assertThat(detectedObjects).hasSize(1);
         assertThat(detectedObjects.get(0).getLabel()).isEqualTo("backpack");
-        assertThat(detectedObjects.get(0).getLearningWord()).isEqualTo("병");
+        assertThat(detectedObjects.get(0).getLearningWord()).isEqualTo("배낭");
         assertThat(detectedObjects.get(0).getLanguageCode()).isEqualTo("ko");
         assertThat(detectedObjects.get(0).getTranslationSource()).isEqualTo(ScannerTranslationSource.TRANSLATION_API);
     }
@@ -213,7 +210,7 @@ class ObjectDetectionServiceTest {
     void detectFallsBackToEnglishLabelWhenTranslationClientFails() throws IOException {
         Profile profile = profileWithLearningLanguage("test@example.com", "ko");
         when(profileRepository.findByEmail("test@example.com")).thenReturn(Optional.of(profile));
-        whenYoloReturns(List.of(new ObjectDetectionService.YoloLabel("backpack", 0.91d)));
+        whenVisionReturns("ko", List.of(visionDetection("backpack", "backpack", 0.09d)));
         when(scannerTranslationCacheRepository.findByLabelAndLanguageCode("backpack", "ko"))
                 .thenReturn(Optional.empty());
         when(translationClient.translate("backpack", "en", "ko"))
@@ -230,46 +227,34 @@ class ObjectDetectionServiceTest {
     void detectReusesOneTranslationForRepeatedNormalizedLabel() throws IOException {
         Profile profile = profileWithLearningLanguage("test@example.com", "ko");
         when(profileRepository.findByEmail("test@example.com")).thenReturn(Optional.of(profile));
-        whenYoloReturns(List.of(
-                new ObjectDetectionService.YoloLabel("backpack", 0.91d),
-                new ObjectDetectionService.YoloLabel(" BACKPACK ", 0.88d)));
+        whenVisionReturns("ko", List.of(
+                visionDetection("backpack", "backpack", 0.09d),
+                visionDetection(" BACKPACK ", "backpack", 0.08d)));
         when(scannerTranslationCacheRepository.findByLabelAndLanguageCode("backpack", "ko"))
                 .thenReturn(Optional.empty());
         when(translationClient.translate("backpack", "en", "ko"))
-                .thenReturn(TranslationResult.builder().translatedText("\uBC30\uB0AD").build());
+                .thenReturn(TranslationResult.builder().translatedText("배낭").build());
 
         List<DetectedObjectDTO> detectedObjects = objectDetectionService.detect(image(), "test@example.com");
 
         assertThat(detectedObjects).hasSize(1);
         assertThat(detectedObjects.get(0).getLabel()).isEqualTo("backpack");
-        assertThat(detectedObjects.get(0).getLearningWord()).isEqualTo("\uBC30\uB0AD");
+        assertThat(detectedObjects.get(0).getLearningWord()).isEqualTo("배낭");
         assertThat(detectedObjects.get(0).getTranslationSource()).isEqualTo(ScannerTranslationSource.TRANSLATION_API);
         verify(translationClient, times(1)).translate("backpack", "en", "ko");
     }
 
-    // -------------------------------------------------------------------------
-    // YOLO service failure
-    // -------------------------------------------------------------------------
-
     @Test
-    void detectThrowsUnavailableExceptionWhenYoloRequestFails() {
+    void detectThrowsUnavailableExceptionWhenVisionRequestFails() {
         Profile profile = profileWithLearningLanguage("test@example.com", "ko");
         when(profileRepository.findByEmail("test@example.com")).thenReturn(Optional.of(profile));
-        when(restTemplate.exchange(
-                eq("http://localhost:5001/detect"),
-                eq(HttpMethod.POST),
-                any(HttpEntity.class),
-                ArgumentMatchers.<ParameterizedTypeReference<List<ObjectDetectionService.YoloLabel>>>any()))
-                .thenThrow(new ResourceAccessException("connection refused"));
+        when(visionServiceClient.analyze(anyString(), eq("ko")))
+                .thenThrow(new ObjectDetectionUnavailableException("Object detection service unavailable"));
 
         assertThatThrownBy(() -> objectDetectionService.detect(image(), "test@example.com"))
                 .isInstanceOf(ObjectDetectionUnavailableException.class)
                 .hasMessage("Object detection service unavailable");
     }
-
-    // -------------------------------------------------------------------------
-    // Input validation
-    // -------------------------------------------------------------------------
 
     @Test
     void detectRejectsEmptyImage() {
@@ -300,17 +285,25 @@ class ObjectDetectionServiceTest {
                 .hasMessage("Image exceeds 5 MB limit");
     }
 
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
+    private void whenVisionReturns(String languageCode, List<VisionDetection> detections) {
+        when(visionServiceClient.analyze(anyString(), eq(languageCode))).thenReturn(detections);
+    }
 
-    private void whenYoloReturns(List<ObjectDetectionService.YoloLabel> labels) {
-        when(restTemplate.exchange(
-                eq("http://localhost:5001/detect"),
-                eq(HttpMethod.POST),
-                any(HttpEntity.class),
-                ArgumentMatchers.<ParameterizedTypeReference<List<ObjectDetectionService.YoloLabel>>>any()))
-                .thenReturn(ResponseEntity.ok(labels));
+    private VisionDetection visionDetection(String canonicalLabel, String translatedLabel, double confidence) {
+        return visionDetection(canonicalLabel, translatedLabel, confidence, null);
+    }
+
+    private VisionDetection visionDetection(
+            String canonicalLabel,
+            String translatedLabel,
+            double confidence,
+            BoundingBoxDTO box) {
+        return VisionDetection.builder()
+                .canonicalLabel(canonicalLabel)
+                .translatedLabel(translatedLabel)
+                .confidence(confidence)
+                .box(box)
+                .build();
     }
 
     private Profile profileWithLearningLanguage(String email, String languageCode) {

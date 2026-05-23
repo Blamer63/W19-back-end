@@ -23,5 +23,5 @@ public class PrivacySettings {
 
     @Builder.Default
     @com.fasterxml.jackson.annotation.JsonProperty("allow_messages")
-    private String allowMessages = "everyone"; // everyone, following, none
+    private String allowMessages = "everyone"; // everyone, friends, none
 }

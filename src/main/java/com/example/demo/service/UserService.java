@@ -1,7 +1,12 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.NotificationSummaryResponse;
+import com.example.demo.dto.NotificationPrefsDto;
+import com.example.demo.dto.SettingsPrivacyDto;
 import com.example.demo.dto.UserSettingsDTO;
+import com.example.demo.entity.NotificationPrefs;
 import com.example.demo.entity.Profile;
+import com.example.demo.entity.PrivacySettings;
 import com.example.demo.entity.UserBlock;
 import com.example.demo.entity.UserSettings;
 import com.example.demo.exception.ResourceNotFoundException;
@@ -14,10 +19,15 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.demo.dto.PrivacySettingsDto;
 import com.example.demo.dto.PublicUserProfileDto;
 import com.example.demo.dto.UserLanguageDTO;
+import com.example.demo.enums.FriendStatus;
 import com.example.demo.enums.LocationVisibility;
 import com.example.demo.enums.PostStatus;
 import com.example.demo.repository.FollowRepository;
+import com.example.demo.repository.FriendRepository;
+import com.example.demo.repository.MessageRepository;
 import com.example.demo.repository.PostRepository;
+import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -31,29 +41,55 @@ public class UserService {
         private final com.example.demo.repository.UserBlockRepository userBlockRepository;
         private final PostRepository postRepository;
         private final FollowRepository followRepository;
+        private final FriendRepository friendRepository;
+        private final MessageRepository messageRepository;
 
         @Transactional(readOnly = true)
         public UserSettingsDTO getUserSettings(UUID userId) {
-                UserSettings settings = userSettingsRepository.findByProfileId(userId)
-                                .orElse(getSafeDefaultSettings(userId));
+                Profile profile = profileRepository.findById(userId)
+                                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                UserSettings settings = userSettingsRepository.findByProfile(profile)
+                                .orElseGet(() -> getSafeDefaultSettings(profile));
 
                 return UserSettingsDTO.builder()
-                                .notificationPrefs(settings.getNotificationPrefs())
-                                .privacySettings(settings.getPrivacySettings())
+                                .notificationPrefs(NotificationPrefsDto.fromEntity(settings.getNotificationPrefs()))
+                                .privacySettings(SettingsPrivacyDto.fromEntity(settings.getPrivacySettings()))
                                 .theme(settings.getTheme())
+                                .build();
+        }
+
+        @Transactional(readOnly = true)
+        public NotificationSummaryResponse getNotificationSummary(UUID userId) {
+                if (!profileRepository.existsById(userId)) {
+                        throw new ResourceNotFoundException("User not found");
+                }
+
+                long incomingFriendRequests = friendRepository.countByReceiverIdAndStatus(userId, FriendStatus.PENDING);
+                long unreadMessages = messageRepository.countUnreadForUser(userId);
+
+                return NotificationSummaryResponse.builder()
+                                .incomingFriendRequests(incomingFriendRequests)
+                                .unreadMessages(unreadMessages)
+                                .total(incomingFriendRequests + unreadMessages)
                                 .build();
         }
 
         @Transactional
         public UserSettingsDTO updateUserSettings(UUID userId, UserSettingsDTO updates) {
-                UserSettings settings = userSettingsRepository.findByProfileId(userId)
-                                .orElse(getSafeDefaultSettings(userId));
+                Profile profile = profileRepository.findById(userId)
+                                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                UserSettings settings = userSettingsRepository.findByProfile(profile)
+                                .orElseGet(() -> getSafeDefaultSettings(profile));
 
                 if (updates.getNotificationPrefs() != null) {
-                        settings.setNotificationPrefs(updates.getNotificationPrefs());
+                        settings.setNotificationPrefs(mergeNotificationPrefs(
+                                        settings.getNotificationPrefs(),
+                                        updates.getNotificationPrefs()));
                 }
                 if (updates.getPrivacySettings() != null) {
-                        settings.setPrivacySettings(updates.getPrivacySettings());
+                        settings.setPrivacySettings(mergePrivacySettings(
+                                        settings.getPrivacySettings(),
+                                        updates.getPrivacySettings()));
                 }
                 if (updates.getTheme() != null) {
                         settings.setTheme(updates.getTheme());
@@ -61,17 +97,48 @@ public class UserService {
 
                 UserSettings saved = userSettingsRepository.save(settings);
                 return UserSettingsDTO.builder()
-                                .notificationPrefs(saved.getNotificationPrefs())
-                                .privacySettings(saved.getPrivacySettings())
+                                .notificationPrefs(NotificationPrefsDto.fromEntity(saved.getNotificationPrefs()))
+                                .privacySettings(SettingsPrivacyDto.fromEntity(saved.getPrivacySettings()))
                                 .theme(saved.getTheme())
                                 .build();
         }
 
-        private UserSettings getSafeDefaultSettings(UUID userId) {
-                // If settings don't exist, create default ones linked to profile
-                Profile profile = profileRepository.findById(userId)
-                                .orElseThrow(() -> new RuntimeException("User not found"));
+        private NotificationPrefs mergeNotificationPrefs(
+                        NotificationPrefs existing,
+                        NotificationPrefsDto updates) {
+                NotificationPrefs merged = existing != null ? existing : new NotificationPrefs();
+                if (updates.getPushEnabled() != null) {
+                        merged.setPushEnabled(updates.getPushEnabled());
+                }
+                if (updates.getEmailEnabled() != null) {
+                        merged.setEmailEnabled(updates.getEmailEnabled());
+                }
+                if (updates.getLikeNotifications() != null) {
+                        merged.setLikeNotifications(updates.getLikeNotifications());
+                }
+                if (updates.getCommentNotifications() != null) {
+                        merged.setCommentNotifications(updates.getCommentNotifications());
+                }
+                if (updates.getMeetupNotifications() != null) {
+                        merged.setMeetupNotifications(updates.getMeetupNotifications());
+                }
+                return merged;
+        }
 
+        private PrivacySettings mergePrivacySettings(
+                        PrivacySettings existing,
+                        SettingsPrivacyDto updates) {
+                PrivacySettings merged = existing != null ? existing : new PrivacySettings();
+                if (updates.getLocationVisibility() != null) {
+                        merged.setLocationVisibility(updates.getLocationVisibility());
+                }
+                if (updates.getAllowMessages() != null) {
+                        merged.setAllowMessages(updates.getAllowMessages());
+                }
+                return merged;
+        }
+
+        private UserSettings getSafeDefaultSettings(Profile profile) {
                 UserSettings newSettings = UserSettings.builder()
                                 .profile(profile)
                                 .build();
@@ -183,6 +250,13 @@ public class UserService {
                                                                 .proficiency(ul.getProficiency())
                                                                 .isLearning(ul.isLearning())
                                                                 .build())
+                                                .collect(Collectors.toMap(
+                                                                dto -> dto.getCode().trim().toLowerCase(Locale.ROOT),
+                                                                dto -> dto,
+                                                                (first, ignored) -> first,
+                                                                LinkedHashMap::new))
+                                                .values()
+                                                .stream()
                                                 .collect(Collectors.toList()))
                                 .followersCount((int) followersCount)
                                 .followingCount((int) followingCount)

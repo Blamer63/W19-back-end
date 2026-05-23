@@ -4,8 +4,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
+import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 
@@ -55,6 +58,29 @@ class S3ServiceTest {
     }
 
     @Test
+    void downloadFileReturnsObjectBytesAndContentType() {
+        capturingS3Client.objectBytes = "image-bytes".getBytes();
+        capturingS3Client.contentType = "image/png";
+
+        S3Service.StoredObject object = s3Service.downloadFile("images/post.png");
+
+        assertThat(capturingS3Client.getObjectRequest.bucket()).isEqualTo("test-bucket");
+        assertThat(capturingS3Client.getObjectRequest.key()).isEqualTo("images/post.png");
+        assertThat(object.bytes()).isEqualTo("image-bytes".getBytes());
+        assertThat(object.contentType()).isEqualTo("image/png");
+    }
+
+    @Test
+    void downloadFileInfersContentTypeWhenObjectMetadataIsMissing() {
+        capturingS3Client.objectBytes = "image-bytes".getBytes();
+        capturingS3Client.contentType = null;
+
+        S3Service.StoredObject object = s3Service.downloadFile("images/post.webp");
+
+        assertThat(object.contentType()).isEqualTo("image/webp");
+    }
+
+    @Test
     void getFileUrlUsesCloudFrontDomain() {
         assertThat(s3Service.getFileUrl("audio/example.mp3"))
                 .isEqualTo("https://cdn.example.test/audio/example.mp3");
@@ -87,6 +113,9 @@ class S3ServiceTest {
 
     private static class CapturingS3Client {
         private PutObjectRequest putObjectRequest;
+        private GetObjectRequest getObjectRequest;
+        private byte[] objectBytes = new byte[0];
+        private String contentType;
 
         private S3Client client() {
             return (S3Client) Proxy.newProxyInstance(
@@ -97,6 +126,13 @@ class S3ServiceTest {
                             putObjectRequest = (PutObjectRequest) args[0];
                             assertThat(args[1]).isInstanceOf(RequestBody.class);
                             return PutObjectResponse.builder().build();
+                        }
+                        if (method.getName().equals("getObjectAsBytes")) {
+                            getObjectRequest = (GetObjectRequest) args[0];
+                            GetObjectResponse response = GetObjectResponse.builder()
+                                    .contentType(contentType)
+                                    .build();
+                            return ResponseBytes.fromByteArray(response, objectBytes);
                         }
                         if (method.getName().equals("serviceName")) {
                             return "s3";

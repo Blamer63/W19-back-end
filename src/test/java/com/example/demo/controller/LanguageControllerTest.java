@@ -11,6 +11,11 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -28,13 +33,15 @@ public class LanguageControllerTest {
 
         @org.junit.jupiter.api.BeforeEach
         void setUp() {
-                if (languageRepository.count() == 0) {
-                        languageRepository.save(Language.builder()
-                                        .code("en")
-                                        .name("English")
-                                        .flagEmoji("🇺🇸")
-                                        .build());
-                }
+                languageRepository.deleteAll();
+                languageRepository.saveAll(List.of(
+                                language("en", "English"),
+                                language("es", "Spanish"),
+                                language("fr", "French"),
+                                language("ja", "Japanese"),
+                                language("pt", "Portuguese"),
+                                language("ko", "Korean"),
+                                language("vi", "Vietnamese")));
         }
 
         @Test
@@ -53,5 +60,24 @@ public class LanguageControllerTest {
                                 .andExpect(jsonPath("$.languages").isArray())
                                 .andExpect(jsonPath("$.languages[0].code").exists())
                                 .andExpect(jsonPath("$.languages[0].name").exists());
+        }
+
+        @Test
+        void languageRepositoryUsesCanonicalProductLanguageCodes() {
+                Set<String> codes = languageRepository.findAll().stream()
+                                .map(Language::getCode)
+                                .collect(Collectors.toSet());
+
+                assertThat(codes).containsExactlyInAnyOrder("en", "es", "fr", "ja", "pt", "ko", "vi");
+                assertThat(codes).doesNotContain("de", "zh");
+        }
+
+        private Language language(String code, String name) {
+                return Language.builder()
+                                .code(code)
+                                .name(name)
+                                .nativeName(name)
+                                .flagEmoji("")
+                                .build();
         }
 }

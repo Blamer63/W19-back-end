@@ -3,9 +3,12 @@ package com.example.demo.service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
@@ -86,6 +89,27 @@ public class S3Service {
         s3Client.putObject(request, RequestBody.fromBytes(file.getBytes()));
 
         return "https://" + cloudfrontDomain + "/" + key;
+    }
+
+    public StoredObject downloadFile(String key) {
+        if (key == null || key.isBlank()) {
+            throw new IllegalArgumentException("S3 key must not be empty");
+        }
+        if (mockMode) {
+            throw new IllegalStateException("Cannot download files while S3 mock mode is enabled");
+        }
+
+        GetObjectRequest request = GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .build();
+
+        ResponseBytes<GetObjectResponse> response = s3Client.getObjectAsBytes(request);
+        String contentType = response.response().contentType();
+        if (contentType == null || contentType.isBlank()) {
+            contentType = inferContentType(key);
+        }
+        return new StoredObject(response.asByteArray(), contentType);
     }
 
     /**
@@ -175,5 +199,25 @@ public class S3Service {
         }
 
         return filename;
+    }
+
+    private String inferContentType(String key) {
+        String lowerKey = key.toLowerCase();
+        if (lowerKey.endsWith(".jpg") || lowerKey.endsWith(".jpeg")) {
+            return "image/jpeg";
+        }
+        if (lowerKey.endsWith(".png")) {
+            return "image/png";
+        }
+        if (lowerKey.endsWith(".webp")) {
+            return "image/webp";
+        }
+        if (lowerKey.endsWith(".gif")) {
+            return "image/gif";
+        }
+        return "application/octet-stream";
+    }
+
+    public record StoredObject(byte[] bytes, String contentType) {
     }
 }

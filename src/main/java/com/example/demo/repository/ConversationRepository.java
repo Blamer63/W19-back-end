@@ -14,7 +14,13 @@ import java.util.UUID;
 @Repository
 public interface ConversationRepository extends JpaRepository<Conversation, UUID> {
 
-    @Query("SELECT c FROM Conversation c JOIN c.participants p WHERE p.id = :profileId ORDER BY c.lastMessageAt DESC")
+    @Query("""
+            SELECT c FROM Conversation c
+            JOIN c.participants p
+            WHERE p.id = :profileId
+              AND (c.isGroup = true OR c.lastMessageAt IS NOT NULL)
+            ORDER BY c.lastMessageAt DESC
+            """)
     Page<Conversation> findByParticipantId(@Param("profileId") UUID profileId, Pageable pageable);
 
     @Query("""

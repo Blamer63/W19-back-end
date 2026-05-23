@@ -1,0 +1,50 @@
+concept_id,canonical_label,aliases,parent,category,tags,visual_description
+acbad370-4e9c-5e80-b256-3b295f23dbc9,ceramic mug,coffee mug|tea mug,kitchenware,kitchenware,drinkware,ceramic drinking mug with handle
+a794ce67-9156-59eb-86c1-d1090996516e,drinking glass,water glass|glass,kitchenware,kitchenware,drinkware,clear cylindrical drinking glass
+60aed765-03fe-5c2b-ab2d-1fa2f8d220c2,wine glass,red wine glass|white wine glass,kitchenware,kitchenware,drinkware,stemmed bowl-shaped wine glass
+88cc1c11-64ce-58ee-9957-fbb0bd179323,champagne flute,flute glass,kitchenware,kitchenware,drinkware,tall narrow champagne flute glass
+6ce01df6-44e5-5264-b7c9-692a7ab9411f,shot glass,,kitchenware,kitchenware,drinkware,small thick-walled shot glass
+41141b13-c51b-5ee4-9852-3e57225899fd,teacup,tea cup|china cup,kitchenware,kitchenware,drinkware,small delicate teacup with handle
+8edf7a9e-46ab-59ee-9ab6-a9350355f3e4,thermos,vacuum flask|insulated flask,kitchenware,kitchenware,drinkware|portable,tall insulated stainless thermos flask
+214d4f2a-dbbf-59cf-9057-e04cbbd6e055,travel mug,travel cup|to-go cup,kitchenware,kitchenware,drinkware|portable,lidded insulated travel coffee mug
+a7eba51e-6f61-57aa-adc7-9ee286964408,dinner plate,ceramic plate|plate,kitchenware,kitchenware,dishware,round flat white ceramic dinner plate
+a3b2c5ff-21cd-5be9-a523-bdf13d91c3ea,soup bowl,bowl|ceramic bowl,kitchenware,kitchenware,dishware,deep round ceramic soup bowl
+291e0b57-066c-5e2e-91e4-110ef174a8bb,salad bowl,large mixing bowl,kitchenware,kitchenware,dishware,wide shallow salad serving bowl
+061fc406-8c89-56a5-b8bd-8cb7f89daa2a,serving platter,platter|serving dish,kitchenware,kitchenware,dishware,large oval ceramic serving platter
+c5f721b5-9a7e-5629-98f4-88d13dc4d821,saucer,teacup saucer,kitchenware,kitchenware,dishware,small flat dish placed under teacup
+8c7707f3-51eb-53dc-a679-9602b2158598,cooking pot,stockpot|large pot,kitchenware,kitchenware,cookware,tall stainless cooking pot with lid
+1fb298e5-4bb3-5641-a456-a5784ff8eb5b,saucepan,small pot,kitchenware,kitchenware,cookware,small metal pot with single long handle
+a9f20247-cb9e-5e28-af1a-762bd91400cb,frying pan,skillet|pan,kitchenware,kitchenware,cookware,flat circular metal frying pan
+1c1f1273-5005-54ef-b526-acbedb5b4ff2,wok,stir-fry wok,kitchenware,kitchenware,cookware,round-bottomed deep steel wok pan
+c2598b71-cd12-5c16-ad73-62715b021a6a,baking tray,sheet pan|baking sheet,kitchenware,kitchenware,cookware,flat rectangular metal baking tray
+89aa1062-cdbc-563d-82e2-c8740ff8b12f,casserole dish,baking dish|oven dish,kitchenware,kitchenware,cookware,deep oval ceramic oven casserole dish
+3ba41479-b19e-5472-8b40-a8d6cbfc4439,dutch oven,cast iron pot,kitchenware,kitchenware,cookware,heavy cast iron enameled cooking pot
+4973d80a-1a90-54c6-ab05-047238cc259c,kitchen knife,chef knife|cook's knife,kitchenware,kitchenware,utensils,wide-blade steel chef kitchen knife
+09b0182c-4b89-537f-8b1f-ff0ea0c31d4e,fork,dining fork|table fork,kitchenware,kitchenware,utensils,metal four-tined dining fork
+a1cfaa24-22d8-58ba-9357-61a2174b5774,spoon,tablespoon|soup spoon,kitchenware,kitchenware,utensils,round-bowled metal soup spoon
+4371f6bb-538a-5ae3-88c8-b7032edeef8c,chopsticks,,kitchenware,kitchenware,utensils,pair of wooden or bamboo chopsticks
+931959c5-2a68-5907-9ed1-6ef5331150aa,spatula,cooking spatula|turner,kitchenware,kitchenware,utensils,flat flexible food-flipping spatula
+96531e18-36e3-55e5-8a9d-2ad3091d235a,wooden spoon,,kitchenware,kitchenware,utensils,long-handled wooden stirring spoon
+3a27ec66-3de7-5248-bf86-3386d139c8e7,ladle,soup ladle|serving ladle,kitchenware,kitchenware,utensils,deep long-handled serving ladle
+848a8a25-b726-5547-829b-395b3ae98a08,tongs,kitchen tongs,kitchenware,kitchenware,utensils,spring-grip stainless steel kitchen tongs
+12d91310-18c3-5d7e-a5b7-d89b60650bb5,whisk,balloon whisk|egg whisk,kitchenware,kitchenware,utensils,wire loop balloon whisk
+cd779e60-9b4f-5882-8aff-5fbad1567793,rolling pin,dough roller,kitchenware,kitchenware,utensils,smooth cylindrical wooden rolling pin
+60ee5294-1496-5f08-874d-0009e94b669a,grater,box grater|cheese grater,kitchenware,kitchenware,utensils,metal box grater with multiple holes
+b30ad1f6-d778-54b6-a000-bb21c6f0767f,peeler,vegetable peeler,kitchenware,kitchenware,utensils,Y-shaped or straight vegetable peeler
+8e6b130a-8ffb-5c6a-9841-009403c92483,can opener,tin opener,kitchenware,kitchenware,utensils,manual or electric tin can opener
+041806a5-ae18-50fc-b229-5435d2d68ec3,cutting board,chopping board,kitchenware,kitchenware,prep_tools,wooden or plastic food cutting board
+d1080787-9d82-5c90-8ec9-e5957a4d862b,colander,pasta strainer,kitchenware,kitchenware,prep_tools,perforated bowl-shaped metal colander
+26d0bbdc-d4a6-509f-a2a5-8f78df06c85d,measuring cup,,kitchenware,kitchenware,prep_tools,clear graduated liquid measuring cup
+e2fd1c1c-8670-52ed-95c1-3cd071181787,toaster,bread toaster|pop-up toaster,kitchenware,kitchenware,appliances,stainless countertop bread toaster
+dbc87ff3-70a4-5dbd-90ae-32d1aa8803e2,microwave oven,microwave,kitchenware,kitchenware,appliances|electronics,countertop rectangular microwave oven
+5fdcd3bd-9abc-5d91-8c60-027931c99e4d,electric kettle,kettle|jug kettle,kitchenware,kitchenware,appliances|electronics,electric water-boiling plastic kettle
+275edca4-13f5-5ef3-9958-1fcba29bca15,coffee maker,drip coffee maker|coffee machine,kitchenware,kitchenware,appliances,automatic drip coffee machine
+305b14a8-fcc6-5f89-9a91-219ae26e55ea,blender,smoothie blender|jug blender,kitchenware,kitchenware,appliances|electronics,tall jug blender with blade
+f011d54b-e22f-57aa-a9b5-b5153747b501,food processor,,kitchenware,kitchenware,appliances|electronics,wide-bowl electric food processor
+be6a91a3-876e-5d70-af41-4ab504365cdc,stand mixer,kitchen mixer,kitchenware,kitchenware,appliances|electronics,countertop tilt-head stand mixer
+0af0625e-e0c3-551c-9e18-7a8ff7a1f840,rice cooker,,kitchenware,kitchenware,appliances|electronics,domed electric rice cooking pot
+81fe7214-cf0f-5a5d-987e-72e7442e88a9,dishwasher,dishwashing machine,kitchenware,kitchenware,appliances|electronics,under-counter household dishwasher
+84044434-5581-572e-b727-082796d6e009,refrigerator,fridge|icebox,kitchenware,kitchenware,appliances|electronics,tall white household refrigerator
+c5596f26-3cd1-5b0c-888c-b41d578439ff,kitchen stove,cooker|gas stove|oven range,kitchenware,kitchenware,appliances|electronics,freestanding kitchen stove with burners
+d615d76f-f8bf-5de2-962b-d2ae0c7f0b65,oven,baking oven|wall oven,kitchenware,kitchenware,appliances|electronics,built-in or countertop cooking oven
+09ac6848-181f-5eed-86c5-5b6df3a4324b,air fryer,,kitchenware,kitchenware,appliances|electronics,compact countertop hot-air fryer

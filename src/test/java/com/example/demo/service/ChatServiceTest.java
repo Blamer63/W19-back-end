@@ -9,10 +9,14 @@ import com.example.demo.dto.ProfileResponse;
 import com.example.demo.entity.Conversation;
 import com.example.demo.entity.Message;
 import com.example.demo.entity.Profile;
+import com.example.demo.entity.PrivacySettings;
+import com.example.demo.entity.UserSettings;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.ConversationRepository;
+import com.example.demo.repository.FriendRepository;
 import com.example.demo.repository.MessageRepository;
 import com.example.demo.repository.ProfileRepository;
+import com.example.demo.repository.UserSettingsRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,6 +45,9 @@ class ChatServiceTest {
     @Mock private ProfileRepository profileRepository;
     @Mock private ProfileService profileService;
     @Mock private S3Service s3Service;
+    @Mock private NotificationService notificationService;
+    @Mock private UserSettingsRepository userSettingsRepository;
+    @Mock private FriendRepository friendRepository;
 
     // Constructed explicitly in setUp() so the exact @Mock instances above are injected.
     // @InjectMocks was removed because Mockito's constructor-injection strategy can silently
@@ -60,7 +67,10 @@ class ChatServiceTest {
                 messageRepository,
                 profileRepository,
                 profileService,
-                s3Service
+                s3Service,
+                notificationService,
+                userSettingsRepository,
+                friendRepository
         );
 
         sender = new Profile();
@@ -179,6 +189,95 @@ class ChatServiceTest {
 
         verify(messageRepository, never()).save(any(Message.class));
         verify(conversationRepository, never()).save(any(Conversation.class));
+    }
+
+    @Test
+    void sendMessage_DirectMessageBlockedWhenRecipientAcceptsNone() {
+        ChatRequest request = new ChatRequest();
+        request.setRecipientId(recipient.getId());
+        request.setContent("Hello");
+
+        UserSettings recipientSettings = UserSettings.builder()
+                .profile(recipient)
+                .privacySettings(PrivacySettings.builder()
+                        .allowMessages("none")
+                        .build())
+                .build();
+
+        when(profileRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(sender));
+        when(profileRepository.findById(recipient.getId())).thenReturn(Optional.of(recipient));
+        when(userSettingsRepository.findByProfileId(recipient.getId())).thenReturn(Optional.of(recipientSettings));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> chatService.sendMessage("sender@example.com", request));
+
+        assertEquals("Recipient is not accepting direct messages", exception.getMessage());
+        verify(conversationRepository, never()).findBetweenUsers(any(), any());
+        verify(messageRepository, never()).save(any(Message.class));
+        verify(notificationService, never()).createNotification(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void sendMessage_DirectMessageBlockedWhenRecipientAcceptsFriendsAndSenderIsStranger() {
+        ChatRequest request = new ChatRequest();
+        request.setRecipientId(recipient.getId());
+        request.setContent("Hello");
+
+        UserSettings recipientSettings = UserSettings.builder()
+                .profile(recipient)
+                .privacySettings(PrivacySettings.builder()
+                        .allowMessages("friends")
+                        .build())
+                .build();
+
+        when(profileRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(sender));
+        when(profileRepository.findById(recipient.getId())).thenReturn(Optional.of(recipient));
+        when(userSettingsRepository.findByProfileId(recipient.getId())).thenReturn(Optional.of(recipientSettings));
+        when(friendRepository.areFriends(sender.getId(), recipient.getId())).thenReturn(false);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> chatService.sendMessage("sender@example.com", request));
+
+        assertEquals("Recipient only accepts messages from friends", exception.getMessage());
+        verify(conversationRepository, never()).findBetweenUsers(any(), any());
+        verify(messageRepository, never()).save(any(Message.class));
+        verify(notificationService, never()).createNotification(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void sendMessage_DirectMessageAllowedWhenRecipientAcceptsFriendsAndSenderIsFriend() {
+        ChatRequest request = new ChatRequest();
+        request.setRecipientId(recipient.getId());
+        request.setContent("Hello");
+
+        UserSettings recipientSettings = UserSettings.builder()
+                .profile(recipient)
+                .privacySettings(PrivacySettings.builder()
+                        .allowMessages("friends")
+                        .build())
+                .build();
+
+        when(profileRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(sender));
+        when(profileRepository.findById(recipient.getId())).thenReturn(Optional.of(recipient));
+        when(userSettingsRepository.findByProfileId(recipient.getId())).thenReturn(Optional.of(recipientSettings));
+        when(friendRepository.areFriends(sender.getId(), recipient.getId())).thenReturn(true);
+        when(conversationRepository.findBetweenUsers(sender.getId(), recipient.getId()))
+                .thenReturn(Optional.empty());
+        when(conversationRepository.save(any(Conversation.class))).thenReturn(conversation);
+        when(messageRepository.save(any(Message.class))).thenReturn(message);
+        when(profileService.mapToResponse(any(Profile.class))).thenReturn(new ProfileResponse());
+
+        MessageResponse response = chatService.sendMessage("sender@example.com", request);
+
+        assertNotNull(response);
+        verify(messageRepository).save(any(Message.class));
+        verify(notificationService).createNotification(
+                eq(recipient.getId()),
+                eq(sender.getId()),
+                eq(com.example.demo.enums.NotificationType.MESSAGE),
+                any(),
+                any(),
+                any());
     }
 
     @Test

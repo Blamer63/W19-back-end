@@ -3,9 +3,11 @@ package com.example.demo.service;
 import com.example.demo.dto.PostResponse;
 import com.example.demo.entity.Post;
 import com.example.demo.entity.Language;
+import com.example.demo.entity.PostImage;
 import com.example.demo.entity.Profile;
 import com.example.demo.entity.UserLanguage;
 import com.example.demo.enums.LocationVisibility;
+import com.example.demo.enums.NotificationType;
 import com.example.demo.enums.PostStatus;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.*;
@@ -19,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,6 +37,9 @@ public class PostService {
         private final SavedPostRepository savedPostRepository;
         private final PostCommentRepository postCommentRepository;
         private final S3Service s3Service;
+        private final FriendRepository friendRepository;
+        private final NotificationService notificationService;
+        private static final int MAX_POST_IMAGES = 3;
 
         @Transactional(readOnly = true)
         public Page<PostResponse> getFeed(String language, Pageable pageable, Double lat, Double lon,
@@ -55,15 +62,17 @@ public class PostService {
         @Transactional
         public PostResponse createPost(String content, String originalLanguage,
                         Double latitude, Double longitude,
-                        MultipartFile image, String currentUserEmail) throws IOException {
+                        MultipartFile image, List<MultipartFile> images, String currentUserEmail) throws IOException {
                 Profile currentUser = profileRepository.findByEmail(currentUserEmail)
                                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-                String imageUrl = null;
-                if (image != null && !image.isEmpty()) {
-                        s3Service.validateImageFile(image);
-                        imageUrl = s3Service.uploadFile(image, "images");
+                List<MultipartFile> imageFiles = normalizePostImages(image, images);
+                List<String> imageUrls = new ArrayList<>();
+                for (MultipartFile imageFile : imageFiles) {
+                        s3Service.validateImageFile(imageFile);
+                        imageUrls.add(s3Service.uploadFile(imageFile, "images"));
                 }
+                String imageUrl = imageUrls.isEmpty() ? null : imageUrls.get(0);
 
                 try {
                         Post post = Post.builder()
@@ -75,10 +84,19 @@ public class PostService {
                                         .longitude(longitude)
                                         .status(PostStatus.ACTIVE)
                                         .build();
-                        return mapToResponse(postRepository.save(post), currentUser, latitude, longitude);
+                        for (int i = 0; i < imageUrls.size(); i++) {
+                                post.getImages().add(PostImage.builder()
+                                                .post(post)
+                                                .imageUrl(imageUrls.get(i))
+                                                .position(i)
+                                                .build());
+                        }
+                        Post saved = postRepository.save(post);
+                        createFriendPostNotifications(saved);
+                        return mapToResponse(saved, currentUser, latitude, longitude);
                 } catch (Exception e) {
-                        if (imageUrl != null) {
-                                String key = s3Service.extractKey(imageUrl);
+                        for (String uploadedImageUrl : imageUrls) {
+                                String key = s3Service.extractKey(uploadedImageUrl);
                                 if (key != null) {
                                         try {
                                                 s3Service.deleteFile(key);
@@ -89,6 +107,13 @@ public class PostService {
                         }
                         throw e;
                 }
+        }
+
+        @Transactional
+        public PostResponse createPost(String content, String originalLanguage,
+                        Double latitude, Double longitude,
+                        MultipartFile image, String currentUserEmail) throws IOException {
+                return createPost(content, originalLanguage, latitude, longitude, image, null, currentUserEmail);
         }
 
         @Transactional(readOnly = true)
@@ -111,10 +136,10 @@ public class PostService {
                         throw new IllegalArgumentException("Unauthorized to delete this post");
                 }
 
-                String imageUrl = post.getImageUrl();
+                List<String> imageUrls = resolveImageUrls(post);
                 postRepository.delete(post);
 
-                if (imageUrl != null) {
+                for (String imageUrl : imageUrls) {
                         String key = s3Service.extractKey(imageUrl);
                         if (key != null) {
                                 try {
@@ -149,6 +174,64 @@ public class PostService {
                 return posts.map(post -> mapToResponse(post, currentUser, null, null));
         }
 
+        private List<MultipartFile> normalizePostImages(MultipartFile image, List<MultipartFile> images) {
+                List<MultipartFile> imageFiles = new ArrayList<>();
+                if (image != null && !image.isEmpty()) {
+                        imageFiles.add(image);
+                }
+                if (images != null) {
+                        images.stream()
+                                        .filter(file -> file != null && !file.isEmpty())
+                                        .forEach(imageFiles::add);
+                }
+                if (imageFiles.size() > MAX_POST_IMAGES) {
+                        throw new IllegalArgumentException("Posts can include up to 3 images");
+                }
+                return imageFiles;
+        }
+
+        private List<String> resolveImageUrls(Post post) {
+                List<String> imageUrls = post.getImages() == null ? List.of() : post.getImages().stream()
+                                .sorted(Comparator.comparingInt(PostImage::getPosition))
+                                .map(PostImage::getImageUrl)
+                                .toList();
+                if (!imageUrls.isEmpty()) {
+                        return imageUrls;
+                }
+                return post.getImageUrl() == null ? List.of() : List.of(post.getImageUrl());
+        }
+
+        private void createFriendPostNotifications(Post post) {
+                Profile author = post.getAuthor();
+                String resolvedDisplayName = author.getDisplayName() != null && !author.getDisplayName().isBlank()
+                                ? author.getDisplayName()
+                                : author.getUsername();
+                if (resolvedDisplayName == null || resolvedDisplayName.isBlank()) {
+                        resolvedDisplayName = "A friend";
+                }
+                final String displayName = resolvedDisplayName;
+
+                String resolvedBody = post.getContent() == null || post.getContent().isBlank()
+                                ? displayName + " shared a new post"
+                                : post.getContent();
+                if (resolvedBody.length() > 120) {
+                        resolvedBody = resolvedBody.substring(0, 117) + "...";
+                }
+
+                final String body = resolvedBody;
+                final String title = "New post from " + displayName;
+                final String targetUrl = "/posts/" + post.getId();
+
+                friendRepository.findAcceptedFriendIds(author.getId()).forEach(friendId ->
+                                notificationService.createNotification(
+                                                friendId,
+                                                author.getId(),
+                                                NotificationType.FRIEND_POST,
+                                                title,
+                                                body,
+                                                targetUrl));
+        }
+
         private PostResponse mapToResponse(Post post, Profile currentUser, Double lat, Double lon) {
                 String distance = "Unknown";
                 if (lat != null && lon != null && post.getLatitude() != null && post.getLongitude() != null) {
@@ -159,6 +242,8 @@ public class PostService {
                 String userReaction = postReactionRepository.findByPostIdAndProfileId(post.getId(), currentUser.getId())
                                 .map(reaction -> reaction.getType().name())
                                 .orElse(null);
+                List<String> imageUrls = resolveImageUrls(post);
+                String primaryImageUrl = imageUrls.isEmpty() ? null : imageUrls.get(0);
 
                 // Get author's native language for display
                 Profile author = post.getAuthor();
@@ -208,7 +293,8 @@ public class PostService {
                                                 .build())
                                 .content(post.getContent())
                                 .originalLanguage(post.getOriginalLanguage())
-                                .imageUrl(post.getImageUrl())
+                                .imageUrl(primaryImageUrl)
+                                .imageUrls(imageUrls)
                                 .latitude(post.getLatitude())
                                 .longitude(post.getLongitude())
                                 .location(post.getLatitude() != null ? "Nearby" : "Unknown")

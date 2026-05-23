@@ -1,0 +1,47 @@
+concept_id,canonical_label,aliases,parent,category,tags,visual_description
+61be6d28-a459-5f77-9612-4f4f9c40899b,hammer,claw hammer,tools,tools,hand_tools,metal claw hammer with wooden handle
+213e8d33-8e09-5349-b45d-d49eb63fb56e,screwdriver,flathead screwdriver|phillips screwdriver,tools,tools,hand_tools,handled flat or cross-tip screwdriver
+802cfa34-bf6c-5052-be39-52234504dd2c,wrench,spanner|adjustable wrench,tools,tools,hand_tools,adjustable open-end metal spanner
+f4814178-144c-56d1-8121-3a6be1525053,pliers,needle-nose pliers,tools,tools,hand_tools,hinged metal gripping pliers
+0a161a10-f82c-516f-aad2-0e64c314e6e4,handsaw,wood saw|carpenter saw,tools,tools,hand_tools,toothed metal blade handsaw
+84f867dd-6cbc-57c6-be1b-9a9fd9e0291a,utility knife,box cutter|stanley knife,tools,tools,hand_tools,retractable blade utility cutter
+672f61b1-b2d3-55e2-a15c-75421d81abf8,chisel,wood chisel,tools,tools,hand_tools,beveled-edge steel wood chisel
+31396ab6-4f35-508f-8d3a-1cba3983feca,mallet,rubber mallet,tools,tools,hand_tools,large-head rubber striking mallet
+9fb62146-932f-56c4-8e66-9206b10b13af,crowbar,pry bar|wrecking bar,tools,tools,hand_tools,curved steel prying crowbar
+e29ad89d-b531-595e-8bc4-b0ac19a97b0e,Allen wrench,hex key|allen key,tools,tools,hand_tools,L-shaped hexagonal allen key set
+5fe53e8d-db21-5307-887b-502ec541cc6f,measuring tape,tape measure,tools,tools,measuring,retractable spring-loaded measuring tape
+08b2ef1e-6222-578f-a191-4e7af1af79f3,level tool,spirit level|bubble level,tools,tools,measuring,yellow horizontal spirit level bar
+f5f629c0-9f29-5280-924e-37d7d44dc997,power drill,electric drill|cordless drill,tools,tools,power_tools|electronics,cordless trigger-grip power drill
+e1aa7804-93ea-548c-b37f-fae5023b7cc5,jigsaw,electric jigsaw,tools,tools,power_tools|electronics,electric reciprocating blade jigsaw
+700cf141-2f86-5b58-b7ef-4a9274653254,circular saw,disc saw,tools,tools,power_tools|electronics,handheld round-blade circular saw
+4f8bf8d8-eee6-5f5e-a93f-0ab8cc50a008,sander,orbital sander,tools,tools,power_tools|electronics,palm-grip orbital surface sander
+0e393455-370b-5960-9ce6-b3f270fd31dd,bolt,hex bolt,tools,tools,fasteners,threaded metal hexagonal bolt
+fb9cdea2-9f23-5744-8193-68801c453a6c,nut,hex nut|wing nut,tools,tools,fasteners,threaded metal hex fastening nut
+04bc24ce-bb0a-5ba6-80a9-7a0c1419dadd,nail,wire nail|finishing nail,tools,tools,fasteners,sharp-pointed metal wire nail
+83869e44-afab-53f3-b812-706ecf45c611,screw,wood screw|machine screw,tools,tools,fasteners,threaded metal Phillips-head screw
+d44603af-9c90-520a-b2b1-be85af1d8a60,clamp,g-clamp|bar clamp,tools,tools,fasteners,G-shaped metal screw-grip clamp
+2464b4ac-bb7f-5240-8ec2-93f8cf422583,padlock,combination lock|padlock lock,tools,tools,fasteners|security,shackle padlock with key or code
+c96c9b26-9a4d-5fca-812c-938e3167faf1,garden hose,water hose|hosepipe,tools,tools,garden,green coiled rubber garden hose
+9a6ab7fa-ba49-5dcc-a451-cc439534c418,rake,leaf rake|garden rake,tools,tools,garden,long-handled fan-head garden rake
+133caca3-f970-554c-8f0c-7f3f9b68a994,shovel,spade|garden spade,tools,tools,garden,long-handled flat-blade digging shovel
+72e0e858-5509-54ac-a97f-715635d56d8b,watering can,garden watering can,tools,tools,garden,handled pouring-spout watering can
+6c3eed0e-ab9e-5a4b-acdd-6d948d1dc9d7,lawn mower,grass mower|push mower,tools,tools,garden|electronics,red or green walk-behind lawn mower
+007787f5-2217-53dd-bfd3-886c18aaecb2,wheelbarrow,garden barrow,tools,tools,garden,single-wheel metal garden wheelbarrow
+6cc60e6a-ec24-5044-b316-b1706afaa6c0,pruning shears,secateurs|garden clippers,tools,tools,garden,spring-handled pruning secateurs
+0d819244-9891-5697-9a44-5bace36bf145,broom,floor broom|sweep brush,tools,tools,cleaning,long-handled stiff-bristle floor broom
+bb248929-f063-57f5-bcc5-89a7b1037537,dustpan,dustpan and brush,tools,tools,cleaning,flat scoop-shaped metal or plastic dustpan
+b9b17064-13b4-5c6d-9669-d62477448e5b,mop,floor mop|string mop,tools,tools,cleaning,long-handled wet string floor mop
+8608612e-502a-5232-886f-7eeec05598ac,vacuum cleaner,hoover|vacuum,tools,tools,cleaning|electronics,wheeled or upright electric vacuum cleaner
+e0d16183-a9aa-5c44-80b1-b5331ffef656,clothes iron,iron|steam iron,tools,tools,cleaning|electronics,triangular soleplate electric steam iron
+3f723c90-b7c9-56a9-a24b-7f5bcb417ea0,ironing board,iron board,tools,tools,cleaning,padded folding fabric ironing board
+db96d4c4-c6b3-5c4c-995b-d3d5c38bd39e,scrubbing brush,scrub brush|cleaning brush,tools,tools,cleaning,stiff-bristle short-handled scrub brush
+746f7976-9bc1-59a2-bb7e-6b9082963852,sponge,cleaning sponge|kitchen sponge,tools,tools,cleaning,rectangular two-sided cleaning sponge
+2bb6683a-165f-5394-9010-6ed73b527f80,toolbox,tool box|tool case,tools,tools,storage,metal or plastic hinged toolbox
+fe7a4a76-0897-5170-917b-38e3880d1192,extension cord,power extension|extension lead,tools,tools,power|electronics,multi-socket plastic extension cord
+537fbed0-3a24-547b-b03f-c91f189f7705,axe,hand axe|hatchet,tools,tools,hand_tools,short-handle steel splitting axe
+52fa8df9-725c-523e-b8f3-84d421d93f60,wire cutters,cable cutters|snips,tools,tools,hand_tools,angled blade wire cutting snips
+c14d8cd6-f4e2-5f1d-8c06-48c4b45b01bf,paint roller,roller brush,tools,tools,painting,foam roller on telescoping paint handle
+3a4b2ce0-b217-5093-afdb-69b7547c8127,paintbrush,wall brush|paint brush,tools,tools,painting,wide flat bristle paint brush
+5c525a6d-349e-5af2-bd32-4bb2d2e0490e,sandpaper,abrasive paper|grit paper,tools,tools,painting,sheet of coarse or fine sandpaper
+b72da2ff-4a23-511c-afe6-0c759d9393a3,ladder,step ladder|extension ladder,tools,tools,general,tall aluminum folding step ladder
+3a94f884-9594-5b97-be1b-8bf365f2fc65,trowel,garden trowel|masonry trowel,tools,tools,garden,small pointed metal digging trowel

@@ -37,6 +37,8 @@ public interface FriendRepository extends JpaRepository<Friend, UUID> {
     // Incoming pending requests (someone sent a request TO this user)
     Page<Friend> findByReceiverIdAndStatus(UUID receiverId, FriendStatus status, Pageable pageable);
 
+    long countByReceiverIdAndStatus(UUID receiverId, FriendStatus status);
+
     // Outgoing pending requests (this user sent a request to someone else)
     Page<Friend> findByRequesterIdAndStatus(UUID requesterId, FriendStatus status, Pageable pageable);
 

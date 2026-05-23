@@ -1,0 +1,36 @@
+concept_id,canonical_label,aliases,parent,category,tags,visual_description
+6c8229ad-e499-5c14-9518-8962cad586fd,toothbrush,manual toothbrush,bathroom,bathroom,dental,nylon-bristle manual toothbrush
+0b7ab6b3-8f1d-5d98-b0d1-669fb63de561,toothpaste,dental paste,bathroom,bathroom,dental,white tube of fluoride toothpaste
+852feb95-f10d-5e68-b8cb-c6e7be49a116,electric toothbrush,powered toothbrush,bathroom,bathroom,dental|electronics,rechargeable oscillating toothbrush
+cf6cbf34-66b7-56bb-a03e-8add755676b0,dental floss,floss thread,bathroom,bathroom,dental,small round container of dental floss
+9f250c2f-f868-5a4c-9d11-366067031008,mouthwash,mouth rinse|gargle,bathroom,bathroom,dental,tall bottle of antiseptic mouthwash
+12cfff0a-4a55-597c-8710-cb33867c1aed,shampoo,hair shampoo,bathroom,bathroom,hair_care,plastic bottle of hair washing shampoo
+f2791e9d-3506-5237-a4fa-af40e481424f,conditioner,hair conditioner,bathroom,bathroom,hair_care,pump bottle of hair conditioner
+92f66836-bd12-5af9-82ac-2b21a03621b6,soap bar,bath soap|hand soap bar,bathroom,bathroom,skincare,rectangular white bath soap bar
+59658f31-6bfd-53f6-bdcf-42cb5c1846a7,liquid soap dispenser,soap pump|hand soap pump,bathroom,bathroom,skincare,pump-top bottle of liquid hand soap
+aff9d5d1-7596-5586-9009-81044263ea8f,face wash,facial cleanser|face scrub,bathroom,bathroom,skincare,tube or bottle of facial cleanser
+a6f58fb4-a7d0-5c27-98a5-4302993be4db,body lotion,skin lotion|moisturizer,bathroom,bathroom,skincare,pump bottle of moisturizing body lotion
+ad7fc83b-5a41-532e-a07c-cde6d3af2081,razor,shaving razor|disposable razor,bathroom,bathroom,grooming,handled multi-blade shaving razor
+75072f01-bfeb-5523-abe5-123d27653138,electric shaver,electric razor,bathroom,bathroom,grooming|electronics,cordless rotary electric shaver
+cda25605-8d1d-5e81-b372-0d5a733714b4,shaving cream,shaving foam|shave gel,bathroom,bathroom,grooming,aerosol can of shaving foam
+91dd572c-f1ad-58a7-bbf9-43b0985bebd1,hair dryer,blow dryer|hairdryer,bathroom,bathroom,hair_care|electronics,handheld pistol-grip electric hair dryer
+c4811c8b-ce2b-5074-a60f-9c95661f3e6b,hairbrush,hair brush,bathroom,bathroom,hair_care,oval-cushion paddle hairbrush
+1968ddc0-6950-5c76-863a-b1a684cc4989,comb,fine-tooth comb,bathroom,bathroom,hair_care,flat toothed plastic hair comb
+1ed65087-1363-5b9f-955a-cc59fceee170,hair curler,curling iron|curling wand,bathroom,bathroom,hair_care|electronics,barrel electric hair curling iron
+f12bb915-674e-54a9-9917-0144ac0beb67,nail clipper,nail cutter,bathroom,bathroom,grooming,spring-hinged metal nail clipper
+4003e8a9-30fe-5b82-8e2a-e7d7c77b68e6,tweezers,eyebrow tweezers,bathroom,bathroom,grooming,pointed stainless steel tweezers
+f41776e1-a806-5d26-89f6-431884f32186,toilet,commode|lavatory,bathroom,bathroom,fixtures,white porcelain pedestal toilet bowl
+72fc7bca-7679-5ce7-8929-e2b6ef4815a3,shower head,rain shower head,bathroom,bathroom,fixtures,ceiling or wall-mount shower head
+73780474-2a16-5810-982f-ec676824d97f,bathtub,bath tub|soaking tub,bathroom,bathroom,fixtures,large white porcelain bathtub
+95064be0-d24e-599b-91b0-e217b50f6eac,bathroom sink,washbasin|hand basin,bathroom,bathroom,fixtures,white ceramic wall-mounted washbasin
+028dd3f3-74fb-52a9-b0d3-a061bb38c30b,faucet,tap|water tap,bathroom,bathroom,fixtures,chrome double-handle basin faucet
+09b7d259-b22d-5768-b6f1-89b6c03d838c,mirror,bathroom mirror|wall mirror,bathroom,bathroom,fixtures,rectangular wall-mounted bathroom mirror
+c28f45a0-fb67-5ede-9cff-5b9ccd82f7b9,towel,bath towel|hand towel,bathroom,bathroom,linens,folded thick cotton bath towel
+5a3564bb-5af5-539f-a06c-609d348829d1,bath mat,bath rug|shower mat,bathroom,bathroom,linens,non-slip rectangular bath floor mat
+2a20d24b-7103-5699-a554-873668bca1ff,shower curtain,shower screen,bathroom,bathroom,fixtures,hanging fabric or plastic shower curtain
+614475da-bb0a-5b29-a7cf-28a16de8fed4,toilet paper,toilet roll|loo roll,bathroom,bathroom,hygiene,roll of white toilet tissue paper
+7caa64fb-8bad-5331-95e8-de99182c2247,soap dish,soap holder,bathroom,bathroom,accessories,rectangular ceramic soap dish
+36be7b79-78eb-5361-aa6b-a345e55bc63d,medicine cabinet,bathroom cabinet,bathroom,bathroom,storage,wall-mounted mirrored medicine cabinet
+904e4709-0c07-5da6-90c3-9462a5d334c0,toothbrush holder,toothbrush cup,bathroom,bathroom,accessories,ceramic cup-shaped toothbrush holder
+2631ada3-8117-5508-adc1-23116fa6a331,tissue box,kleenex box,bathroom,bathroom,hygiene,rectangular cardboard facial tissue box
+f535c7d4-8b5e-5d13-abaa-2c69332bac21,cotton swab,q-tip|cotton bud,bathroom,bathroom,hygiene,double-ended white cotton swab stick

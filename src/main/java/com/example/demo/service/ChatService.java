@@ -8,10 +8,14 @@ import com.example.demo.dto.MessageResponse;
 import com.example.demo.entity.Conversation;
 import com.example.demo.entity.Message;
 import com.example.demo.entity.Profile;
+import com.example.demo.entity.UserSettings;
+import com.example.demo.enums.NotificationType;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.ConversationRepository;
+import com.example.demo.repository.FriendRepository;
 import com.example.demo.repository.MessageRepository;
 import com.example.demo.repository.ProfileRepository;
+import com.example.demo.repository.UserSettingsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -25,6 +29,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -38,6 +43,9 @@ public class ChatService {
     private final ProfileRepository profileRepository;
     private final ProfileService profileService;
     private final S3Service s3Service;
+    private final NotificationService notificationService;
+    private final UserSettingsRepository userSettingsRepository;
+    private final FriendRepository friendRepository;
 
     // Used by the WebSocket endpoint (text only — WS cannot carry multipart)
     @Transactional
@@ -69,9 +77,16 @@ public class ChatService {
             if (!senderIsParticipant) {
                 throw new IllegalArgumentException("Access denied");
             }
+            if (!conversation.isGroup()) {
+                conversation.getParticipants().stream()
+                        .filter(participant -> !participant.getId().equals(sender.getId()))
+                        .findFirst()
+                        .ifPresent(recipient -> enforceDirectMessagePrivacy(sender, recipient));
+            }
         } else if (recipientId != null) {
             Profile recipient = profileRepository.findById(recipientId)
                     .orElseThrow(() -> new ResourceNotFoundException("Recipient not found"));
+            enforceDirectMessagePrivacy(sender, recipient);
 
             conversation = conversationRepository.findBetweenUsers(sender.getId(), recipient.getId())
                     .orElseGet(() -> {
@@ -110,6 +125,8 @@ public class ChatService {
             conversation.setLastMessageAt(LocalDateTime.now());
             conversationRepository.save(conversation);
 
+            createMessageNotifications(conversation, sender, preview);
+
             return mapToMessageResponse(message);
         } catch (Exception e) {
             if (imageUrl != null) {
@@ -132,6 +149,7 @@ public class ChatService {
                 .orElseThrow(() -> new ResourceNotFoundException("Sender not found"));
         Profile recipient = profileRepository.findById(recipientId)
                 .orElseThrow(() -> new ResourceNotFoundException("Recipient not found"));
+        enforceDirectMessagePrivacy(sender, recipient);
 
         Conversation conversation = conversationRepository.findBetweenUsers(sender.getId(), recipient.getId())
                 .orElseGet(() -> {
@@ -364,6 +382,61 @@ public class ChatService {
                 .createdAt(message.getCreatedAt())
                 .isRead(message.isRead())
                 .build();
+    }
+
+    private void createMessageNotifications(Conversation conversation, Profile sender, String preview) {
+        String title = conversation.isGroup() && conversation.getGroupName() != null
+                ? "New message in " + conversation.getGroupName()
+                : "New message";
+        String body = profileService.displayName(sender) + ": " + preview;
+        String targetUrl = "/conversations/" + conversation.getId();
+
+        conversation.getParticipants().stream()
+                .filter(participant -> !participant.getId().equals(sender.getId()))
+                .forEach(participant -> notificationService.createNotification(
+                        participant.getId(),
+                        sender.getId(),
+                        NotificationType.MESSAGE,
+                        title,
+                        body,
+                        targetUrl));
+    }
+
+    private void enforceDirectMessagePrivacy(Profile sender, Profile recipient) {
+        if (sender.getId().equals(recipient.getId())) {
+            return;
+        }
+
+        String allowMessages = userSettingsRepository.findByProfileId(recipient.getId())
+                .map(UserSettings::getPrivacySettings)
+                .map(settings -> settings.getAllowMessages())
+                .orElse("everyone");
+
+        String normalized = allowMessages == null
+                ? "everyone"
+                : allowMessages.trim().toLowerCase(Locale.ROOT);
+
+        switch (normalized) {
+            case "everyone":
+                return;
+            case "friends":
+                if (friendRepository.areFriends(sender.getId(), recipient.getId())) {
+                    return;
+                }
+                throw new IllegalArgumentException("Recipient only accepts messages from friends");
+            case "following":
+                log.warn("Legacy message privacy setting 'following' for profile {}; treating it as friends",
+                        recipient.getId());
+                if (friendRepository.areFriends(sender.getId(), recipient.getId())) {
+                    return;
+                }
+                throw new IllegalArgumentException("Recipient only accepts messages from friends");
+            case "none":
+                throw new IllegalArgumentException("Recipient is not accepting direct messages");
+            default:
+                log.warn("Unknown message privacy setting '{}' for profile {}; defaulting to everyone",
+                        allowMessages, recipient.getId());
+        }
     }
 
     private ConversationResponse mapToConversationResponse(Conversation conversation, UUID requesterId) {

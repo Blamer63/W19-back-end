@@ -38,6 +38,7 @@ class ScanSessionServiceTest {
     @Mock private ScanSessionRepository scanSessionRepository;
     @Mock private ScanDetectionRepository scanDetectionRepository;
     @Mock private SavedWordService savedWordService;
+    @Mock private NotificationService notificationService;
 
     private ScanSessionService scanSessionService;
     private Profile user;
@@ -48,7 +49,8 @@ class ScanSessionServiceTest {
                 profileRepository,
                 scanSessionRepository,
                 scanDetectionRepository,
-                savedWordService);
+                savedWordService,
+                notificationService);
         user = Profile.builder()
                 .email("test@example.com")
                 .build();
@@ -71,9 +73,9 @@ class ScanSessionServiceTest {
                 .label("apple")
                 .confidence(0.94d)
                 .nativeWord("apple")
-                .learningWord("\uC0AC\uACFC")
-                .languageCode("ko")
-                .translationSource(ScannerTranslationSource.DICTIONARY)
+                .learningWord("manzana")
+                .languageCode("es")
+                .translationSource(ScannerTranslationSource.TAXONOMY)
                 .box(BoundingBoxDTO.builder()
                         .x(0.25d)
                         .y(0.30d)
@@ -92,6 +94,7 @@ class ScanSessionServiceTest {
         ScanDetection savedDetection = captor.getValue().getDetections().get(0);
         assertThat(savedDetection.getScanSession()).isEqualTo(captor.getValue());
         assertThat(savedDetection.getLabel()).isEqualTo("apple");
+        assertThat(savedDetection.getTranslationSource()).isEqualTo(ScannerTranslationSource.TAXONOMY);
         assertThat(savedDetection.getBoxWidth()).isEqualTo(0.40d);
     }
 
@@ -139,8 +142,8 @@ class ScanSessionServiceTest {
                 .thenReturn(Optional.of(detection));
         when(savedWordService.saveWord(any(), any()))
                 .thenReturn(SavedWordResponse.builder()
-                        .word("apple")
-                        .translation("\uC0AC\uACFC")
+                        .word("\uC0AC\uACFC")
+                        .translation("apple")
                         .languageCode("ko")
                         .source(SourceType.SCANNER)
                         .sourceId(detectionId)
@@ -151,8 +154,8 @@ class ScanSessionServiceTest {
         assertThat(response.getSource()).isEqualTo(SourceType.SCANNER);
         assertThat(response.getSourceId()).isEqualTo(detectionId);
         verify(savedWordService).saveWord(any(), org.mockito.ArgumentMatchers.argThat(request ->
-                request.getWord().equals("apple")
-                        && request.getTranslation().equals("\uC0AC\uACFC")
+                request.getWord().equals("\uC0AC\uACFC")
+                        && request.getTranslation().equals("apple")
                         && request.getLanguageCode().equals("ko")
                         && request.getSource() == SourceType.SCANNER
                         && request.getSourceId().equals(detectionId)

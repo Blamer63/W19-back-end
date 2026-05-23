@@ -5,6 +5,7 @@ import com.example.demo.dto.ProfileResponse;
 import com.example.demo.entity.Friend;
 import com.example.demo.entity.Profile;
 import com.example.demo.enums.FriendStatus;
+import com.example.demo.enums.NotificationType;
 import com.example.demo.repository.FriendRepository;
 import com.example.demo.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class FriendService {
     private final FriendRepository friendRepository;
     private final ProfileRepository profileRepository;
     private final ProfileService profileService;
+    private final NotificationService notificationService;
 
     @Transactional
     public FriendRequestResponse sendRequest(UUID receiverId, String senderEmail) {
@@ -58,6 +60,13 @@ public class FriendService {
                 .build();
 
         Friend saved = friendRepository.save(friend);
+        notificationService.createNotification(
+                receiver.getId(),
+                sender.getId(),
+                NotificationType.FRIEND_REQUEST,
+                "New friend request",
+                profileService.displayName(sender) + " sent you a friend request.",
+                "/friends/requests");
         return mapToResponse(saved, sender.getId());
     }
 
@@ -87,6 +96,15 @@ public class FriendService {
         }
 
         Friend updated = friendRepository.save(friend);
+        if (updated.getStatus() == FriendStatus.ACCEPTED) {
+            notificationService.createNotification(
+                    updated.getRequester().getId(),
+                    responder.getId(),
+                    NotificationType.FRIEND_ACCEPTED,
+                    "Friend request accepted",
+                    profileService.displayName(responder) + " accepted your friend request.",
+                    "/users/" + responder.getId());
+        }
         return mapToResponse(updated, responder.getId());
     }
 
@@ -161,4 +179,5 @@ public class FriendService {
                 .createdAt(friend.getCreatedAt())
                 .build();
     }
+
 }

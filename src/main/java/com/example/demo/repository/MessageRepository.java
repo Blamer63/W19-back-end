@@ -21,4 +21,11 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
 
     @Query("SELECT COUNT(m) FROM Message m WHERE m.conversation.id = :conversationId AND m.isRead = false AND m.sender.id <> :requesterId")
     int countUnread(@Param("conversationId") UUID conversationId, @Param("requesterId") UUID requesterId);
+
+    // Group chats need per-participant read receipts; until then, only DMs can
+    // be counted without one participant's read state affecting everyone else.
+    @Query("SELECT COUNT(DISTINCT m.id) FROM Message m JOIN m.conversation.participants p " +
+            "WHERE p.id = :requesterId AND m.isRead = false AND m.sender.id <> :requesterId " +
+            "AND SIZE(m.conversation.participants) = 2")
+    long countUnreadForUser(@Param("requesterId") UUID requesterId);
 }

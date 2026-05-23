@@ -1,0 +1,36 @@
+concept_id,canonical_label,aliases,parent,category,tags,visual_description
+a6c1c798-527c-5b67-945b-3af016ba6ac8,pen,ballpoint pen|ink pen,office,office,writing,ballpoint or gel ink writing pen
+4f4cda3f-09dc-56e2-baf9-b6065be8e2d6,pencil,graphite pencil,office,office,writing,wooden hexagonal graphite pencil
+63b50416-6c1f-5ce7-bf06-f31eb177af1c,marker,felt-tip marker|permanent marker,office,office,writing,thick-tip permanent felt marker
+2a6638c3-8304-5ecc-ae23-4edfec0c9d26,highlighter,highlight pen,office,office,writing,wide fluorescent ink highlighter pen
+f287752d-f51f-584c-8836-4953db7df3ea,eraser,rubber eraser,office,office,writing,rectangular white rubber block eraser
+d85f47d7-320f-5182-9a8f-8b49bee66383,pencil sharpener,sharpener,office,office,writing,cylindrical handheld pencil sharpener
+af3b62a6-54be-59b1-8ffe-37aeb396d6a4,notebook,spiral notebook|exercise book,office,office,paper,spiral-bound ruled writing notebook
+cfade5a8-c8f2-5c86-bc6f-fa39dc20183f,notepad,writing pad|memo pad,office,office,paper,small tear-off lined writing pad
+06f32601-9412-5596-a310-99b919a3b12c,sticky note,post-it note,office,office,paper,small self-adhesive square sticky note
+555f2d38-9ca0-53b2-beab-8a668f72baea,folder,document folder|file folder,office,office,paper,cardboard A4 document folder
+e1c15901-3e59-54cd-a08f-be070028d0b8,binder,ring binder|lever arch file,office,office,paper,wide D-ring document binder
+1cb7f81d-74e9-5b44-b881-4f36550da6bf,clipboard,,office,office,paper,rigid clip-back writing support board
+22bc4b5b-c86f-54cc-b4b6-59313e429015,scissors,craft scissors|office scissors,office,office,desk_tools,pair of steel blade scissors
+82a7ecf1-2594-5d52-9664-d5adaaac4344,ruler,measuring ruler|straight edge,office,office,desk_tools,transparent or wooden flat ruler
+8e36857f-5397-59f1-8458-ed03f5b729ef,stapler,desk stapler,office,office,desk_tools,spring-loaded desk paper stapler
+7f5f2280-d084-5aff-b2f0-5b3ff28ff762,tape dispenser,scotch tape dispenser,office,office,desk_tools,weighted desk sticky tape dispenser
+b55fbd35-7450-50d7-8f48-c87479a1fa7d,paper clip,binder clip|metal clip,office,office,desk_tools,small springy metal paper clip
+bb276658-b054-539d-a5fc-f284ba92cca6,binder clip,bulldog clip|fold-back clip,office,office,desk_tools,large metal spring binder clip
+69c9affd-fb14-5e0e-92f7-0cf6c6f8db77,thumbtack,drawing pin|pushpin,office,office,desk_tools,sharp-pointed colored thumbtack pin
+981b1a36-f91d-55f3-ad32-8fadb9b90c38,hole punch,paper punch,office,office,desk_tools,two-hole spring paper punch
+dbc26d94-04e0-551a-82d1-5ebdd76afb53,desk organizer,pen holder|desk caddy,office,office,desk_tools,multi-compartment desk organizer
+648030d8-f1c3-5e11-b88f-7093ae0ad624,calendar,desk calendar|wall calendar,office,office,desk_tools,tear-off monthly paper calendar
+8c17d37e-d53d-53e2-a691-c348d67b19ee,letter tray,in-tray|paper tray,office,office,desk_tools,flat stackable desk document tray
+61bc313c-e389-52ea-92f3-10f5823bafed,envelope,mailing envelope,office,office,paper,white paper mailing envelope
+c0594551-1bfc-53ed-9148-e025367b9b0c,index card,flash card|cue card,office,office,paper,small ruled rectangular index card
+3f7fa447-be9d-5216-b356-0c2a77b41529,rubber band,elastic band,office,office,desk_tools,small stretchy rubber office band
+ec0c12ee-29bd-57bb-ba03-6d763461343a,pencil case,pencil pouch,office,office,storage,zippered fabric pencil storage pouch
+3641f5c5-9844-5de0-9ca0-14b250a3f573,whiteboard,dry-erase board,office,office,display,white magnetic dry-erase writing board
+f49b209a-caaa-5878-84a5-526c589c0009,bulletin board,notice board|cork board,office,office,display,cork-surface wall notice board
+2fac4e03-c32c-56c0-98e8-4817d5228cdb,filing cabinet,file cabinet,office,office,storage,tall metal multi-drawer filing cabinet
+61380006-5962-5e13-8511-fbbdcb3c852f,printer,inkjet printer|laser printer,office,office,technology|electronics,desktop document inkjet printer
+63c5e9b9-7d42-558c-98a7-6c9d5db80073,paper shredder,document shredder,office,office,technology|electronics,desktop paper shredding machine
+efa58efe-67cb-57af-bd43-719de398735c,label maker,labeler|label printer,office,office,technology|electronics,handheld label printing device
+988e5e23-6f25-506a-8930-d506105c2a60,stamp,rubber stamp,office,office,desk_tools,wooden-handled rubber ink stamp
+6c003d53-c4bf-5304-b4e0-b33582240f83,staple remover,staple puller,office,office,desk_tools,claw-grip metal staple remover

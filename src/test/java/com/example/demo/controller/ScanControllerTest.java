@@ -9,6 +9,7 @@ import com.example.demo.enums.ScannerTranslationSource;
 import com.example.demo.enums.SourceType;
 import com.example.demo.exception.ObjectDetectionUnavailableException;
 import com.example.demo.service.ObjectDetectionService;
+import com.example.demo.service.PostImageScanService;
 import com.example.demo.service.ScanSessionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;
@@ -49,6 +50,9 @@ public class ScanControllerTest {
     @MockitoBean
     private ScanSessionService scanSessionService;
 
+    @MockitoBean
+    private PostImageScanService postImageScanService;
+
     @Test
     @WithMockUser(username = "test@example.com")
     void scan_ValidImage_ReturnsDetectedObjects() throws Exception {
@@ -65,9 +69,9 @@ public class ScanControllerTest {
                         .label("apple")
                         .confidence(0.94)
                         .nativeWord("apple")
-                        .learningWord("\uC0AC\uACFC")
-                        .languageCode("ko")
-                        .translationSource(ScannerTranslationSource.DICTIONARY)
+                        .learningWord("manzana")
+                        .languageCode("es")
+                        .translationSource(ScannerTranslationSource.TAXONOMY)
                         .box(BoundingBoxDTO.builder()
                                 .x(0.25d)
                                 .y(0.30d)
@@ -83,9 +87,9 @@ public class ScanControllerTest {
                                 .label("apple")
                                 .confidence(0.94)
                                 .nativeWord("apple")
-                                .learningWord("\uC0AC\uACFC")
-                                .languageCode("ko")
-                                .translationSource(ScannerTranslationSource.DICTIONARY)
+                                .learningWord("manzana")
+                                .languageCode("es")
+                                .translationSource(ScannerTranslationSource.TAXONOMY)
                                 .box(BoundingBoxDTO.builder()
                                         .x(0.25d)
                                         .y(0.30d)
@@ -103,9 +107,9 @@ public class ScanControllerTest {
                 .andExpect(jsonPath("$.detected_objects[0].label").value("apple"))
                 .andExpect(jsonPath("$.detected_objects[0].confidence").value(0.94))
                 .andExpect(jsonPath("$.detected_objects[0].native_word").value("apple"))
-                .andExpect(jsonPath("$.detected_objects[0].learning_word").value("\uC0AC\uACFC"))
-                .andExpect(jsonPath("$.detected_objects[0].language_code").value("ko"))
-                .andExpect(jsonPath("$.detected_objects[0].translation_source").value("DICTIONARY"))
+                .andExpect(jsonPath("$.detected_objects[0].learning_word").value("manzana"))
+                .andExpect(jsonPath("$.detected_objects[0].language_code").value("es"))
+                .andExpect(jsonPath("$.detected_objects[0].translation_source").value("TAXONOMY"))
                 .andExpect(jsonPath("$.detected_objects[0].box.x").value(0.25))
                 .andExpect(jsonPath("$.detected_objects[0].box.y").value(0.30))
                 .andExpect(jsonPath("$.detected_objects[0].box.width").value(0.40))
@@ -164,6 +168,36 @@ public class ScanControllerTest {
 
         verifyNoInteractions(objectDetectionService);
         verifyNoInteractions(scanSessionService);
+    }
+
+    @Test
+    @WithMockUser(username = "test@example.com")
+    void scanPostImage_ReturnsRecordedScanResult() throws Exception {
+        UUID postId = UUID.randomUUID();
+        UUID scanSessionId = UUID.randomUUID();
+        UUID detectionId = UUID.randomUUID();
+
+        when(postImageScanService.scanPostImage(postId, "test@example.com"))
+                .thenReturn(ScanResponse.builder()
+                        .scanSessionId(scanSessionId)
+                        .detectedObjects(List.of(DetectedObjectDTO.builder()
+                                .id(detectionId)
+                                .label("apple")
+                                .confidence(0.94)
+                                .nativeWord("apple")
+                                .learningWord("manzana")
+                                .languageCode("es")
+                                .translationSource(ScannerTranslationSource.TAXONOMY)
+                                .build()))
+                        .build());
+
+        mockMvc.perform(post("/api/scan/post-image/" + postId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.scan_session_id").value(scanSessionId.toString()))
+                .andExpect(jsonPath("$.detected_objects[0].id").value(detectionId.toString()))
+                .andExpect(jsonPath("$.detected_objects[0].label").value("apple"));
+
+        verify(postImageScanService).scanPostImage(postId, "test@example.com");
     }
 
     @Test
