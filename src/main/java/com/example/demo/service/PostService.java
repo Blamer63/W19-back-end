@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -50,10 +51,19 @@ public class PostService {
                 List<PostStatus> visibleStatuses = List.of(PostStatus.ACTIVE, PostStatus.APPROVED);
 
                 Page<Post> posts;
-                if (language != null && !language.equalsIgnoreCase("all")) {
-                        posts = postRepository.findByOriginalLanguageAndStatusIn(language, visibleStatuses, pageable);
+                String normalizedLanguage = normalizeLanguageCode(language);
+                if (normalizedLanguage != null && !normalizedLanguage.equals("all")) {
+                        posts = postRepository.findByOriginalLanguageAndStatusIn(normalizedLanguage, visibleStatuses, pageable);
                 } else {
-                        posts = postRepository.findByStatusIn(visibleStatuses, pageable);
+                        List<String> learningLanguages = currentUser.getLanguages().stream()
+                                        .filter(UserLanguage::isLearning)
+                                        .map(ul -> ul.getLanguage().getCode())
+                                        .distinct()
+                                        .toList();
+                        posts = learningLanguages.isEmpty()
+                                        ? postRepository.findByStatusIn(visibleStatuses, pageable)
+                                        : postRepository.findByOriginalLanguageInAndStatusIn(
+                                                        learningLanguages, visibleStatuses, pageable);
                 }
 
                 return posts.map(post -> mapToResponse(post, currentUser, lat, lon));
@@ -320,5 +330,9 @@ public class PostService {
                                                 Math.sin(dLon / 2) * Math.sin(dLon / 2);
                 double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
                 return R * c;
+        }
+
+        private String normalizeLanguageCode(String language) {
+                return language == null || language.isBlank() ? null : language.trim().toLowerCase(Locale.ROOT);
         }
 }

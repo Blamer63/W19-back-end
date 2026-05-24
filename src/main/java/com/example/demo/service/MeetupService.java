@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -79,19 +80,28 @@ public class MeetupService {
         LocalDateTime now = LocalDateTime.now();
 
         Page<Meetup> meetups;
+        Profile currentUser = profileRepository.findById(currentUserId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        String normalizedLanguageCode = normalizeLanguageCode(languageCode);
 
         if (latitude != null && longitude != null && radiusKm != null) {
             // Geospatial search
             meetups = meetupRepository.findNearbyMeetups(
                     latitude, longitude, radiusKm, MeetupStatus.UPCOMING, now, pageable);
-        } else if (languageCode != null) {
+        } else if (normalizedLanguageCode != null && !normalizedLanguageCode.equals("all")) {
             // Filter by language
             meetups = meetupRepository.findByLanguageCodeAndStatusAndMeetupDateAfter(
-                    languageCode, MeetupStatus.UPCOMING, now, pageable);
+                    normalizedLanguageCode, MeetupStatus.UPCOMING, now, pageable);
         } else {
-            // All upcoming meetups
-            meetups = meetupRepository.findByStatusAndMeetupDateAfter(
-                    MeetupStatus.UPCOMING, now, pageable);
+            List<String> learningLanguages = currentUser.getLanguages().stream()
+                    .filter(UserLanguage::isLearning)
+                    .map(userLanguage -> userLanguage.getLanguage().getCode())
+                    .distinct()
+                    .toList();
+            meetups = learningLanguages.isEmpty()
+                    ? meetupRepository.findByStatusAndMeetupDateAfter(MeetupStatus.UPCOMING, now, pageable)
+                    : meetupRepository.findByLanguageCodeInAndStatusAndMeetupDateAfter(
+                            learningLanguages, MeetupStatus.UPCOMING, now, pageable);
         }
 
         return meetups.map(meetup -> mapToResponse(meetup, currentUserId));
@@ -279,6 +289,10 @@ public class MeetupService {
                         "Meetup updated",
                         "The meetup \"" + meetup.getTitle() + "\" has been updated.",
                         "/meetups/" + meetup.getId()));
+    }
+
+    private String normalizeLanguageCode(String languageCode) {
+        return languageCode == null || languageCode.isBlank() ? null : languageCode.trim().toLowerCase(Locale.ROOT);
     }
 
 }

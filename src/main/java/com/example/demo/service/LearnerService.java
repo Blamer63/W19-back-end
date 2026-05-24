@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -52,8 +53,15 @@ public class LearnerService {
                 final Double queryLat = latitude != null ? latitude : 0.0;
                 final Double queryLon = longitude != null ? longitude : 0.0;
 
+                String normalizedLanguageCode = normalizeLanguageCode(languageCode);
+                Set<String> defaultLearningLanguages = currentUser.getLanguages().stream()
+                                .filter(UserLanguage::isLearning)
+                                .map(ul -> ul.getLanguage().getCode())
+                                .collect(Collectors.toSet());
+
                 return profiles.stream()
-                                .filter(profile -> languageCode == null || hasLanguage(profile, languageCode))
+                                .filter(profile -> shouldIncludeForLanguage(profile, normalizedLanguageCode,
+                                                defaultLearningLanguages))
                                 .filter(profile -> isVisibleTo(profile, friendIds))
                                 .map(profile -> mapToLearnerResponse(profile, queryLat, queryLon))
                                 .sorted((a, b) -> Double.compare(a.getDistanceKm(), b.getDistanceKm()))
@@ -80,6 +88,22 @@ public class LearnerService {
         private boolean hasLanguage(Profile profile, String languageCode) {
                 return profile.getLanguages().stream()
                                 .anyMatch(ul -> ul.getLanguage().getCode().equals(languageCode));
+        }
+
+        private boolean shouldIncludeForLanguage(Profile profile, String requestedLanguageCode,
+                        Set<String> defaultLearningLanguages) {
+                if (requestedLanguageCode != null && !requestedLanguageCode.equals("all")) {
+                        return hasLanguage(profile, requestedLanguageCode);
+                }
+                return defaultLearningLanguages.isEmpty()
+                                || profile.getLanguages().stream()
+                                                .anyMatch(ul -> defaultLearningLanguages.contains(ul.getLanguage().getCode()));
+        }
+
+        private String normalizeLanguageCode(String languageCode) {
+                return languageCode == null || languageCode.isBlank()
+                                ? null
+                                : languageCode.trim().toLowerCase(Locale.ROOT);
         }
 
         private LearnerResponse mapToLearnerResponse(Profile profile, Double queryLat, Double queryLon) {

@@ -30,6 +30,12 @@ public interface MeetupRepository extends JpaRepository<Meetup, UUID> {
             LocalDateTime date,
             Pageable pageable);
 
+    Page<Meetup> findByLanguageCodeInAndStatusAndMeetupDateAfter(
+            java.util.List<String> languageCodes,
+            MeetupStatus status,
+            LocalDateTime date,
+            Pageable pageable);
+
     // Find nearby meetups using Haversine formula
     @Query("SELECT m FROM Meetup m WHERE " +
             "m.latitude IS NOT NULL AND m.longitude IS NOT NULL AND " +

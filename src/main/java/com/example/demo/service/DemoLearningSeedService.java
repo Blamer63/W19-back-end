@@ -26,6 +26,7 @@ import com.example.demo.repository.ProfileRepository;
 import com.example.demo.repository.SavedWordRepository;
 import com.example.demo.repository.UserLanguageRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,9 +49,12 @@ public class DemoLearningSeedService {
     private final MessageRepository messageRepository;
     private final PostRepository postRepository;
     private final MeetupRepository meetupRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     @Transactional
     public void seedForLearningLanguages(Profile learner, List<String> languageCodes) {
+        retireLegacyDemoArtifacts();
+
         languageCodes.stream()
                 .map(this::normalize)
                 .filter(code -> code.equals("es") || code.equals("ja"))
@@ -59,10 +63,6 @@ public class DemoLearningSeedService {
     }
 
     private void seedLanguage(Profile learner, String languageCode) {
-        if (savedWordRepository.countByUserIdAndLanguageCode(learner.getId(), languageCode) > 0) {
-            return;
-        }
-
         Language language = languageRepository.findByCode(languageCode)
                 .orElseThrow(() -> new IllegalStateException("Language not found: " + languageCode));
         List<DemoPeer> peers = demoPeers(languageCode);
@@ -74,12 +74,13 @@ public class DemoLearningSeedService {
         seedConversations(learner, peerProfiles, languageCode);
         seedPosts(peerProfiles, languageCode);
         seedMeetups(peerProfiles, language);
-        seedWords(learner, languageCode);
+        if (savedWordRepository.countByUserIdAndLanguageCode(learner.getId(), languageCode) == 0) {
+            seedWords(learner, languageCode);
+        }
     }
 
     private Profile createPeer(UUID learnerId, Language language, DemoPeer peer) {
-        String suffix = learnerId.toString().substring(0, 8);
-        String username = "demo_" + language.getCode() + "_" + peer.usernameSlug() + "_" + suffix;
+        String username = "demo_" + language.getCode() + "_" + peer.usernameSlug();
         String email = username + "@locale.demo";
 
         return profileRepository.findByEmail(email)
@@ -107,6 +108,56 @@ public class DemoLearningSeedService {
 
                     return profile;
                 });
+    }
+
+    private void retireLegacyDemoArtifacts() {
+        jdbcTemplate.update("""
+                update posts
+                set status = 'HIDDEN'
+                where original_language not in ('es', 'ja')
+                   or author_id in (
+                        select id from profiles
+                        where email like 'demo\\_%@locale.demo' escape '\\'
+                          and email not in (
+                            'demo_es_sofia@locale.demo',
+                            'demo_es_mateo@locale.demo',
+                            'demo_es_lucia@locale.demo',
+                            'demo_ja_aiko@locale.demo',
+                            'demo_ja_ren@locale.demo',
+                            'demo_ja_maya@locale.demo'
+                          )
+                   )
+                """);
+        jdbcTemplate.update("""
+                update meetups
+                set status = 'CANCELLED'
+                where language_code not in ('es', 'ja')
+                   or organizer_id in (
+                        select id from profiles
+                        where email like 'demo\\_%@locale.demo' escape '\\'
+                          and email not in (
+                            'demo_es_sofia@locale.demo',
+                            'demo_es_mateo@locale.demo',
+                            'demo_es_lucia@locale.demo',
+                            'demo_ja_aiko@locale.demo',
+                            'demo_ja_ren@locale.demo',
+                            'demo_ja_maya@locale.demo'
+                          )
+                   )
+                """);
+        jdbcTemplate.update("""
+                update profiles
+                set location_visibility = 'NOBODY'
+                where email like 'demo\\_%@locale.demo' escape '\\'
+                  and email not in (
+                    'demo_es_sofia@locale.demo',
+                    'demo_es_mateo@locale.demo',
+                    'demo_es_lucia@locale.demo',
+                    'demo_ja_aiko@locale.demo',
+                    'demo_ja_ren@locale.demo',
+                    'demo_ja_maya@locale.demo'
+                  )
+                """);
     }
 
     private void seedFriendships(Profile learner, List<Profile> peers) {

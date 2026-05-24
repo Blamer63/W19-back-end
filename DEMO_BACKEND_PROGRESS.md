@@ -41,6 +41,19 @@ Backend owns the data and persistence fixes above. Frontend still owns:
 - Replacing the scanner save button with Beth-style star UI.
 - Invalidating Learn word-bank queries after saving selected text from a post.
 - Verifying Learn page grouping/lesson UI against Beth design.
+- Fixing word-bank category matching in `LearnPage.tsx`: `apple` currently matches Electronics because substring matching sees `app` inside `apple`. Use token/word-boundary matching or move categories into backend data.
+
+## 2026-05-24 Language Flow / Duplicate Demo Data Follow-up
+
+- Feed defaults were tightened: when the frontend requests `/api/posts` without a concrete language, the backend now returns posts in the signed-in user's learning languages instead of every active post.
+- Meetup defaults were tightened the same way for `/api/meetups` when no concrete language is supplied.
+- Learner discovery defaults were tightened: when `/api/learners/nearby` has no concrete language filter, profiles are limited to languages overlapping the signed-in user's learning languages.
+- Demo peer seeding now uses stable peer identities per language, for example `demo_ja_aiko@locale.demo` and `demo_es_sofia@locale.demo`, instead of generating another peer copy for every learner id.
+- Existing databases are repaired on demo seeding by retiring legacy generated demo peers:
+  - old generated `demo_*@locale.demo` peer profiles are hidden from learner discovery,
+  - posts from old generated peers are marked `HIDDEN`,
+  - meetups from old generated peers are marked `CANCELLED`,
+  - stale non-demo language posts/meetups outside Spanish/Japanese are also hidden/cancelled for the current demo scope.
 
 ## Verification To Run
 
