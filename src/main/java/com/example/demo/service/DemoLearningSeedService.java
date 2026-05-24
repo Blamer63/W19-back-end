@@ -80,37 +80,43 @@ public class DemoLearningSeedService {
     private Profile createPeer(UUID learnerId, Language language, DemoPeer peer) {
         String suffix = learnerId.toString().substring(0, 8);
         String username = "demo_" + language.getCode() + "_" + peer.usernameSlug() + "_" + suffix;
+        String email = username + "@locale.demo";
 
-        Profile profile = Profile.builder()
-                .username(username)
-                .email(username + "@locale.demo")
-                .passwordHash("demo-seeded-profile")
-                .displayName(peer.displayName())
-                .avatarUrl(peer.avatarUrl())
-                .bio(peer.bio())
-                .latitude(peer.latitude())
-                .longitude(peer.longitude())
-                .location("Sydney NSW")
-                .locationVisibility(LocationVisibility.PUBLIC)
-                .build();
-        profile = profileRepository.save(profile);
+        return profileRepository.findByEmail(email)
+                .orElseGet(() -> {
+                    Profile profile = Profile.builder()
+                            .username(username)
+                            .email(email)
+                            .passwordHash("demo-seeded-profile")
+                            .displayName(peer.displayName())
+                            .avatarUrl(peer.avatarUrl())
+                            .bio(peer.bio())
+                            .latitude(peer.latitude())
+                            .longitude(peer.longitude())
+                            .location("Sydney NSW")
+                            .locationVisibility(LocationVisibility.PUBLIC)
+                            .build();
+                    profile = profileRepository.save(profile);
 
-        userLanguageRepository.save(UserLanguage.builder()
-                .profile(profile)
-                .language(language)
-                .proficiency(ProficiencyLevel.BEGINNER)
-                .isLearning(true)
-                .build());
+                    userLanguageRepository.save(UserLanguage.builder()
+                            .profile(profile)
+                            .language(language)
+                            .proficiency(ProficiencyLevel.BEGINNER)
+                            .isLearning(true)
+                            .build());
 
-        return profile;
+                    return profile;
+                });
     }
 
     private void seedFriendships(Profile learner, List<Profile> peers) {
-        peers.forEach(peer -> friendRepository.save(Friend.builder()
-                .requester(peer)
-                .receiver(learner)
-                .status(FriendStatus.ACCEPTED)
-                .build()));
+        peers.stream()
+                .filter(peer -> !friendRepository.areFriends(learner.getId(), peer.getId()))
+                .forEach(peer -> friendRepository.save(Friend.builder()
+                        .requester(peer)
+                        .receiver(learner)
+                        .status(FriendStatus.ACCEPTED)
+                        .build()));
     }
 
     private void seedConversations(Profile learner, List<Profile> peers, String languageCode) {
@@ -118,6 +124,9 @@ public class DemoLearningSeedService {
         for (int i = 0; i < peers.size() && i < messages.size(); i++) {
             Profile peer = peers.get(i);
             DemoMessage demo = messages.get(i);
+            if (conversationRepository.findBetweenUsers(learner.getId(), peer.getId()).isPresent()) {
+                continue;
+            }
 
             Conversation conversation = Conversation.builder()
                     .isGroup(false)
@@ -146,6 +155,9 @@ public class DemoLearningSeedService {
     private void seedPosts(List<Profile> peers, String languageCode) {
         List<DemoPost> posts = demoPosts(languageCode);
         for (int i = 0; i < peers.size() && i < posts.size(); i++) {
+            if (postRepository.countByAuthorIdAndOriginalLanguage(peers.get(i).getId(), languageCode) > 0) {
+                continue;
+            }
             DemoPost demo = posts.get(i);
             Post post = Post.builder()
                     .author(peers.get(i))
@@ -168,6 +180,9 @@ public class DemoLearningSeedService {
     private void seedMeetups(List<Profile> peers, Language language) {
         List<DemoMeetup> meetups = demoMeetups(language.getCode());
         for (int i = 0; i < peers.size() && i < meetups.size(); i++) {
+            if (meetupRepository.countByOrganizerIdAndLanguageCode(peers.get(i).getId(), language.getCode()) > 0) {
+                continue;
+            }
             DemoMeetup demo = meetups.get(i);
             meetupRepository.save(Meetup.builder()
                     .organizer(peers.get(i))

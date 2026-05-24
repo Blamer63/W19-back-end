@@ -15,6 +15,8 @@ import java.util.UUID;
 @Repository
 public interface MeetupRepository extends JpaRepository<Meetup, UUID> {
 
+    long countByOrganizerIdAndLanguageCode(UUID organizerId, String languageCode);
+
     // Find upcoming meetups
     Page<Meetup> findByStatusAndMeetupDateAfter(
             MeetupStatus status,
