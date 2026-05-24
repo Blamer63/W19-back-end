@@ -26,13 +26,13 @@ spring:
       mode: always
 
 aws:
-  region: ap-southeast-2
+  region: ${AWS_REGION:ap-southeast-2}
   cloudfront:
-    domain: d3i7r8z4cxs3p9.cloudfront.net
+    domain: ${AWS_CLOUDFRONT_DOMAIN:d3i7r8z4cxs3p9.cloudfront.net}
   s3:
-    mock: false
+    mock: ${AWS_S3_MOCK:false}
     buckets:
-      customer: fs-kaiday-customer-test
+      customer: ${AWS_S3_BUCKET_CUSTOMER:fs-kaiday-customer-test}
 
 
 app:

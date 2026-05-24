@@ -263,3 +263,10 @@ Message image cleanup is handled by `ChatService.deleteMessage`. During the Clou
 | Google Places key | `${GOOGLE_PLACES_KEY}` (env var) |
 
 AWS credentials are resolved via `DefaultCredentialsProvider` — environment variables, `~/.aws/credentials`, or an attached IAM role all work without code changes.
+
+For local Docker, copy `.env.example` to `.env` and provide `AWS_ACCESS_KEY_ID`,
+`AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET_CUSTOMER`, and
+`AWS_CLOUDFRONT_DOMAIN`. `AWS_SESSION_TOKEN` is only needed for temporary AWS
+credentials. `AWS_S3_MOCK=true` can be used for upload-only smoke tests, but
+post-image scanning requires real S3 download access and should use real AWS
+credentials.
