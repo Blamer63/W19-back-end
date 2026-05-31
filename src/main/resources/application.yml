@@ -51,3 +51,9 @@ app:
     endpoint: ${VISION_API_URL:http://localhost:8000}/analyze
     timeout-ms: ${VISION_TIMEOUT_MS:60000}
     supported-languages: ${VISION_SUPPORTED_LANGUAGES:en,es,fr,ja}
+  web-push:
+    enabled: ${WEB_PUSH_ENABLED:false}
+    vapid-public-key: ${WEB_PUSH_VAPID_PUBLIC_KEY:}
+    vapid-private-key: ${WEB_PUSH_VAPID_PRIVATE_KEY:}
+    vapid-subject: ${WEB_PUSH_VAPID_SUBJECT:mailto:admin@locale.app}
+    ttl-seconds: ${WEB_PUSH_TTL_SECONDS:2419200}

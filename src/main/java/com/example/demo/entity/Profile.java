@@ -93,6 +93,10 @@ public class Profile extends BaseEntity {
     @Builder.Default
     private List<PostReaction> profileReactions = new ArrayList<>();
 
+    @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<WebPushSubscription> pushSubscriptions = new ArrayList<>();
+
     public void addRole(AppRole role) {
         UserRole userRole = new UserRole();
         userRole.setUser(this);

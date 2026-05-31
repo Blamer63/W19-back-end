@@ -29,6 +29,7 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final ProfileRepository profileRepository;
     private final UserSettingsRepository userSettingsRepository;
+    private final WebPushNotificationService webPushNotificationService;
 
     @Transactional
     public Optional<NotificationResponse> createNotification(
@@ -64,7 +65,16 @@ public class NotificationService {
                 .targetUrl(targetUrl)
                 .build();
 
-        return Optional.of(toResponse(notificationRepository.save(notification)));
+        Notification saved = notificationRepository.save(notification);
+        webPushNotificationService.sendNotification(
+                recipient.getId(),
+                saved.getId(),
+                saved.getType(),
+                saved.getTitle(),
+                saved.getBody(),
+                saved.getTargetUrl());
+
+        return Optional.of(toResponse(saved));
     }
 
     @Transactional(readOnly = true)
