@@ -1,0 +1,59 @@
+server:
+  port: 8081
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/mydatabase
+    username: myuser
+    password: ${DB_PASSWORD:secret}
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 15MB
+  docker:
+    compose:
+      enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: update
+    defer-datasource-initialization: true
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  sql:
+    init:
+      mode: always
+
+aws:
+  region: ${AWS_REGION:ap-southeast-2}
+  cloudfront:
+    domain: ${AWS_CLOUDFRONT_DOMAIN:}
+  s3:
+    mock: ${AWS_S3_MOCK:false}
+    buckets:
+      customer: ${AWS_S3_BUCKET_CUSTOMER:}
+
+
+app:
+  cors:
+    allowed-origins: "*"
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-ms: 3600000 # 1 hour
+  google:
+    places-key: ${GOOGLE_PLACES_KEY}
+  translation:
+    api-key: ${GOOGLE_TRANSLATE_API_KEY:}
+    base-url: https://translation.googleapis.com/language/translate/v2
+    timeout-ms: 5000
+  vision:
+    endpoint: ${VISION_API_URL:http://localhost:8000}/analyze
+    timeout-ms: ${VISION_TIMEOUT_MS:60000}
+    supported-languages: ${VISION_SUPPORTED_LANGUAGES:en,es,fr,ja}
+  web-push:
+    enabled: ${WEB_PUSH_ENABLED:false}
+    vapid-public-key: ${WEB_PUSH_VAPID_PUBLIC_KEY:}
+    vapid-private-key: ${WEB_PUSH_VAPID_PRIVATE_KEY:}
+    vapid-subject: ${WEB_PUSH_VAPID_SUBJECT:mailto:admin@locale.app}
+    ttl-seconds: ${WEB_PUSH_TTL_SECONDS:2419200}

@@ -34,3 +34,19 @@ build/
 
 ### Logs ###
 *.log
+
+### Environment Variables
+.env
+
+.codex/
+compose.yaml
+.claude/worktrees/unruffled-chatelet-1eb542/
+
+### Python / ML service generated artifacts ###
+**/.venv/
+**/__pycache__/
+*.pyc
+ml-services/vision-service/cache/*
+!ml-services/vision-service/cache/README.md
+ml-services/vision-service/indexes/*
+!ml-services/vision-service/indexes/README.md

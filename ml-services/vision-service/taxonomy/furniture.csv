@@ -1,0 +1,41 @@
+concept_id,canonical_label,aliases,parent,category,tags,visual_description
+b6d1e9b5-6a07-5b55-a07f-3d970bfced68,chair,,furniture,furniture,seating,standard chair with backrest and legs
+6b5602f8-10f3-54f2-912c-ce48e90aef07,sofa,couch|settee|lounge,furniture,furniture,seating|living_room,upholstered multi-seat sofa
+fde9e6cc-bb2e-5367-924f-18a082840766,loveseat,two-seater sofa,sofa,furniture,seating|living_room,compact two-person upholstered sofa
+e9bc945a-f0a1-53af-b639-0c1a40dd3686,armchair,easy chair|lounge chair,chair,furniture,seating|living_room,single upholstered chair with armrests
+ee159f11-866a-5416-813d-4300935e6a53,recliner,reclining chair|lounger,armchair,furniture,seating|living_room,padded chair with reclining backrest
+6d797a62-acc2-5a38-94bf-4763ab46211d,rocking chair,rocker,chair,furniture,seating|living_room,chair with curved wooden rocking base
+76225485-a88d-56c6-9491-e152a6b28681,office chair,desk chair|ergonomic chair,chair,furniture,seating|office,rolling chair with adjustable height
+f30c7d7d-3c46-55b9-826e-ffef64fc7b55,dining chair,kitchen chair,chair,furniture,seating|kitchen,upright chair for dining table
+096acf9b-38a9-51b7-b4c8-30b75411fa16,bar stool,counter stool,chair,furniture,seating|kitchen,tall backless counter seating stool
+5769786c-1f48-514c-a08f-1c910c919916,folding chair,collapsible chair,chair,furniture,seating|portable,lightweight portable folding chair
+1d5cb95e-23e2-5b8c-be6d-74e13e20b03d,highchair,baby feeding chair,chair,furniture,seating|baby,tall baby chair with front tray
+aa72fae1-6329-5e52-8f71-c9282ebf66b4,stool,footstool,furniture,furniture,seating,small backless round stool
+3b75c34e-ba0e-5c1d-b57d-a7d9de98c4ef,ottoman,pouf|footrest,furniture,furniture,seating|living_room,padded square footrest seat
+296bcf33-7e3c-5a63-9289-f4daaf9c9a3d,chaise longue,chaise|daybed,sofa,furniture,seating|living_room,long reclining lounge chair
+65c3772b-62b3-5903-a803-548e59ccf0b1,beanbag,bean bag chair,chair,furniture,seating|casual,soft fabric bean-filled seat
+a0976e2f-3162-5dc9-ab79-b47e3304b24a,bench,,furniture,furniture,seating,long flat wooden or metal bench
+37ce9eaa-ecdd-5936-bcb7-b701bdef1c87,deck chair,beach chair|sun lounger,chair,furniture,seating|outdoor,folding reclining outdoor chair
+6047ef9b-5aeb-51d3-8189-b74779627455,table,,furniture,furniture,surfaces,flat-top table with supporting legs
+cbc342f4-ef0d-551f-9c20-e95eb80a5f3d,dining table,dinner table,table,furniture,surfaces|kitchen,large rectangular wooden dining table
+65a5a560-2195-5f2c-a473-b1ef22133426,coffee table,cocktail table,table,furniture,surfaces|living_room,low rectangular living room table
+3f9c1bd6-8f31-541c-bf19-67e35da4b67b,desk,writing desk|work desk,table,furniture,surfaces|office,flat work surface with legs
+92d8bd9b-a26b-5adf-a91e-8638121eb93b,side table,end table|accent table,table,furniture,surfaces|living_room,small table placed beside sofa
+2ab9d4f5-b8cc-561a-905d-daf997aa9b9c,console table,hallway table,table,furniture,surfaces|entryway,narrow wall-side hallway table
+9cf6ee71-c48b-57b0-ae9a-82be33b9f437,bed,double bed|queen bed|king bed,furniture,furniture,sleeping|bedroom,full-size bed frame with headboard
+9500a477-df82-5a00-b646-fe784a94339c,bunk bed,stacked bed,bed,furniture,sleeping|bedroom|children,two-tier stacked metal bed frame
+4f4cc795-3637-5918-a733-b61981ec865e,crib,baby cot|infant bed,bed,furniture,sleeping|baby,enclosed slatted baby sleeping crib
+3128ebe0-8331-5ed2-b761-e1130ca6b215,futon,sofa bed,furniture,furniture,sleeping|seating,foldable sofa that converts into bed
+dd8bf352-848a-50e8-998f-494b4b313a86,mattress,,bed,furniture,sleeping|bedroom,padded rectangular sleeping mattress
+2bcc03a8-8907-52f0-b0e6-41a9b72c60c5,bookcase,bookshelf|shelving unit,furniture,furniture,storage|living_room,tall open shelving unit for books
+d385a8f1-4f87-50fc-abab-c55427f65737,wardrobe,armoire|clothes cabinet,furniture,furniture,storage|bedroom,tall cabinet for hanging clothes
+5e4068c7-5d58-57b1-b3b4-1f4fbec8136b,dresser,chest of drawers|bureau,furniture,furniture,storage|bedroom,wide chest with multiple drawers
+897f75fa-e5f2-597b-83e2-512b50708bb9,nightstand,bedside table|night table,furniture,furniture,storage|bedroom,small bedside table with drawer
+6e862a88-b6cc-51ba-a979-817c8a3f130d,cabinet,storage cabinet,furniture,furniture,storage,enclosed cabinet with hinged doors
+e915cd35-b980-5d0e-a641-dc52fe5e771d,tv stand,media console|entertainment unit,furniture,furniture,storage|living_room,low cabinet supporting television
+b696b6e0-0fb3-517b-92e9-2f932c7d0f24,shelving unit,open shelf|wall shelf,furniture,furniture,storage,open multi-level shelving unit
+d66881cf-c2fa-53d1-8d1a-75050aa591df,cupboard,kitchen cupboard,cabinet,furniture,storage|kitchen,wall-mounted kitchen storage cupboard
+1372ec6e-4638-5d2c-92da-c4ba3c66058e,coat rack,hat rack|hallway stand,furniture,furniture,storage|entryway,freestanding rack for coats and hats
+4fa34559-5e31-5544-91c1-10b622cdf3ab,shoe rack,shoe organizer,furniture,furniture,storage|entryway,low rack for organizing footwear
+c8f83fb2-aa48-529b-9410-af8cb48669c5,hammock,,furniture,furniture,sleeping|outdoor,hanging woven rope or fabric hammock
+eb70d33e-a7c2-5059-8565-d5c46efaecb2,piano stool,music stool,stool,furniture,seating|music,small height-adjustable piano stool

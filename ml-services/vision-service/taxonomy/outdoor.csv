@@ -1,0 +1,53 @@
+concept_id,canonical_label,aliases,parent,category,tags,visual_description
+d0caf05e-9854-58d2-ac2f-45a6b6071c4b,bicycle,bike|push bike,outdoor,outdoor,vehicle,two-wheeled pedal-driven bicycle
+e4da48fb-d59b-57db-9966-d18833628a36,motorcycle,motorbike,outdoor,outdoor,vehicle,two-wheeled gasoline motor motorcycle
+25571d9d-c4b3-51ea-99dd-73c9a6fa3c5b,car,automobile|sedan,outdoor,outdoor,vehicle,four-door passenger sedan car
+44f7522f-1e40-5df5-afa2-93c8dea4cabf,bus,city bus|double-decker bus,outdoor,outdoor,vehicle,large multi-passenger city bus
+ec4f994b-6e1d-5ba9-b38f-dcfc20440035,truck,delivery truck|lorry,outdoor,outdoor,vehicle,large cargo delivery truck
+72ca19ff-6897-5a8e-80c4-ed5d3b753115,van,minivan|cargo van,outdoor,outdoor,vehicle,boxy passenger or cargo van
+eb50aabb-1f90-5b68-ab8a-f17e62498aa8,scooter,motor scooter|moped,outdoor,outdoor,vehicle,small two-wheel electric or gas scooter
+6643b900-024b-5cc7-97b5-3cdd12cd608f,taxi,cab|yellow cab,outdoor,outdoor,vehicle,yellow or marked taxi cab
+4431ae33-183a-543f-8dae-2e8ce9a7492c,school bus,yellow school bus,outdoor,outdoor,vehicle,bright yellow school children bus
+583d8338-0b48-5b0e-a945-b9eda4f64afe,skateboard,,outdoor,outdoor,vehicle|sports,narrow wooden deck four-wheel skateboard
+0bb0108d-8864-5b39-90ad-e47902683eaf,traffic light,stoplight|traffic signal,outdoor,outdoor,street,three-light vertical traffic signal
+6d2d31af-efb6-516e-af59-9372f16cf412,stop sign,,outdoor,outdoor,street,red octagonal STOP road sign
+328ca227-a546-5119-8af8-5e633946d7ae,street sign,road sign|direction sign,outdoor,outdoor,street,metal pole-mounted street name sign
+d6d9ba5f-5c4a-539f-90b6-f4661bee6048,mailbox,post box|letter box,outdoor,outdoor,street,red or metal curbside mailbox
+0a7df917-507d-581d-800a-1eec9a22e522,fire hydrant,fire plug|hydrant,outdoor,outdoor,street,red or yellow cast iron fire hydrant
+08aaa5b7-4ce4-57c1-bb6d-95b1c7b531e9,parking meter,coin meter,outdoor,outdoor,street,pole-mounted coin parking meter
+d6758d8e-fe4b-500e-9958-06a22b7a3497,street lamp,streetlight|lamp post,outdoor,outdoor,street,tall metal pole-mounted street lamp
+c5534ddc-2c35-5063-9c26-47cfb93b7dfa,outdoor bench,park bench|street bench,outdoor,outdoor,street,wooden slatted outdoor street bench
+4e211ea3-1374-54fe-8c23-52f79dbf1e5b,bicycle rack,bike rack|cycle stand,outdoor,outdoor,street,metal U-shaped bicycle parking rack
+d16e9cf1-1c91-5bfb-81bc-27c1094158ca,billboard,advertising billboard,outdoor,outdoor,street,large roadside advertising billboard
+51361a3d-815e-58e9-b9df-f4d0740ecd25,litter bin,outdoor bin|public trash can,outdoor,outdoor,street,metal or plastic outdoor litter bin
+82d22dba-b076-5256-bbc9-27f26716863b,surfboard,surf board,outdoor,outdoor,sports,long narrow foam surfboard
+00883241-788e-5a7f-8f0e-158a093c9750,snowboard,,outdoor,outdoor,sports,wide short winter snowboard
+b8ece1a3-ded8-5371-8040-e391535bbd0b,ski,snow ski|downhill ski,outdoor,outdoor,sports,long narrow downhill snow ski
+20482c22-95e1-5c1d-a312-4ed92e5e3643,tennis racket,tennis racquet,outdoor,outdoor,sports,oval-head strung tennis racket
+d78593d5-5dd3-5326-9efc-49e14d56ee1f,basketball,,outdoor,outdoor,sports,large round orange basketball
+1ed364f6-15ad-530c-8114-a5ee839c6d6d,soccer ball,football ball,outdoor,outdoor,sports,round black-and-white soccer ball
+b300fa1c-8afb-572d-a1db-aac7c83a155a,baseball bat,,outdoor,outdoor,sports,cylindrical tapered wooden baseball bat
+779c4a7f-c82a-5822-a0e6-924f6882db78,football,american football,outdoor,outdoor,sports,oval brown stitched American football
+b1dc421b-45dc-565c-8e48-57b87d945873,frisbee,flying disc,outdoor,outdoor,sports,flat round plastic throwing disc
+5c20577b-2d29-5a9a-84bb-c09fddd763ac,swing,playground swing,outdoor,outdoor,play,rubber-seat hanging playground swing
+5481cb18-9953-583f-9457-a66cff6674f3,playground slide,children's slide,outdoor,outdoor,play,tall plastic or metal playground slide
+0e29f4d4-847d-56b0-837a-75ab03c2f613,picnic table,outdoor dining table,outdoor,outdoor,play,wooden picnic table with attached benches
+1f3aafb8-5025-530c-bff6-0f13543114a3,kite,diamond kite,outdoor,outdoor,play,diamond-shaped fabric or plastic kite
+6ea689b2-377c-55e8-8b6e-32e12e481bed,volleyball,,outdoor,outdoor,sports,round white and blue volleyball
+6d2006e3-fe9c-5266-bf18-b8ce0397edbc,rugby ball,rugby,outdoor,outdoor,sports,oval brown leather rugby ball
+b873adcb-fed8-55da-823a-3ba65bb13f14,golf club,golf iron|golf driver,outdoor,outdoor,sports,long-shafted metal head golf club
+29a53885-ad3c-56db-91fd-1549bf808416,hockey stick,ice hockey stick,outdoor,outdoor,sports,long curved ice hockey stick
+fbf70c4f-cd69-5ba2-8caa-3a296d4c5adb,tennis ball,,outdoor,outdoor,sports,small round yellow tennis ball
+100190a2-672d-5ff1-b3b6-873400b82c3e,baseball,,outdoor,outdoor,sports,small white stitched baseball
+4a4f6890-b94b-5176-81e1-108a411d55aa,helmet,bike helmet|sports helmet,outdoor,outdoor,sports|safety,hard-shell protective sports helmet
+55bb3b9a-2f8d-5449-bb28-52992a45e6ec,life jacket,life vest|buoyancy aid,outdoor,outdoor,safety|sports,orange foam-padded life jacket
+929a79cc-7da4-5a4a-b834-922e8e75eaa4,tent,camping tent|dome tent,outdoor,outdoor,camping,dome-shaped nylon camping tent
+777acc59-17e8-57d3-bfea-b12e40b488f1,backpack frame,hiking pack|trekking backpack,outdoor,outdoor,camping|clothing,large framed hiking backpack
+7308945f-6ffb-5384-9d35-8eff38fee290,fire truck,fire engine,outdoor,outdoor,vehicle,red emergency fire truck
+d9ae9d8c-7e10-5a8b-8dfc-6d01d80b6c2b,ambulance,,outdoor,outdoor,vehicle,white medical emergency ambulance van
+46f1cec4-9d67-5703-9279-8ef07c10fac6,police car,patrol car,outdoor,outdoor,vehicle,marked black and white police patrol car
+400fdfb4-b2f1-51ee-8d76-76c05cbf5124,traffic cone,road cone|safety cone,outdoor,outdoor,street,bright orange plastic traffic cone
+4c19f05c-5673-5910-81e9-79faaf2e5f10,guardrail,safety barrier|road barrier,outdoor,outdoor,street,metal roadside safety guardrail
+41cc0f37-a872-5315-9ff2-57fa1a67344c,bus stop sign,bus shelter sign,outdoor,outdoor,street,pole-mounted bus route stop sign
+5f1f3aea-3fd7-56b1-affe-ac8aa77840d9,crosswalk sign,pedestrian crossing sign,outdoor,outdoor,street,yellow diamond pedestrian crossing sign
+671d00f4-5b9d-5c2c-8c8d-7ad7f3d258b0,vending machine,,outdoor,outdoor,street,tall glass-front coin-operated vending machine

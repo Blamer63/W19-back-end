@@ -1,0 +1,44 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: password
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        hbm2ddl:
+          import_files: ""
+  sql:
+    init:
+      mode: never
+
+aws:
+  region: ap-southeast-2
+  cloudfront:
+    domain: test.cloudfront.local
+  s3:
+    mock: true
+    buckets:
+      customer: test-bucket
+
+app:
+  jwt:
+    secret: "test-secret-for-integration-tests-only-do-not-use-in-prod"
+    expiration-ms: 3600000 # 1 hour
+  google:
+    places-key: "test-api-key-not-used-in-tests"
+  translation:
+    provider: google
+    api-key: "test-translation-api-key-not-used-in-tests"
+    base-url: "https://translation.googleapis.com/language/translate/v2"
+    timeout-ms: 1000
+  vision:
+    endpoint: "http://localhost:8000/analyze"
+    timeout-ms: 1000
+    supported-languages: "en,es,fr,ja"

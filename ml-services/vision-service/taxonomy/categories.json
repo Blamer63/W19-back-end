@@ -1,0 +1,133 @@
+{
+  "furniture": {
+    "l1_domain": "physical_objects",
+    "l2_type": "furniture",
+    "description": "Indoor furniture, seating, beds, and storage",
+    "cross_tags": [
+      "seating",
+      "surfaces",
+      "storage"
+    ],
+    "vocab_file": "taxonomy/furniture.csv",
+    "phase": 1,
+    "concept_count_phase1": 40
+  },
+  "electronics": {
+    "l1_domain": "physical_objects",
+    "l2_type": "devices",
+    "description": "Consumer electronics and personal devices",
+    "cross_tags": [
+      "wearable",
+      "portable",
+      "appliance"
+    ],
+    "vocab_file": "taxonomy/electronics.csv",
+    "phase": 1,
+    "concept_count_phase1": 40
+  },
+  "kitchenware": {
+    "l1_domain": "physical_objects",
+    "l2_type": "kitchenware",
+    "description": "Cookware, utensils, drinkware, and kitchen appliances",
+    "cross_tags": [
+      "appliance",
+      "food_prep",
+      "drinkware"
+    ],
+    "vocab_file": "taxonomy/kitchenware.csv",
+    "phase": 1,
+    "concept_count_phase1": 49
+  },
+  "clothing": {
+    "l1_domain": "physical_objects",
+    "l2_type": "apparel",
+    "description": "Garments, footwear, headwear, and personal accessories",
+    "cross_tags": [
+      "wearable",
+      "footwear",
+      "accessories"
+    ],
+    "vocab_file": "taxonomy/clothing.csv",
+    "phase": 1,
+    "concept_count_phase1": 61
+  },
+  "office": {
+    "l1_domain": "physical_objects",
+    "l2_type": "stationery",
+    "description": "Office supplies, stationery, and desk equipment",
+    "cross_tags": [
+      "stationery",
+      "work",
+      "paper"
+    ],
+    "vocab_file": "taxonomy/office.csv",
+    "phase": 1,
+    "concept_count_phase1": 35
+  },
+  "bathroom": {
+    "l1_domain": "physical_objects",
+    "l2_type": "hygiene",
+    "description": "Bathroom fixtures and personal hygiene products",
+    "cross_tags": [
+      "hygiene",
+      "grooming",
+      "fixtures"
+    ],
+    "vocab_file": "taxonomy/bathroom.csv",
+    "phase": 1,
+    "concept_count_phase1": 35
+  },
+  "tools": {
+    "l1_domain": "physical_objects",
+    "l2_type": "tools",
+    "description": "Hand tools, power tools, garden and cleaning tools",
+    "cross_tags": [
+      "garden",
+      "cleaning",
+      "hardware"
+    ],
+    "vocab_file": "taxonomy/tools.csv",
+    "phase": 1,
+    "concept_count_phase1": 46
+  },
+  "household": {
+    "l1_domain": "physical_objects",
+    "l2_type": "household",
+    "description": "Home decor, lighting, climate, and linen objects",
+    "cross_tags": [
+      "lighting",
+      "climate",
+      "decor"
+    ],
+    "vocab_file": "taxonomy/household.csv",
+    "phase": 1,
+    "concept_count_phase1": 50
+  },
+  "food": {
+    "l1_domain": "consumables",
+    "l2_type": "food",
+    "description": "Fruits, vegetables, prepared foods, and drinks",
+    "cross_tags": [
+      "fruit",
+      "vegetable",
+      "drink",
+      "snack"
+    ],
+    "vocab_file": "taxonomy/food.csv",
+    "phase": 1,
+    "concept_count_phase1": 72
+  },
+  "outdoor": {
+    "l1_domain": "physical_objects",
+    "l2_type": "outdoor",
+    "description": "Vehicles, street objects, and outdoor sports equipment",
+    "cross_tags": [
+      "vehicle",
+      "street",
+      "sports"
+    ],
+    "vocab_file": "taxonomy/outdoor.csv",
+    "phase": 1,
+    "concept_count_phase1": 52
+  }
+}

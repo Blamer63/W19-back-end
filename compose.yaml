@@ -1,9 +1,95 @@
 services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
   postgres:
-    image: 'postgres:latest'
+    image: postgres:16-alpine
     environment:
-      - 'POSTGRES_DB=mydatabase'
-      - 'POSTGRES_PASSWORD=secret'
-      - 'POSTGRES_USER=myuser'
+      POSTGRES_DB: mydatabase
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: secret
     ports:
-      - '5432'
+      - "5433:5432"
+    volumes:
+      # Persist data across restarts
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U myuser -d mydatabase" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Spring Boot Backend ─────────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: postgres
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mydatabase
+      SPRING_DATASOURCE_USERNAME: myuser
+      SPRING_DATASOURCE_PASSWORD: secret
+      JWT_SECRET: ${JWT_SECRET}
+      GOOGLE_PLACES_KEY: ${GOOGLE_PLACES_KEY}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*}
+      VISION_API_URL: http://vision-service:8000
+      VISION_TIMEOUT_MS: ${VISION_TIMEOUT_MS:-60000}
+      VISION_SUPPORTED_LANGUAGES: ${VISION_SUPPORTED_LANGUAGES:-en,es,fr,ja}
+      WEB_PUSH_ENABLED: ${WEB_PUSH_ENABLED:-false}
+      WEB_PUSH_VAPID_PUBLIC_KEY: ${WEB_PUSH_VAPID_PUBLIC_KEY:-}
+      WEB_PUSH_VAPID_PRIVATE_KEY: ${WEB_PUSH_VAPID_PRIVATE_KEY:-}
+      WEB_PUSH_VAPID_SUBJECT: ${WEB_PUSH_VAPID_SUBJECT:-mailto:admin@locale.app}
+      WEB_PUSH_TTL_SECONDS: ${WEB_PUSH_TTL_SECONDS:-2419200}
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      vision-service:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ── YOLO Object Detection Service ──────────────────────────────────────────
+  # Vision ML Service (replaces the old simple YOLO service)
+  vision-service:
+    build:
+      context: ./ml-services/vision-service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      ENABLE_CUDA: ${VISION_ENABLE_CUDA:-0}
+      FORCE_CPU: ${VISION_FORCE_CPU:-0}
+      YOLO_MODEL: ${VISION_YOLO_MODEL:-yolov8m.pt}
+      SIGLIP_MODEL: ${VISION_SIGLIP_MODEL:-google/siglip-base-patch16-224}
+      LOG_LEVEL: ${VISION_LOG_LEVEL:-INFO}
+      DEBUG_ENDPOINTS: ${VISION_DEBUG_ENDPOINTS:-0}
+    healthcheck:
+      test: [ "CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)\" || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ── Vite / React Frontend ───────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ../W19-front-end
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+        VITE_WS_URL: ${VITE_WS_URL:-}
+        VITE_GOOGLE_PLACES_KEY: ${GOOGLE_PLACES_KEY}
+        VITE_MAPBOX_TOKEN: ${VITE_MAPBOX_TOKEN:-}
+        VITE_ENABLE_PWA: ${VITE_ENABLE_PWA:-true}
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
