@@ -32,9 +32,15 @@ services:
       SPRING_DATASOURCE_PASSWORD: secret
       JWT_SECRET: ${JWT_SECRET}
       GOOGLE_PLACES_KEY: ${GOOGLE_PLACES_KEY}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*}
       VISION_API_URL: http://vision-service:8000
       VISION_TIMEOUT_MS: ${VISION_TIMEOUT_MS:-60000}
       VISION_SUPPORTED_LANGUAGES: ${VISION_SUPPORTED_LANGUAGES:-en,es,fr,ja}
+      WEB_PUSH_ENABLED: ${WEB_PUSH_ENABLED:-false}
+      WEB_PUSH_VAPID_PUBLIC_KEY: ${WEB_PUSH_VAPID_PUBLIC_KEY:-}
+      WEB_PUSH_VAPID_PRIVATE_KEY: ${WEB_PUSH_VAPID_PRIVATE_KEY:-}
+      WEB_PUSH_VAPID_SUBJECT: ${WEB_PUSH_VAPID_SUBJECT:-mailto:admin@locale.app}
+      WEB_PUSH_TTL_SECONDS: ${WEB_PUSH_TTL_SECONDS:-2419200}
     env_file:
       - .env
     depends_on:
@@ -75,8 +81,11 @@ services:
       context: ../W19-front-end
       dockerfile: Dockerfile
       args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+        VITE_WS_URL: ${VITE_WS_URL:-}
         VITE_GOOGLE_PLACES_KEY: ${GOOGLE_PLACES_KEY}
-        VITE_ENABLE_PWA: "false"
+        VITE_MAPBOX_TOKEN: ${VITE_MAPBOX_TOKEN:-}
+        VITE_ENABLE_PWA: ${VITE_ENABLE_PWA:-true}
     ports:
       - "8080:80"
     depends_on:
