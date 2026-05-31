@@ -209,7 +209,7 @@ When `DELETE /posts/{id}` is called:
 
 ## 6. File Storage (AWS S3)
 
-All media files are stored in the `fs-kaiday-customer-test` S3 bucket (region `ap-southeast-2`). The backend exposes a thin authenticated proxy at `/api/files`.
+All media files are stored in the configured S3 bucket. The backend exposes a thin authenticated proxy at `/api/files`.
 
 ### Upload — `POST /api/files/upload?type=<images|audio|videos>`
 

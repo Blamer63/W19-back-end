@@ -78,7 +78,7 @@ Two separate social graphs:
 
 ## File Upload — AWS S3 (`/api/files`)
 
-Authenticated endpoint that proxies uploads to the configured S3 bucket (`fs-kaiday-customer-test`, region `ap-southeast-2`).
+Authenticated endpoint that proxies uploads to the configured S3 bucket.
 
 ### `POST /files/upload?type=<images|audio|videos>`
 

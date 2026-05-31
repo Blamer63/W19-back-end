@@ -192,7 +192,7 @@ Session lifecycle:
 
 ### AWS S3 File Storage
 
-Files are stored in the private `fs-kaiday-customer-test` bucket (region `ap-southeast-2`) and served through CloudFront. `S3Service` manages S3 writes/deletes and URL/key conversion:
+Files are stored in the configured private bucket and served through CloudFront. `S3Service` manages S3 writes/deletes and URL/key conversion:
 
 - **Upload**: key pattern `<folder>/<UUID>-<sanitizedOriginalFilename>` ensures uniqueness and prevents path-like filenames from influencing keys; returns a CloudFront URL
 - **Standalone media**: `FileController` accepts only `audio` and `videos`; image uploads are handled by profile, post, and message endpoints
@@ -257,7 +257,7 @@ Message image cleanup is handled by `ChatService.deleteMessage`. During the Clou
 | DB URL | `jdbc:postgresql://${DB_HOST:localhost}:5432/mydatabase` |
 | JPA DDL auto | `update` |
 | AWS region | `ap-southeast-2` |
-| S3 bucket | `fs-kaiday-customer-test` |
+| S3 bucket | `${AWS_S3_BUCKET_CUSTOMER}` |
 | JWT expiry | `3600000` ms (1 hour) |
 | JWT secret | `${JWT_SECRET}` (env var) |
 | Google Places key | `${GOOGLE_PLACES_KEY}` (env var) |
