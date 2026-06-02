@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -183,19 +184,28 @@ public class ChatController {
     }
 
     // REST: Create group conversation
-    @PostMapping("/group")
+    @PostMapping(value = "/group", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ConversationResponse> createGroup(
             @Valid @RequestBody GroupCreateRequest request,
             Authentication authentication) {
         ConversationResponse response = chatService.createGroupConversation(authentication.getName(), request);
-        String creatorEmail = authentication.getName();
-        response.getParticipants().stream()
-                .filter(p -> !creatorEmail.equals(p.getEmail()))
-                .forEach(p -> messagingTemplate.convertAndSendToUser(
-                        p.getEmail(),
-                        "/queue/conversations",
-                        java.util.Map.of("type", "NEW_CONVERSATION",
-                                "conversationId", response.getId().toString())));
+        notifyGroupCreated(response, authentication.getName());
+        return ResponseEntity.ok(response);
+    }
+
+    // REST: Create group conversation with optional avatar upload
+    @PostMapping(value = "/group", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ConversationResponse> createGroupMultipart(
+            @RequestParam String groupName,
+            @RequestParam List<UUID> participantIds,
+            @RequestPart(value = "groupAvatar", required = false) MultipartFile groupAvatar,
+            Authentication authentication) throws IOException {
+        GroupCreateRequest request = GroupCreateRequest.builder()
+                .groupName(groupName)
+                .participantIds(participantIds)
+                .build();
+        ConversationResponse response = chatService.createGroupConversation(authentication.getName(), request, groupAvatar);
+        notifyGroupCreated(response, authentication.getName());
         return ResponseEntity.ok(response);
     }
 
@@ -219,11 +229,34 @@ public class ChatController {
     }
 
     // REST: Update group name / avatar
-    @PatchMapping("/{id}")
+    @PatchMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ConversationResponse> updateGroup(
             @PathVariable UUID id,
             @RequestBody GroupUpdateRequest request,
             Authentication authentication) {
         return ResponseEntity.ok(chatService.updateGroup(id, request, authentication.getName()));
+    }
+
+    // REST: Update group name / avatar with optional avatar upload
+    @PatchMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ConversationResponse> updateGroupMultipart(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String groupName,
+            @RequestPart(value = "groupAvatar", required = false) MultipartFile groupAvatar,
+            Authentication authentication) throws IOException {
+        GroupUpdateRequest request = GroupUpdateRequest.builder()
+                .groupName(groupName)
+                .build();
+        return ResponseEntity.ok(chatService.updateGroup(id, request, authentication.getName(), groupAvatar));
+    }
+
+    private void notifyGroupCreated(ConversationResponse response, String creatorEmail) {
+        response.getParticipants().stream()
+                .filter(p -> !creatorEmail.equals(p.getEmail()))
+                .forEach(p -> messagingTemplate.convertAndSendToUser(
+                        p.getEmail(),
+                        "/queue/conversations",
+                        java.util.Map.of("type", "NEW_CONVERSATION",
+                                "conversationId", response.getId().toString())));
     }
 }
