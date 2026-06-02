@@ -1,6 +1,7 @@
 package com.example.demo.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -26,6 +27,10 @@ public class PublicUserProfileDto {
 
     private String bio;
     private String location;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Double latitude;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Double longitude;
 
     @JsonProperty("created_at")
     private Instant createdAt;

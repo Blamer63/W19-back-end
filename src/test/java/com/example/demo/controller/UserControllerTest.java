@@ -26,6 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.example.demo.entity.Profile;
 import com.example.demo.enums.FriendStatus;
+import com.example.demo.enums.LocationVisibility;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.MediaType;
 import java.util.List;
@@ -163,6 +164,99 @@ public class UserControllerTest {
                 .andExpect(jsonPath("$.username").value("other_user"))
                 .andExpect(jsonPath("$.display_name").value("Other User"))
                 .andExpect(jsonPath("$.privacy_settings.show_activity").value(true));
+    }
+
+    @Test
+    void shouldReturnPublicProfileCoordinatesWhenLocationIsPublic() throws Exception {
+        if (token == null)
+            return;
+
+        Profile otherUser = Profile.builder()
+                .username("public_location_user")
+                .email("public-location@example.com")
+                .displayName("Public Location User")
+                .passwordHash("hash")
+                .locationVisibility(LocationVisibility.PUBLIC)
+                .latitude(-33.8688)
+                .longitude(151.2093)
+                .build();
+        profileRepository.save(otherUser);
+
+        mockMvc.perform(get("/api/users/" + otherUser.getId())
+                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latitude").value(-33.8688))
+                .andExpect(jsonPath("$.longitude").value(151.2093));
+    }
+
+    @Test
+    void shouldReturnFriendsOnlyProfileCoordinatesToAcceptedFriends() throws Exception {
+        if (token == null)
+            return;
+
+        Profile currentUser = profileRepository.findByEmail("user_me@example.com").orElseThrow();
+        Profile otherUser = Profile.builder()
+                .username("friends_location_user")
+                .email("friends-location@example.com")
+                .displayName("Friends Location User")
+                .passwordHash("hash")
+                .locationVisibility(LocationVisibility.FRIENDS_ONLY)
+                .latitude(-34.406)
+                .longitude(150.878)
+                .build();
+        otherUser = profileRepository.save(otherUser);
+
+        friendRepository.save(Friend.builder()
+                .requester(currentUser)
+                .receiver(otherUser)
+                .status(FriendStatus.ACCEPTED)
+                .build());
+
+        mockMvc.perform(get("/api/users/" + otherUser.getId())
+                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latitude").value(-34.406))
+                .andExpect(jsonPath("$.longitude").value(150.878));
+    }
+
+    @Test
+    void shouldHideCoordinatesWhenProfileLocationIsNotVisible() throws Exception {
+        if (token == null)
+            return;
+
+        Profile friendsOnlyUser = Profile.builder()
+                .username("hidden_friends_location")
+                .email("hidden-friends-location@example.com")
+                .displayName("Hidden Friends Location")
+                .passwordHash("hash")
+                .locationVisibility(LocationVisibility.FRIENDS_ONLY)
+                .latitude(-33.92)
+                .longitude(151.25)
+                .build();
+        friendsOnlyUser = profileRepository.save(friendsOnlyUser);
+
+        Profile nobodyUser = Profile.builder()
+                .username("hidden_nobody_location")
+                .email("hidden-nobody-location@example.com")
+                .displayName("Hidden Nobody Location")
+                .passwordHash("hash")
+                .locationVisibility(LocationVisibility.NOBODY)
+                .latitude(-33.87)
+                .longitude(151.21)
+                .build();
+        nobodyUser = profileRepository.save(nobodyUser);
+
+        mockMvc.perform(get("/api/users/" + friendsOnlyUser.getId())
+                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latitude").doesNotExist())
+                .andExpect(jsonPath("$.longitude").doesNotExist());
+
+        mockMvc.perform(get("/api/users/" + nobodyUser.getId())
+                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latitude").doesNotExist())
+                .andExpect(jsonPath("$.longitude").doesNotExist());
     }
 
     @Test
