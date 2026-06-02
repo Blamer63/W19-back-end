@@ -8,6 +8,7 @@ import com.example.demo.enums.LocationVisibility;
 import com.example.demo.enums.ProficiencyLevel;
 import com.example.demo.repository.LanguageRepository;
 import com.example.demo.repository.ProfileRepository;
+import com.example.demo.repository.PracticeResultRepository;
 import com.example.demo.repository.SavedWordRepository;
 import com.example.demo.repository.UserLanguageRepository;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class DemoAccountSeedService {
     private final LanguageRepository languageRepository;
     private final UserLanguageRepository userLanguageRepository;
     private final SavedWordRepository savedWordRepository;
+    private final PracticeResultRepository practiceResultRepository;
     private final PasswordEncoder passwordEncoder;
     private final DemoLearningSeedService demoLearningSeedService;
 
@@ -133,6 +135,7 @@ public class DemoAccountSeedService {
                 return;
             }
 
+            practiceResultRepository.deleteBySavedWordUserId(profile.getId());
             savedWordRepository.deleteByUserId(profile.getId());
             userLanguageRepository.deleteByProfileId(profile.getId());
             profile.getLanguages().clear();
