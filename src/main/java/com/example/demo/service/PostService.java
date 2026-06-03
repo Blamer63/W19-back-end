@@ -21,6 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -317,8 +320,12 @@ public class PostService {
                                 .userReaction(userReaction)
                                 .isSaved(currentUser != null &&
                                                 savedPostRepository.existsByUserIdAndPostId(currentUser.getId(), post.getId()))
-                                .createdAt(post.getCreatedAt())
+                                .createdAt(toInstant(post.getCreatedAt()))
                                 .build();
+        }
+
+        private Instant toInstant(LocalDateTime dateTime) {
+                return dateTime == null ? null : dateTime.atZone(ZoneId.systemDefault()).toInstant();
         }
 
         private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
