@@ -9,6 +9,7 @@ import com.example.demo.repository.ProfileRepository;
 import com.example.demo.repository.UserLanguageRepository;
 import com.example.demo.service.StarterSeedRunService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
@@ -91,7 +93,12 @@ public class UserLanguageController {
                                 .filter(UserLanguage::isLearning)
                                 .map(userLanguage -> userLanguage.getLanguage().getCode())
                                 .collect(Collectors.toList());
-                starterSeedRunService.seedIfPending(profile, learningLanguageCodes);
+                try {
+                        starterSeedRunService.seedIfPending(profile, learningLanguageCodes);
+                } catch (Exception e) {
+                        log.error("starter-seed: seeding failed for profile {} — language preferences still saved",
+                                        profile.getId(), e);
+                }
 
                 return ResponseEntity.ok(saved.stream().map(this::toDto).collect(Collectors.toList()));
         }

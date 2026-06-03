@@ -1,10 +1,13 @@
 package com.example.demo.service;
 
 import com.example.demo.entity.Profile;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
@@ -12,6 +15,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class StarterSeedRunService {
@@ -27,6 +31,20 @@ public class StarterSeedRunService {
     @Value("${app.starter-seed.enabled:false}")
     private boolean starterSeedEnabled;
 
+    @PostConstruct
+    public void init() {
+        if (!starterSeedEnabled) {
+            return;
+        }
+        try {
+            ensureSeedTable();
+            log.info("starter-seed: user_starter_seed_runs table ready");
+        } catch (Exception e) {
+            log.warn("starter-seed: failed to ensure seed table on startup — seeding will be skipped", e);
+            starterSeedEnabled = false;
+        }
+    }
+
     @Transactional
     public void createPendingForNewUser(Profile profile) {
         if (!starterSeedEnabled) {
@@ -40,6 +58,7 @@ public class StarterSeedRunService {
                 where profile_id = ? and seed_key = ?
                 """, Integer.class, profile.getId(), SEED_KEY);
         if (existing != null && existing > 0) {
+            log.debug("starter-seed: PENDING record already exists for profile {}", profile.getId());
             return;
         }
 
@@ -48,9 +67,13 @@ public class StarterSeedRunService {
                     (profile_id, seed_key, status, created_at, completed_at)
                 values (?, ?, ?, ?, null)
                 """, profile.getId(), SEED_KEY, STATUS_PENDING, Timestamp.from(Instant.now()));
+        log.info("starter-seed: PENDING record created for new profile {}", profile.getId());
     }
 
-    @Transactional
+    // REQUIRES_NEW: runs in its own transaction, independent of the caller's language-update transaction.
+    // If seeding throws, only this transaction rolls back (restoring PENDING for retry).
+    // The caller must catch the exception to prevent the language-update transaction from rolling back.
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void seedIfPending(Profile profile, List<String> learningLanguageCodes) {
         if (!starterSeedEnabled || learningLanguageCodes == null) {
             return;
@@ -74,9 +97,12 @@ public class StarterSeedRunService {
                   and status = ?
                 """, STATUS_RUNNING, profile.getId(), SEED_KEY, STATUS_PENDING);
         if (acquired == 0) {
+            log.debug("starter-seed: no PENDING record for profile {} — already seeded or not yet registered",
+                    profile.getId());
             return;
         }
 
+        log.info("starter-seed: starting seed for profile {} languages {}", profile.getId(), normalizedCodes);
         demoLearningSeedService.seedForLearningLanguages(profile, normalizedCodes);
 
         jdbcTemplate.update("""
@@ -86,6 +112,7 @@ public class StarterSeedRunService {
                   and seed_key = ?
                   and status = ?
                 """, STATUS_COMPLETED, Timestamp.from(Instant.now()), profile.getId(), SEED_KEY, STATUS_RUNNING);
+        log.info("starter-seed: completed for profile {}", profile.getId());
     }
 
     private void ensureSeedTable() {
