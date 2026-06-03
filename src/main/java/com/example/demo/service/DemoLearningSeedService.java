@@ -4,9 +4,12 @@ import com.example.demo.entity.Conversation;
 import com.example.demo.entity.Friend;
 import com.example.demo.entity.Language;
 import com.example.demo.entity.Meetup;
+import com.example.demo.entity.MeetupAttendee;
 import com.example.demo.entity.Message;
 import com.example.demo.entity.Post;
+import com.example.demo.entity.PostComment;
 import com.example.demo.entity.PostImage;
+import com.example.demo.entity.PostReaction;
 import com.example.demo.entity.Profile;
 import com.example.demo.entity.SavedWord;
 import com.example.demo.entity.UserLanguage;
@@ -15,30 +18,48 @@ import com.example.demo.enums.LocationVisibility;
 import com.example.demo.enums.MeetupStatus;
 import com.example.demo.enums.PostStatus;
 import com.example.demo.enums.ProficiencyLevel;
+import com.example.demo.enums.ReactionType;
 import com.example.demo.enums.SourceType;
 import com.example.demo.repository.ConversationRepository;
 import com.example.demo.repository.FriendRepository;
 import com.example.demo.repository.LanguageRepository;
+import com.example.demo.repository.MeetupAttendeeRepository;
 import com.example.demo.repository.MeetupRepository;
 import com.example.demo.repository.MessageRepository;
+import com.example.demo.repository.PostCommentRepository;
+import com.example.demo.repository.PostReactionRepository;
 import com.example.demo.repository.PostRepository;
 import com.example.demo.repository.ProfileRepository;
 import com.example.demo.repository.SavedWordRepository;
 import com.example.demo.repository.UserLanguageRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class DemoLearningSeedService {
+
+    private static final Set<String> SUPPORTED_LANGUAGE_CODES = Set.of("en", "es", "fr", "ja", "ko", "pt", "vi");
+
+    private static final List<String> AVATAR_URLS = List.of(
+            "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=240&h=240&fit=crop&crop=faces",
+            "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=240&h=240&fit=crop&crop=faces",
+            "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=240&h=240&fit=crop&crop=faces");
+
+    private static final List<String> POST_IMAGES = List.of(
+            "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=900&h=600&fit=crop",
+            "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=900&h=600&fit=crop",
+            "https://images.unsplash.com/photo-1542051841857-5f90071e7989?w=900&h=600&fit=crop",
+            "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=900&h=600&fit=crop",
+            "https://images.unsplash.com/photo-1542838132-92c53300491e?w=900&h=600&fit=crop");
 
     private final ProfileRepository profileRepository;
     private final LanguageRepository languageRepository;
@@ -48,130 +69,98 @@ public class DemoLearningSeedService {
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
     private final PostRepository postRepository;
+    private final PostReactionRepository postReactionRepository;
+    private final PostCommentRepository postCommentRepository;
     private final MeetupRepository meetupRepository;
-    private final JdbcTemplate jdbcTemplate;
+    private final MeetupAttendeeRepository meetupAttendeeRepository;
 
     @Transactional
     public void seedForLearningLanguages(Profile learner, List<String> languageCodes) {
-        retireLegacyDemoArtifacts();
+        if (languageCodes == null || learner == null) {
+            return;
+        }
 
         languageCodes.stream()
                 .map(this::normalize)
-                .filter(code -> code.equals("es") || code.equals("ja"))
+                .filter(SUPPORTED_LANGUAGE_CODES::contains)
                 .distinct()
-                .forEach(code -> seedLanguage(learner, code));
+                .forEach(code -> languageRepository.findByCode(code)
+                        .ifPresent(language -> seedLanguage(learner, language)));
     }
 
-    private void seedLanguage(Profile learner, String languageCode) {
-        Language language = languageRepository.findByCode(languageCode)
-                .orElseThrow(() -> new IllegalStateException("Language not found: " + languageCode));
-        List<DemoPeer> peers = demoPeers(languageCode);
-        List<Profile> peerProfiles = peers.stream()
-                .map(peer -> createPeer(learner.getId(), language, peer))
+    private void seedLanguage(Profile learner, Language language) {
+        List<Profile> peerProfiles = demoPeers(language).stream()
+                .map(peer -> createPeer(language, peer))
                 .toList();
 
         seedFriendships(learner, peerProfiles);
-        seedConversations(learner, peerProfiles, languageCode);
-        seedPosts(peerProfiles, languageCode);
+        seedConversations(learner, peerProfiles, language);
+        seedPosts(peerProfiles, language);
         seedMeetups(peerProfiles, language);
-        if (savedWordRepository.countByUserIdAndLanguageCode(learner.getId(), languageCode) == 0) {
-            seedWords(learner, languageCode);
-        }
+        seedWords(learner, language);
     }
 
-    private Profile createPeer(UUID learnerId, Language language, DemoPeer peer) {
+    private Profile createPeer(Language language, DemoPeer peer) {
         String username = "demo_" + language.getCode() + "_" + peer.usernameSlug();
         String email = username + "@locale.demo";
 
-        return profileRepository.findByEmail(email)
-                .orElseGet(() -> {
-                    Profile profile = Profile.builder()
-                            .username(username)
-                            .email(email)
-                            .passwordHash("demo-seeded-profile")
-                            .displayName(peer.displayName())
-                            .avatarUrl(peer.avatarUrl())
-                            .bio(peer.bio())
-                            .latitude(peer.latitude())
-                            .longitude(peer.longitude())
-                            .location("Sydney NSW")
-                            .locationVisibility(LocationVisibility.PUBLIC)
-                            .build();
-                    profile = profileRepository.save(profile);
+        Profile profile = profileRepository.findByEmail(email)
+                .orElseGet(() -> Profile.builder()
+                        .username(username)
+                        .email(email)
+                        .passwordHash("demo-seeded-profile")
+                        .build());
 
-                    userLanguageRepository.save(UserLanguage.builder()
-                            .profile(profile)
-                            .language(language)
-                            .proficiency(ProficiencyLevel.BEGINNER)
-                            .isLearning(true)
-                            .build());
+        profile.setUsername(username);
+        profile.setDisplayName(peer.displayName());
+        profile.setAvatarUrl(peer.avatarUrl());
+        profile.setBio(peer.bio());
+        profile.setLatitude(peer.latitude());
+        profile.setLongitude(peer.longitude());
+        profile.setLocation("Sydney NSW");
+        profile.setLocationVisibility(LocationVisibility.PUBLIC);
+        profile = profileRepository.save(profile);
 
-                    return profile;
-                });
+        ensurePeerLanguage(profile, language);
+        return profile;
     }
 
-    private void retireLegacyDemoArtifacts() {
-        jdbcTemplate.update("""
-                update posts
-                set status = 'HIDDEN'
-                where original_language not in ('es', 'ja')
-                   or author_id in (
-                        select id from profiles
-                        where email like 'demo\\_%@locale.demo' escape '\\'
-                          and email not in (
-                            'demo_es_sofia@locale.demo',
-                            'demo_es_mateo@locale.demo',
-                            'demo_es_lucia@locale.demo',
-                            'demo_ja_aiko@locale.demo',
-                            'demo_ja_ren@locale.demo',
-                            'demo_ja_maya@locale.demo'
-                          )
-                   )
-                """);
-        jdbcTemplate.update("""
-                update meetups
-                set status = 'CANCELLED'
-                where language_code not in ('es', 'ja')
-                   or organizer_id in (
-                        select id from profiles
-                        where email like 'demo\\_%@locale.demo' escape '\\'
-                          and email not in (
-                            'demo_es_sofia@locale.demo',
-                            'demo_es_mateo@locale.demo',
-                            'demo_es_lucia@locale.demo',
-                            'demo_ja_aiko@locale.demo',
-                            'demo_ja_ren@locale.demo',
-                            'demo_ja_maya@locale.demo'
-                          )
-                   )
-                """);
-        jdbcTemplate.update("""
-                update profiles
-                set location_visibility = 'NOBODY'
-                where email like 'demo\\_%@locale.demo' escape '\\'
-                  and email not in (
-                    'demo_es_sofia@locale.demo',
-                    'demo_es_mateo@locale.demo',
-                    'demo_es_lucia@locale.demo',
-                    'demo_ja_aiko@locale.demo',
-                    'demo_ja_ren@locale.demo',
-                    'demo_ja_maya@locale.demo'
-                  )
-                """);
+    private void ensurePeerLanguage(Profile profile, Language language) {
+        boolean exists = profile.getLanguages().stream()
+                .anyMatch(userLanguage -> userLanguage.getLanguage() != null
+                        && language.getCode().equals(userLanguage.getLanguage().getCode()));
+        if (exists) {
+            return;
+        }
+
+        UserLanguage userLanguage = UserLanguage.builder()
+                .profile(profile)
+                .language(language)
+                .proficiency(ProficiencyLevel.NATIVE)
+                .isLearning(false)
+                .build();
+        userLanguageRepository.save(userLanguage);
+        profile.getLanguages().add(userLanguage);
     }
 
     private void seedFriendships(Profile learner, List<Profile> peers) {
-        peers.stream()
-                .filter(peer -> !friendRepository.areFriends(learner.getId(), peer.getId()))
-                .forEach(peer -> friendRepository.save(Friend.builder()
-                        .requester(peer)
-                        .receiver(learner)
-                        .status(FriendStatus.ACCEPTED)
-                        .build()));
+        for (Profile peer : peers) {
+            friendRepository.findBetween(learner.getId(), peer.getId())
+                    .ifPresentOrElse(friend -> {
+                        if (friend.getStatus() != FriendStatus.ACCEPTED) {
+                            friend.setStatus(FriendStatus.ACCEPTED);
+                            friendRepository.save(friend);
+                        }
+                    }, () -> friendRepository.save(Friend.builder()
+                            .requester(peer)
+                            .receiver(learner)
+                            .status(FriendStatus.ACCEPTED)
+                            .build()));
+        }
     }
 
-    private void seedConversations(Profile learner, List<Profile> peers, String languageCode) {
-        List<DemoMessage> messages = demoMessages(languageCode);
+    private void seedConversations(Profile learner, List<Profile> peers, Language language) {
+        List<DemoMessage> messages = demoMessages(language);
         for (int i = 0; i < peers.size() && i < messages.size(); i++) {
             Profile peer = peers.get(i);
             DemoMessage demo = messages.get(i);
@@ -181,8 +170,8 @@ public class DemoLearningSeedService {
 
             Conversation conversation = Conversation.builder()
                     .isGroup(false)
-                    .lastMessagePreview(demo.reply())
-                    .lastMessageAt(LocalDateTime.now().minusHours(i + 1L))
+                    .lastMessagePreview(demo.followUp())
+                    .lastMessageAt(LocalDateTime.now().minusMinutes(30L + i * 18L))
                     .build();
             conversation.addParticipant(learner);
             conversation.addParticipant(peer);
@@ -192,7 +181,7 @@ public class DemoLearningSeedService {
                     .conversation(conversation)
                     .sender(peer)
                     .content(demo.opening())
-                    .isRead(false)
+                    .isRead(true)
                     .build());
             messageRepository.save(Message.builder()
                     .conversation(conversation)
@@ -200,168 +189,359 @@ public class DemoLearningSeedService {
                     .content(demo.reply())
                     .isRead(true)
                     .build());
+            messageRepository.save(Message.builder()
+                    .conversation(conversation)
+                    .sender(peer)
+                    .content(demo.followUp())
+                    .isRead(false)
+                    .build());
         }
     }
 
-    private void seedPosts(List<Profile> peers, String languageCode) {
-        List<DemoPost> posts = demoPosts(languageCode);
+    private void seedPosts(List<Profile> peers, Language language) {
+        List<DemoPost> posts = demoPosts(language);
         for (int i = 0; i < peers.size() && i < posts.size(); i++) {
-            if (postRepository.countByAuthorIdAndOriginalLanguage(peers.get(i).getId(), languageCode) > 0) {
+            Profile author = peers.get(i);
+            DemoPost demo = posts.get(i);
+            List<Post> existingPosts = postRepository.findByAuthorIdAndOriginalLanguage(author.getId(),
+                    language.getCode());
+
+            Post post = existingPosts.stream()
+                    .min(Comparator.comparing(Post::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                    .orElseGet(() -> postRepository.save(Post.builder()
+                            .author(author)
+                            .content(demo.content())
+                            .originalLanguage(language.getCode())
+                            .imageUrl(demo.imageUrls().get(0))
+                            .latitude(demo.latitude())
+                            .longitude(demo.longitude())
+                            .status(PostStatus.ACTIVE)
+                            .build()));
+
+            post.setContent(demo.content());
+            post.setOriginalLanguage(language.getCode());
+            post.setImageUrl(demo.imageUrls().get(0));
+            post.setLatitude(demo.latitude());
+            post.setLongitude(demo.longitude());
+            post.setStatus(PostStatus.ACTIVE);
+            ensurePostImages(post, demo.imageUrls());
+            seedPostEngagement(post, peers);
+        }
+    }
+
+    private void ensurePostImages(Post post, List<String> imageUrls) {
+        if (!imageUrls.isEmpty()) {
+            post.setImageUrl(imageUrls.get(0));
+        }
+
+        java.util.Map<Integer, PostImage> existingByPosition = post.getImages().stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        PostImage::getPosition,
+                        image -> image,
+                        (first, ignored) -> first));
+        for (int i = 0; i < imageUrls.size(); i++) {
+            PostImage existing = existingByPosition.get(i);
+            if (existing != null) {
+                existing.setImageUrl(imageUrls.get(i));
                 continue;
             }
-            DemoPost demo = posts.get(i);
-            Post post = Post.builder()
-                    .author(peers.get(i))
-                    .content(demo.content())
-                    .originalLanguage(languageCode)
-                    .imageUrl(demo.imageUrl())
-                    .latitude(demo.latitude())
-                    .longitude(demo.longitude())
-                    .status(PostStatus.ACTIVE)
-                    .build();
             post.getImages().add(PostImage.builder()
                     .post(post)
-                    .imageUrl(demo.imageUrl())
-                    .position(0)
+                    .imageUrl(imageUrls.get(i))
+                    .position(i)
                     .build());
-            postRepository.save(post);
+        }
+        postRepository.save(post);
+    }
+
+    private void seedPostEngagement(Post post, List<Profile> peers) {
+        List<Profile> others = peers.stream()
+                .filter(peer -> !peer.getId().equals(post.getAuthor().getId()))
+                .toList();
+
+        ReactionType[] reactions = { ReactionType.LIKE, ReactionType.HELPFUL, ReactionType.LOVE };
+        for (int i = 0; i < others.size(); i++) {
+            Profile reactor = others.get(i);
+            if (postReactionRepository.findByPostIdAndProfileId(post.getId(), reactor.getId()).isPresent()) {
+                continue;
+            }
+            postReactionRepository.save(PostReaction.builder()
+                    .id(new PostReaction.PostReactionId(post.getId(), reactor.getId()))
+                    .post(post)
+                    .profile(reactor)
+                    .type(reactions[i % reactions.length])
+                    .build());
+        }
+
+        if (postCommentRepository.countByPostId(post.getId()) > 0) {
+            return;
+        }
+        for (int i = 0; i < Math.min(2, others.size()); i++) {
+            postCommentRepository.save(PostComment.builder()
+                    .post(post)
+                    .author(others.get(i))
+                    .content(i == 0
+                            ? "This is a handy phrase set for practice."
+                            : "Saving this for my next conversation session.")
+                    .build());
         }
     }
 
     private void seedMeetups(List<Profile> peers, Language language) {
-        List<DemoMeetup> meetups = demoMeetups(language.getCode());
+        List<DemoMeetup> meetups = demoMeetups(language);
         for (int i = 0; i < peers.size() && i < meetups.size(); i++) {
-            if (meetupRepository.countByOrganizerIdAndLanguageCode(peers.get(i).getId(), language.getCode()) > 0) {
-                continue;
-            }
+            Profile organizer = peers.get(i);
             DemoMeetup demo = meetups.get(i);
-            meetupRepository.save(Meetup.builder()
-                    .organizer(peers.get(i))
-                    .title(demo.title())
-                    .description(demo.description())
-                    .language(language)
-                    .meetupDate(LocalDateTime.now().plusDays(demo.daysFromNow()))
-                    .location(demo.location())
-                    .latitude(demo.latitude())
-                    .longitude(demo.longitude())
-                    .maxAttendees(8)
-                    .status(MeetupStatus.UPCOMING)
-                    .build());
+            List<Meetup> existingMeetups = meetupRepository.findByOrganizerIdAndLanguageCode(
+                    organizer.getId(), language.getCode());
+
+            Meetup meetup = existingMeetups.stream()
+                    .min(Comparator.comparing(Meetup::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                    .orElseGet(() -> meetupRepository.save(Meetup.builder()
+                            .organizer(organizer)
+                            .title(demo.title())
+                            .description(demo.description())
+                            .language(language)
+                            .meetupDate(LocalDateTime.now().plusDays(demo.daysFromNow()))
+                            .location(demo.location())
+                            .latitude(demo.latitude())
+                            .longitude(demo.longitude())
+                            .maxAttendees(8)
+                            .status(MeetupStatus.UPCOMING)
+                            .build()));
+
+            meetup.setTitle(demo.title());
+            meetup.setDescription(demo.description());
+            meetup.setLanguage(language);
+            meetup.setMeetupDate(LocalDateTime.now().plusDays(demo.daysFromNow()));
+            meetup.setLocation(demo.location());
+            meetup.setLatitude(demo.latitude());
+            meetup.setLongitude(demo.longitude());
+            meetup.setMaxAttendees(8);
+            meetup.setStatus(MeetupStatus.UPCOMING);
+            meetup = meetupRepository.save(meetup);
+            seedMeetupAttendees(meetup, peers, i);
         }
     }
 
-    private void seedWords(Profile learner, String languageCode) {
-        demoWords(languageCode).forEach(word -> savedWordRepository.save(SavedWord.builder()
-                .user(learner)
-                .word(word.word())
-                .translation(word.translation())
-                .languageCode(languageCode)
-                .source(SourceType.MANUAL)
-                .context(word.context())
-                .masteryLevel(word.masteryLevel())
-                .nextReview(Instant.now().plusSeconds(word.reviewOffsetSeconds()))
-                .build()));
+    private void seedMeetupAttendees(Meetup meetup, List<Profile> peers, int organizerIndex) {
+        List<Profile> attendees = List.of(
+                meetup.getOrganizer(),
+                peers.get((organizerIndex + 1) % peers.size()),
+                peers.get((organizerIndex + 2) % peers.size()));
+
+        attendees.stream()
+                .distinct()
+                .filter(attendee -> !meetupAttendeeRepository.existsByMeetupIdAndAttendeeId(
+                        meetup.getId(), attendee.getId()))
+                .forEach(attendee -> meetupAttendeeRepository.save(MeetupAttendee.builder()
+                        .meetup(meetup)
+                        .attendee(attendee)
+                        .joinedAt(Instant.now())
+                        .build()));
+    }
+
+    private void seedWords(Profile learner, Language language) {
+        demoWords(language.getCode()).stream()
+                .filter(word -> !savedWordRepository.existsByUserIdAndWordAndLanguageCode(
+                        learner.getId(), word.word(), language.getCode()))
+                .forEach(word -> savedWordRepository.save(SavedWord.builder()
+                        .user(learner)
+                        .word(word.word())
+                        .translation(word.translation())
+                        .languageCode(language.getCode())
+                        .source(SourceType.MANUAL)
+                        .context(word.context())
+                        .masteryLevel(word.masteryLevel())
+                        .nextReview(Instant.now().plusSeconds(word.reviewOffsetSeconds()))
+                        .build()));
     }
 
     private String normalize(String code) {
         return code == null ? "" : code.trim().toLowerCase(Locale.ROOT);
     }
 
-    private List<DemoPeer> demoPeers(String languageCode) {
-        if (languageCode.equals("ja")) {
-            return List.of(
-                    new DemoPeer("aiko", "Aiko Tanaka", "Practising cafe conversations before a Tokyo trip.",
-                            "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=240&h=240&fit=crop&crop=faces", -33.8688, 151.2093),
-                    new DemoPeer("ren", "Ren Sato", "Shares short daily Japanese prompts and grammar notes.",
-                            "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=240&h=240&fit=crop&crop=faces", -33.8731, 151.2065),
-                    new DemoPeer("maya", "Maya Brooks", "Learning Japanese through food markets and transit phrases.",
-                            "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=240&h=240&fit=crop&crop=faces", -33.8650, 151.2140));
-        }
-
-        return List.of(
-                new DemoPeer("sofia", "Sofia Martinez", "Building confidence with everyday Spanish speaking practice.",
-                        "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=240&h=240&fit=crop&crop=faces", -33.8688, 151.2093),
-                new DemoPeer("mateo", "Mateo Rivera", "Organises low-pressure Spanish chat walks around the city.",
-                        "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=240&h=240&fit=crop&crop=faces", -33.8731, 151.2065),
-                new DemoPeer("lucia", "Lucia Chen", "Learning Spanish for travel, recipes, and music.",
-                        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=240&h=240&fit=crop&crop=faces", -33.8650, 151.2140));
+    private String languageLabel(Language language) {
+        return language.getName() == null || language.getName().isBlank()
+                ? language.getCode().toUpperCase(Locale.ROOT)
+                : language.getName();
     }
 
-    private List<DemoMessage> demoMessages(String languageCode) {
-        if (languageCode.equals("ja")) {
+    private List<DemoPeer> demoPeers(Language language) {
+        String label = languageLabel(language);
+        if ("es".equals(language.getCode())) {
             return List.of(
-                    new DemoMessage("今週、カフェで「コーヒーをください」を練習しませんか？", "Yes, I want to try the counter phrases."),
-                    new DemoMessage("中央駅で「出口」と「改札」の漢字を保存しました。", "Great, send them through before the meetup."),
-                    new DemoMessage("今日はひらがな練習と短い会話、どちらがいいですか？", "Short dialogues, please."));
+                    new DemoPeer("sofia", "Sofia Martinez",
+                            "Building confidence with everyday Spanish speaking practice.",
+                            AVATAR_URLS.get(0), -33.8688, 151.2093),
+                    new DemoPeer("mateo", "Mateo Rivera",
+                            "Organises low-pressure Spanish chat walks around the city.",
+                            AVATAR_URLS.get(1), -33.8731, 151.2065),
+                    new DemoPeer("lucia", "Lucia Chen",
+                            "Learning Spanish for travel, recipes, and music.",
+                            AVATAR_URLS.get(2), -33.8650, 151.2140));
         }
-
+        if ("ja".equals(language.getCode())) {
+            return List.of(
+                    new DemoPeer("aiko", "Aiko Tanaka",
+                            "Practising cafe conversations before a Tokyo trip.",
+                            AVATAR_URLS.get(0), -33.8688, 151.2093),
+                    new DemoPeer("ren", "Ren Sato",
+                            "Shares short daily Japanese prompts and grammar notes.",
+                            AVATAR_URLS.get(1), -33.8731, 151.2065),
+                    new DemoPeer("maya", "Maya Brooks",
+                            "Learning Japanese through food markets and transit phrases.",
+                            AVATAR_URLS.get(2), -33.8650, 151.2140));
+        }
         return List.of(
-                new DemoMessage("Want to practise Spanish introductions before the meetup?", "Yes, I need help with natural greetings."),
-                new DemoMessage("I posted a market photo with useful Spanish food words.", "Perfect, I will save a few phrases."),
-                new DemoMessage("Are you free for a ten-minute voice note exchange?", "Tomorrow works for me."));
+                new DemoPeer("mentor", label + " Mentor",
+                        "Friendly " + label + " speaker who likes short daily practice prompts.",
+                        AVATAR_URLS.get(0), -33.8688, 151.2093),
+                new DemoPeer("guide", label + " Guide",
+                        "Organises relaxed " + label + " chats around cafes and markets.",
+                        AVATAR_URLS.get(1), -33.8731, 151.2065),
+                new DemoPeer("buddy", label + " Buddy",
+                        "Shares useful " + label + " phrases from everyday Sydney routines.",
+                        AVATAR_URLS.get(2), -33.8650, 151.2140));
     }
 
-    private List<DemoPost> demoPosts(String languageCode) {
-        if (languageCode.equals("ja")) {
-            return List.of(
-                    new DemoPost("静かなラーメン屋を見つけました。メニューの言葉を練習しました：ラーメン、替え玉、お茶。",
-                            "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=900&h=600&fit=crop", -33.8705, 151.2089),
-                    new DemoPost("今日は駅のホームで道を聞く練習をしました：「駅はどこですか？」",
-                            "https://images.unsplash.com/photo-1542051841857-5f90071e7989?w=900&h=600&fit=crop", -33.8734, 151.2067),
-                    new DemoPost("スーパーで日本語ラベルを探しました。「水」と「お茶」を覚えました。",
-                            "https://images.unsplash.com/photo-1542838132-92c53300491e?w=900&h=600&fit=crop", -33.8661, 151.2131));
-        }
-
+    private List<DemoMessage> demoMessages(Language language) {
+        String label = languageLabel(language);
         return List.of(
-                new DemoPost("Cafe practice today: un cafe, una mesa, and gracias felt natural by the end.",
-                        "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=900&h=600&fit=crop", -33.8705, 151.2089),
-                new DemoPost("Market walk with Spanish food words: manzana, pan, queso, tomate.",
-                        "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=900&h=600&fit=crop", -33.8734, 151.2067),
-                new DemoPost("Practised directions around Circular Quay: izquierda, derecha, todo recto.",
-                        "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=900&h=600&fit=crop", -33.8661, 151.2131));
+                new DemoMessage("Want to practise beginner " + label + " introductions this week?",
+                        "Yes, I would like help sounding more natural.",
+                        "Great. I sent three phrases you can try before the meetup."),
+                new DemoMessage("I found a cafe menu with useful " + label + " food words.",
+                        "Perfect, I will save a few before practice.",
+                        "Start with the first five. They show up everywhere."),
+                new DemoMessage("Are you free for a ten-minute " + label + " phrase exchange?",
+                        "Tomorrow works for me.",
+                        "Nice. I will bring a tiny shopping phrase list."));
     }
 
-    private List<DemoMeetup> demoMeetups(String languageCode) {
-        if (languageCode.equals("ja")) {
-            return List.of(
-                    new DemoMeetup("Japanese Cafe Roleplay", "Order drinks, ask prices, and practise polite endings.", "Town Hall cafe", 3, -33.8730, 151.2060),
-                    new DemoMeetup("Hiragana Sign Walk", "Read simple signs and build a shared photo word bank.", "Central Station concourse", 6, -33.8830, 151.2070),
-                    new DemoMeetup("Beginner Bento Chat", "Short food and preference dialogues for new learners.", "Darling Square", 9, -33.8775, 151.2020));
-        }
-
+    private List<DemoPost> demoPosts(Language language) {
+        String label = languageLabel(language);
         return List.of(
-                new DemoMeetup("Spanish Market Phrases", "Practise buying food and asking friendly follow-up questions.", "Carriageworks Farmers Market", 3, -33.8938, 151.1937),
-                new DemoMeetup("Beginner Spanish Walk", "Low-pressure introductions and directions around the harbour.", "Circular Quay", 6, -33.8610, 151.2128),
-                new DemoMeetup("Tapas Vocabulary Night", "Food words, preferences, and quick table conversations.", "Surry Hills", 9, -33.8847, 151.2090));
+                new DemoPost("Cafe practice: three " + label + " ordering phrases finally felt natural today.",
+                        List.of(POST_IMAGES.get(0), POST_IMAGES.get(1), POST_IMAGES.get(2)),
+                        -33.8705, 151.2089),
+                new DemoPost("Market walk with " + label + " food words. I kept repeating the useful ones out loud.",
+                        List.of(POST_IMAGES.get(1)),
+                        -33.8734, 151.2067),
+                new DemoPost("Direction practice around Circular Quay with short " + label + " questions.",
+                        List.of(POST_IMAGES.get(3)),
+                        -33.8661, 151.2131));
+    }
+
+    private List<DemoMeetup> demoMeetups(Language language) {
+        String label = languageLabel(language);
+        return List.of(
+                new DemoMeetup(label + " Market Phrases",
+                        "Practise buying food and asking friendly follow-up questions.",
+                        "Carriageworks Farmers Market", 3, -33.8938, 151.1937),
+                new DemoMeetup("Beginner " + label + " Walk",
+                        "Low-pressure introductions and directions around the harbour.",
+                        "Circular Quay", 6, -33.8610, 151.2128),
+                new DemoMeetup(label + " Cafe Roleplay",
+                        "Order drinks, ask prices, and practise polite endings.",
+                        "Town Hall cafe", 9, -33.8730, 151.2060));
     }
 
     private List<DemoWord> demoWords(String languageCode) {
-        if (languageCode.equals("ja")) {
-            return List.of(
-                    new DemoWord("こんにちは", "hello", "A friendly daytime greeting.", 45, 3600),
-                    new DemoWord("ありがとう", "thank you", "Useful after ordering or receiving help.", 70, 7200),
-                    new DemoWord("駅", "station", "Ask for directions around transport.", 35, 10800),
-                    new DemoWord("水", "water", "Read labels or order a drink.", 55, 14400),
-                    new DemoWord("本当に？", "really?", "Useful when reacting to surprising news.", 58, 16200),
-                    new DemoWord("お願いします", "please", "Polite ending for requests.", 25, 18000));
-        }
+        return switch (languageCode) {
+            case "en" -> List.of(
+                    word("hello", "a greeting", "Start a casual conversation.", 65, 3600),
+                    word("thanks", "gratitude", "Use after someone helps you.", 80, 7200),
+                    word("market", "place to buy food", "Useful on a grocery walk.", 45, 10800),
+                    word("left", "direction", "Practise giving directions.", 30, 14400),
+                    word("right", "direction", "Practise giving directions.", 55, 18000),
+                    word("please", "polite request", "Use while ordering.", 25, 21600),
+                    word("station", "transport place", "Ask for directions.", 35, 25200),
+                    word("water", "drink", "Read labels or order a drink.", 58, 28800),
+                    word("coffee", "drink", "Cafe practice.", 72, 32400),
+                    word("tomorrow", "next day", "Planning a meetup.", 40, 36000));
+            case "fr" -> List.of(
+                    word("bonjour", "hello", "Start a daytime conversation.", 65, 3600),
+                    word("merci", "thank you", "Use after receiving help.", 80, 7200),
+                    word("marche", "market", "Food shopping practice.", 45, 10800),
+                    word("gauche", "left", "Directions practice.", 30, 14400),
+                    word("droite", "right", "Directions practice.", 55, 18000),
+                    word("s il vous plait", "please", "Polite requests.", 25, 21600),
+                    word("gare", "station", "Transport signs.", 35, 25200),
+                    word("eau", "water", "Ordering drinks.", 58, 28800),
+                    word("cafe", "coffee", "Cafe practice.", 72, 32400),
+                    word("demain", "tomorrow", "Planning practice.", 40, 36000));
+            case "ja" -> List.of(
+                    word("konnichiwa", "hello", "A friendly daytime greeting.", 65, 3600),
+                    word("arigato", "thank you", "Useful after ordering.", 80, 7200),
+                    word("ichiba", "market", "Food shopping practice.", 45, 10800),
+                    word("hidari", "left", "Directions practice.", 30, 14400),
+                    word("migi", "right", "Directions practice.", 55, 18000),
+                    word("onegaishimasu", "please", "Polite requests.", 25, 21600),
+                    word("eki", "station", "Transport signs.", 35, 25200),
+                    word("mizu", "water", "Ordering drinks.", 58, 28800),
+                    word("koohii", "coffee", "Cafe practice.", 72, 32400),
+                    word("ashita", "tomorrow", "Planning practice.", 40, 36000));
+            case "ko" -> List.of(
+                    word("annyeong", "hello", "A casual greeting.", 65, 3600),
+                    word("gamsa", "thanks", "Use after receiving help.", 80, 7200),
+                    word("sijang", "market", "Food shopping practice.", 45, 10800),
+                    word("oenjjok", "left", "Directions practice.", 30, 14400),
+                    word("oreunjjok", "right", "Directions practice.", 55, 18000),
+                    word("juseyo", "please give me", "Polite requests.", 25, 21600),
+                    word("yeok", "station", "Transport signs.", 35, 25200),
+                    word("mul", "water", "Ordering drinks.", 58, 28800),
+                    word("keopi", "coffee", "Cafe practice.", 72, 32400),
+                    word("naeil", "tomorrow", "Planning practice.", 40, 36000));
+            case "pt" -> List.of(
+                    word("ola", "hello", "Start a casual conversation.", 65, 3600),
+                    word("obrigado", "thank you", "Use after receiving help.", 80, 7200),
+                    word("mercado", "market", "Food shopping practice.", 45, 10800),
+                    word("esquerda", "left", "Directions practice.", 30, 14400),
+                    word("direita", "right", "Directions practice.", 55, 18000),
+                    word("por favor", "please", "Polite requests.", 25, 21600),
+                    word("estacao", "station", "Transport signs.", 35, 25200),
+                    word("agua", "water", "Ordering drinks.", 58, 28800),
+                    word("cafe", "coffee", "Cafe practice.", 72, 32400),
+                    word("amanha", "tomorrow", "Planning practice.", 40, 36000));
+            case "vi" -> List.of(
+                    word("xin chao", "hello", "Start a casual conversation.", 65, 3600),
+                    word("cam on", "thank you", "Use after receiving help.", 80, 7200),
+                    word("cho", "market", "Food shopping practice.", 45, 10800),
+                    word("trai", "left", "Directions practice.", 30, 14400),
+                    word("phai", "right", "Directions practice.", 55, 18000),
+                    word("lam on", "please", "Polite requests.", 25, 21600),
+                    word("nha ga", "station", "Transport signs.", 35, 25200),
+                    word("nuoc", "water", "Ordering drinks.", 58, 28800),
+                    word("ca phe", "coffee", "Cafe practice.", 72, 32400),
+                    word("ngay mai", "tomorrow", "Planning practice.", 40, 36000));
+            default -> List.of(
+                    word("hola", "hello", "Start a casual conversation.", 65, 3600),
+                    word("gracias", "thank you", "Use after someone helps you.", 80, 7200),
+                    word("mercado", "market", "Useful on a grocery walk.", 45, 10800),
+                    word("izquierda", "left", "Practise giving directions.", 30, 14400),
+                    word("derecha", "right", "Practise giving directions.", 55, 18000),
+                    word("por favor", "please", "Ordering politely.", 25, 21600),
+                    word("estacion", "station", "Transport signs.", 35, 25200),
+                    word("agua", "water", "Ordering drinks.", 58, 28800),
+                    word("cafe", "coffee", "Cafe practice.", 72, 32400),
+                    word("manana", "tomorrow", "Planning practice.", 40, 36000));
+        };
+    }
 
-        return List.of(
-                new DemoWord("hola", "hello", "Start a casual conversation.", 65, 3600),
-                new DemoWord("gracias", "thank you", "Use after someone helps you.", 80, 7200),
-                new DemoWord("mercado", "market", "Useful on a grocery walk.", 45, 10800),
-                new DemoWord("izquierda", "left", "Practise giving directions.", 30, 14400),
-                new DemoWord("quiero", "I want", "Ordering food or drinks.", 55, 18000));
+    private DemoWord word(String word, String translation, String context, int masteryLevel,
+            long reviewOffsetSeconds) {
+        return new DemoWord(word, translation, context, masteryLevel, reviewOffsetSeconds);
     }
 
     private record DemoPeer(String usernameSlug, String displayName, String bio, String avatarUrl, Double latitude,
             Double longitude) {
     }
 
-    private record DemoMessage(String opening, String reply) {
+    private record DemoMessage(String opening, String reply, String followUp) {
     }
 
-    private record DemoPost(String content, String imageUrl, Double latitude, Double longitude) {
+    private record DemoPost(String content, List<String> imageUrls, Double latitude, Double longitude) {
     }
 
     private record DemoMeetup(String title, String description, String location, int daysFromNow, Double latitude,

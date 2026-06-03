@@ -5,6 +5,7 @@ import com.example.demo.dto.DetectedObjectDTO;
 import com.example.demo.entity.Language;
 import com.example.demo.entity.Profile;
 import com.example.demo.entity.UserLanguage;
+import com.example.demo.enums.ProficiencyLevel;
 import com.example.demo.enums.ScannerTranslationSource;
 import com.example.demo.exception.ObjectDetectionUnavailableException;
 import com.example.demo.repository.ProfileRepository;
@@ -74,6 +75,24 @@ class ObjectDetectionServiceTest {
         assertThat(detectedObjects.get(0).getLearningWord()).isEqualTo("manzana");
         assertThat(detectedObjects.get(0).getLanguageCode()).isEqualTo("es");
         assertThat(detectedObjects.get(0).getTranslationSource()).isEqualTo(ScannerTranslationSource.TAXONOMY);
+        verify(translationClient, never()).translate(any(), any(), any());
+    }
+
+    @Test
+    void detectTargetsLearningLanguageAndKeepsNativeWordInUserNativeLanguage() throws IOException {
+        Profile profile = profileWithNativeAndLearningLanguage("test@example.com", "es", "ja");
+        when(profileRepository.findByEmail("test@example.com")).thenReturn(Optional.of(profile));
+        whenVisionReturns("ja", List.of(visionDetection("apple", "\u308A\u3093\u3054", 0.08d)));
+
+        List<DetectedObjectDTO> detectedObjects = objectDetectionService.detect(image(), "test@example.com");
+
+        assertThat(detectedObjects).hasSize(1);
+        assertThat(detectedObjects.get(0).getLabel()).isEqualTo("apple");
+        assertThat(detectedObjects.get(0).getNativeWord()).isEqualTo("manzana");
+        assertThat(detectedObjects.get(0).getLearningWord()).isEqualTo("\u308A\u3093\u3054");
+        assertThat(detectedObjects.get(0).getLanguageCode()).isEqualTo("ja");
+        assertThat(detectedObjects.get(0).getTranslationSource()).isEqualTo(ScannerTranslationSource.TAXONOMY);
+        verify(visionServiceClient).analyze(anyString(), eq("ja"));
         verify(translationClient, never()).translate(any(), any(), any());
     }
 
@@ -340,17 +359,30 @@ class ObjectDetectionServiceTest {
     }
 
     private Profile profileWithLearningLanguage(String email, String languageCode) {
+        return Profile.builder()
+                .email(email)
+                .languages(new ArrayList<>(List.of(userLanguage(languageCode, ProficiencyLevel.BEGINNER, true))))
+                .build();
+    }
+
+    private Profile profileWithNativeAndLearningLanguage(String email, String nativeLanguageCode, String learningLanguageCode) {
+        return Profile.builder()
+                .email(email)
+                .languages(new ArrayList<>(List.of(
+                        userLanguage(nativeLanguageCode, ProficiencyLevel.NATIVE, false),
+                        userLanguage(learningLanguageCode, ProficiencyLevel.BEGINNER, true))))
+                .build();
+    }
+
+    private UserLanguage userLanguage(String languageCode, ProficiencyLevel proficiency, boolean isLearning) {
         Language language = Language.builder()
                 .code(languageCode)
                 .name(languageCode)
                 .build();
-        UserLanguage userLanguage = UserLanguage.builder()
+        return UserLanguage.builder()
                 .language(language)
-                .isLearning(true)
-                .build();
-        return Profile.builder()
-                .email(email)
-                .languages(new ArrayList<>(List.of(userLanguage)))
+                .proficiency(proficiency)
+                .isLearning(isLearning)
                 .build();
     }
 

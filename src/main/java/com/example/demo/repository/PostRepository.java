@@ -26,6 +26,8 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
 
     long countByAuthorIdAndOriginalLanguage(UUID authorId, String originalLanguage);
 
+    List<Post> findByAuthorIdAndOriginalLanguage(UUID authorId, String originalLanguage);
+
     Page<Post> findByAuthorId(UUID authorId, Pageable pageable);
 
     Page<Post> findByAuthorIdAndStatus(UUID authorId, PostStatus status, Pageable pageable);

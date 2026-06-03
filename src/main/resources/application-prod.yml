@@ -17,3 +17,5 @@ app:
     # Set ALLOWED_ORIGINS in the production environment.
     # Example: https://kaiday.app,https://www.kaiday.app
     allowed-origins: ${ALLOWED_ORIGINS}
+  starter-seed:
+    enabled: ${STARTER_SEED_ENABLED:false}

@@ -57,3 +57,5 @@ app:
     vapid-private-key: ${WEB_PUSH_VAPID_PRIVATE_KEY:}
     vapid-subject: ${WEB_PUSH_VAPID_SUBJECT:mailto:admin@locale.app}
     ttl-seconds: ${WEB_PUSH_TTL_SECONDS:2419200}
+  starter-seed:
+    enabled: ${STARTER_SEED_ENABLED:true}

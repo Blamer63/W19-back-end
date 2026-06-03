@@ -42,3 +42,5 @@ app:
     endpoint: "http://localhost:8000/analyze"
     timeout-ms: 1000
     supported-languages: "en,es,fr,ja"
+  starter-seed:
+    enabled: false
