@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import com.example.demo.dto.BoundingBoxDTO;
 import com.example.demo.dto.DetectedObjectDTO;
 import com.example.demo.dto.SavedWordResponse;
+import com.example.demo.dto.ScanPostImageRequest;
 import com.example.demo.dto.ScanResponse;
 import com.example.demo.dto.ScanSessionSummaryResponse;
 import com.example.demo.enums.ScannerTranslationSource;
@@ -16,6 +17,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
@@ -26,7 +28,9 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -177,7 +181,7 @@ public class ScanControllerTest {
         UUID scanSessionId = UUID.randomUUID();
         UUID detectionId = UUID.randomUUID();
 
-        when(postImageScanService.scanPostImage(postId, "test@example.com"))
+        when(postImageScanService.scanPostImage(eq(postId), eq("test@example.com"), isNull()))
                 .thenReturn(ScanResponse.builder()
                         .scanSessionId(scanSessionId)
                         .detectedObjects(List.of(DetectedObjectDTO.builder()
@@ -197,7 +201,41 @@ public class ScanControllerTest {
                 .andExpect(jsonPath("$.detected_objects[0].id").value(detectionId.toString()))
                 .andExpect(jsonPath("$.detected_objects[0].label").value("apple"));
 
-        verify(postImageScanService).scanPostImage(postId, "test@example.com");
+        verify(postImageScanService).scanPostImage(postId, "test@example.com", null);
+    }
+
+    @Test
+    @WithMockUser(username = "test@example.com")
+    void scanPostImage_AcceptsSelectedImageRequestBody() throws Exception {
+        UUID postId = UUID.randomUUID();
+        UUID scanSessionId = UUID.randomUUID();
+
+        when(postImageScanService.scanPostImage(
+                eq(postId),
+                eq("test@example.com"),
+                any(ScanPostImageRequest.class)))
+                .thenReturn(ScanResponse.builder()
+                        .scanSessionId(scanSessionId)
+                        .detectedObjects(List.of())
+                        .build());
+
+        mockMvc.perform(post("/api/scan/post-image/" + postId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "image_url": "https://cdn.example.test/images/second.jpg",
+                          "image_index": 1
+                        }
+                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.scan_session_id").value(scanSessionId.toString()));
+
+        verify(postImageScanService).scanPostImage(
+                eq(postId),
+                eq("test@example.com"),
+                argThat(request -> request != null
+                        && Integer.valueOf(1).equals(request.getImageIndex())
+                        && "https://cdn.example.test/images/second.jpg".equals(request.getImageUrl())));
     }
 
     @Test

@@ -19,6 +19,8 @@ import com.example.demo.repository.RefreshTokenRepository;
 import com.example.demo.repository.SavedWordRepository;
 import com.example.demo.repository.UserLanguageRepository;
 import com.example.demo.service.AuthService;
+import com.example.demo.service.SeedImageResolverService;
+import com.example.demo.service.SeedImageResolverService.SeedImageSource;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +34,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -39,6 +42,8 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -107,6 +112,9 @@ class UserLanguageControllerTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @MockitoBean
+    private SeedImageResolverService seedImageResolverService;
+
     private Profile existingLearner;
 
     @BeforeEach
@@ -130,6 +138,11 @@ class UserLanguageControllerTest {
         languageRepository.saveAll(SUPPORTED_CODES.stream()
                 .map(code -> language(code, languageName(code)))
                 .toList());
+        when(seedImageResolverService.resolveSeedImageUrls(anyList()))
+                .thenAnswer(invocation -> {
+                    List<SeedImageSource> sources = invocation.getArgument(0);
+                    return sources.stream().map(SeedImageSource::sourceUrl).toList();
+                });
 
         existingLearner = profileRepository.save(Profile.builder()
                 .username("existinglearner")
@@ -170,6 +183,18 @@ class UserLanguageControllerTest {
                     .as("saved words for " + code)
                     .isGreaterThanOrEqualTo(10);
         }
+        List<String> japaneseWords = savedWordRepository.findByUserIdAndLanguageCode(
+                        registered.getId(), "ja", org.springframework.data.domain.Pageable.unpaged())
+                .getContent()
+                .stream()
+                .map(word -> word.getWord())
+                .toList();
+        assertThat(japaneseWords)
+                .contains("こんにちは", "ありがとう", "市場", "左", "右", "お願いします", "駅", "水", "珈琲", "明日")
+                .doesNotContain("konnichiwa", "arigato", "ichiba", "hidari", "migi", "onegaishimasu",
+                        "eki", "mizu", "koohii", "ashita");
+        assertThat(japaneseWords).allMatch(this::containsJapaneseScript);
+
         assertThat(friendRepository.findAcceptedFriendIds(registered.getId())).hasSize(21);
         assertThat(conversationRepository.count()).isEqualTo(21);
         assertThat(messageRepository.count()).isEqualTo(63);
@@ -306,6 +331,16 @@ class UserLanguageControllerTest {
                   {"code":"vi","proficiency":"BEGINNER","is_learning":true}
                 ]
                 """;
+    }
+
+    private boolean containsJapaneseScript(String value) {
+        return value.codePoints()
+                .anyMatch(codePoint -> {
+                    Character.UnicodeScript script = Character.UnicodeScript.of(codePoint);
+                    return script == Character.UnicodeScript.HIRAGANA
+                            || script == Character.UnicodeScript.KATAKANA
+                            || script == Character.UnicodeScript.HAN;
+                });
     }
 
     private Language language(String code, String name) {

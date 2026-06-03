@@ -32,6 +32,7 @@ import com.example.demo.repository.PostRepository;
 import com.example.demo.repository.ProfileRepository;
 import com.example.demo.repository.SavedWordRepository;
 import com.example.demo.repository.UserLanguageRepository;
+import com.example.demo.service.SeedImageResolverService.SeedImageSource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -50,18 +51,29 @@ import java.util.Set;
 public class DemoLearningSeedService {
 
     private static final Set<String> SUPPORTED_LANGUAGE_CODES = Set.of("en", "es", "fr", "ja", "ko", "pt", "vi");
+    private static final Set<String> RETIRED_JAPANESE_ROMAJI_WORDS = Set.of(
+            "konnichiwa",
+            "arigato",
+            "ichiba",
+            "hidari",
+            "migi",
+            "onegaishimasu",
+            "eki",
+            "mizu",
+            "koohii",
+            "ashita");
 
     private static final List<String> AVATAR_URLS = List.of(
             "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=240&h=240&fit=crop&crop=faces",
             "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=240&h=240&fit=crop&crop=faces",
             "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=240&h=240&fit=crop&crop=faces");
 
-    private static final List<String> POST_IMAGES = List.of(
-            "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=900&h=600&fit=crop",
-            "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=900&h=600&fit=crop",
-            "https://images.unsplash.com/photo-1542051841857-5f90071e7989?w=900&h=600&fit=crop",
-            "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=900&h=600&fit=crop",
-            "https://images.unsplash.com/photo-1542838132-92c53300491e?w=900&h=600&fit=crop");
+    private static final List<SeedImageSource> POST_IMAGES = List.of(
+            SeedImageSource.jpg("https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=900&h=600&fit=crop"),
+            SeedImageSource.jpg("https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=900&h=600&fit=crop"),
+            SeedImageSource.jpg("https://images.unsplash.com/photo-1542051841857-5f90071e7989?w=900&h=600&fit=crop"),
+            SeedImageSource.jpg("https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=900&h=600&fit=crop"),
+            SeedImageSource.jpg("https://images.unsplash.com/photo-1542838132-92c53300491e?w=900&h=600&fit=crop"));
 
     private final ProfileRepository profileRepository;
     private final LanguageRepository languageRepository;
@@ -75,6 +87,7 @@ public class DemoLearningSeedService {
     private final PostCommentRepository postCommentRepository;
     private final MeetupRepository meetupRepository;
     private final MeetupAttendeeRepository meetupAttendeeRepository;
+    private final SeedImageResolverService seedImageResolverService;
 
     @Transactional
     public void seedForLearningLanguages(Profile learner, List<String> languageCodes) {
@@ -212,6 +225,7 @@ public class DemoLearningSeedService {
         for (int i = 0; i < peers.size() && i < posts.size(); i++) {
             Profile author = peers.get(i);
             DemoPost demo = posts.get(i);
+            List<String> imageUrls = seedImageResolverService.resolveSeedImageUrls(demo.imageSources());
             List<Post> existingPosts = postRepository.findByAuthorIdAndOriginalLanguage(author.getId(),
                     language.getCode());
 
@@ -221,7 +235,7 @@ public class DemoLearningSeedService {
                             .author(author)
                             .content(demo.content())
                             .originalLanguage(language.getCode())
-                            .imageUrl(demo.imageUrls().get(0))
+                            .imageUrl(imageUrls.get(0))
                             .latitude(demo.latitude())
                             .longitude(demo.longitude())
                             .status(PostStatus.ACTIVE)
@@ -229,11 +243,11 @@ public class DemoLearningSeedService {
 
             post.setContent(demo.content());
             post.setOriginalLanguage(language.getCode());
-            post.setImageUrl(demo.imageUrls().get(0));
+            post.setImageUrl(imageUrls.get(0));
             post.setLatitude(demo.latitude());
             post.setLongitude(demo.longitude());
             post.setStatus(PostStatus.ACTIVE);
-            ensurePostImages(post, demo.imageUrls());
+            ensurePostImages(post, imageUrls);
             seedPostEngagement(post, peers);
         }
     }
@@ -351,6 +365,7 @@ public class DemoLearningSeedService {
     }
 
     private void seedWords(Profile learner, Language language) {
+        retireJapaneseRomajiWordsForDemoProfile(learner, language);
         demoWords(language.getCode()).stream()
                 .filter(word -> !savedWordRepository.existsByUserIdAndWordAndLanguageCode(
                         learner.getId(), word.word(), language.getCode()))
@@ -364,6 +379,29 @@ public class DemoLearningSeedService {
                         .masteryLevel(word.masteryLevel())
                         .nextReview(Instant.now().plusSeconds(word.reviewOffsetSeconds()))
                         .build()));
+    }
+
+    private void retireJapaneseRomajiWordsForDemoProfile(Profile learner, Language language) {
+        if (!"ja".equals(language.getCode()) || !isDemoManagedProfile(learner)) {
+            return;
+        }
+
+        List<SavedWord> retiredWords = savedWordRepository.findByUserIdAndLanguageCode(
+                        learner.getId(), "ja", org.springframework.data.domain.Pageable.unpaged())
+                .getContent()
+                .stream()
+                .filter(savedWord -> RETIRED_JAPANESE_ROMAJI_WORDS.contains(normalize(savedWord.getWord())))
+                .toList();
+        if (!retiredWords.isEmpty()) {
+            savedWordRepository.deleteAll(retiredWords);
+        }
+    }
+
+    private boolean isDemoManagedProfile(Profile profile) {
+        String email = normalize(profile.getEmail());
+        return "demo.japanese@locale.app".equals(email)
+                || "demo@locale.app".equals(email)
+                || email.endsWith("@locale.demo");
     }
 
     private String normalize(String code) {
@@ -392,14 +430,14 @@ public class DemoLearningSeedService {
         }
         if ("ja".equals(language.getCode())) {
             return List.of(
-                    new DemoPeer("aiko", "Aiko Tanaka",
-                            "Practising cafe conversations before a Tokyo trip.",
+                    new DemoPeer("aiko", "田中あいこ",
+                            "東京旅行の前に、カフェで使う日本語を練習しています。",
                             AVATAR_URLS.get(0), -33.8688, 151.2093),
-                    new DemoPeer("ren", "Ren Sato",
-                            "Shares short daily Japanese prompts and grammar notes.",
+                    new DemoPeer("ren", "佐藤れん",
+                            "毎日使える短い日本語表現と文法メモを共有しています。",
                             AVATAR_URLS.get(1), -33.8731, 151.2065),
-                    new DemoPeer("maya", "Maya Brooks",
-                            "Learning Japanese through food markets and transit phrases.",
+                    new DemoPeer("maya", "ブルックス真矢",
+                            "市場の食べ物や電車の表現で日本語を学んでいます。",
                             AVATAR_URLS.get(2), -33.8650, 151.2140));
         }
         return List.of(
@@ -416,6 +454,18 @@ public class DemoLearningSeedService {
 
     private List<DemoMessage> demoMessages(Language language) {
         String label = languageLabel(language);
+        if ("ja".equals(language.getCode())) {
+            return List.of(
+                    new DemoMessage("今週、自己紹介の日本語を練習しませんか？",
+                            "はい、もっと自然に話せるようになりたいです。",
+                            "いいですね。集まりの前に使える表現を三つ送りました。"),
+                    new DemoMessage("カフェのメニューで役に立つ食べ物の言葉を見つけました。",
+                            "ありがとうございます。練習の前にいくつか保存します。",
+                            "まずは最初の五つから始めましょう。よく出てきます。"),
+                    new DemoMessage("十分だけ日本語の表現を交換する時間はありますか？",
+                            "明日なら大丈夫です。",
+                            "よかったです。買い物で使う短い表現リストを持っていきます。"));
+        }
         return List.of(
                 new DemoMessage("Want to practise beginner " + label + " introductions this week?",
                         "Yes, I would like help sounding more natural.",
@@ -430,6 +480,18 @@ public class DemoLearningSeedService {
 
     private List<DemoPost> demoPosts(Language language) {
         String label = languageLabel(language);
+        if ("ja".equals(language.getCode())) {
+            return List.of(
+                    new DemoPost("カフェで「珈琲をお願いします」と言えました。短い表現でも自然に言えるとうれしいです。",
+                            List.of(POST_IMAGES.get(0), POST_IMAGES.get(1), POST_IMAGES.get(2)),
+                            -33.8705, 151.2089),
+                    new DemoPost("市場で野菜の名前を練習しました。よく使う言葉は声に出すと覚えやすいです。",
+                            List.of(POST_IMAGES.get(1)),
+                            -33.8734, 151.2067),
+                    new DemoPost("駅の近くで道案内の練習をしました。「駅はどこですか？」が自然に言えました。",
+                            List.of(POST_IMAGES.get(3)),
+                            -33.8661, 151.2131));
+        }
         return List.of(
                 new DemoPost("Cafe practice: three " + label + " ordering phrases finally felt natural today.",
                         List.of(POST_IMAGES.get(0), POST_IMAGES.get(1), POST_IMAGES.get(2)),
@@ -444,6 +506,18 @@ public class DemoLearningSeedService {
 
     private List<DemoMeetup> demoMeetups(Language language) {
         String label = languageLabel(language);
+        if ("ja".equals(language.getCode())) {
+            return List.of(
+                    new DemoMeetup("市場で使う日本語",
+                            "食べ物を買う表現と短い質問を練習します。",
+                            "Carriageworks Farmers Market", 3, -33.8938, 151.1937),
+                    new DemoMeetup("初心者向け日本語さんぽ",
+                            "あいさつと道案内を、港の近くでゆっくり練習します。",
+                            "Circular Quay", 6, -33.8610, 151.2128),
+                    new DemoMeetup("カフェで日本語ロールプレイ",
+                            "飲み物を注文して、値段を聞き、丁寧な言い方を練習します。",
+                            "Town Hall cafe", 9, -33.8730, 151.2060));
+        }
         return List.of(
                 new DemoMeetup(label + " Market Phrases",
                         "Practise buying food and asking friendly follow-up questions.",
@@ -481,16 +555,16 @@ public class DemoLearningSeedService {
                     word("cafe", "coffee", "Cafe practice.", 72, 32400),
                     word("demain", "tomorrow", "Planning practice.", 40, 36000));
             case "ja" -> List.of(
-                    word("konnichiwa", "hello", "A friendly daytime greeting.", 65, 3600),
-                    word("arigato", "thank you", "Useful after ordering.", 80, 7200),
-                    word("ichiba", "market", "Food shopping practice.", 45, 10800),
-                    word("hidari", "left", "Directions practice.", 30, 14400),
-                    word("migi", "right", "Directions practice.", 55, 18000),
-                    word("onegaishimasu", "please", "Polite requests.", 25, 21600),
-                    word("eki", "station", "Transport signs.", 35, 25200),
-                    word("mizu", "water", "Ordering drinks.", 58, 28800),
-                    word("koohii", "coffee", "Cafe practice.", 72, 32400),
-                    word("ashita", "tomorrow", "Planning practice.", 40, 36000));
+                    word("こんにちは", "hello", "A friendly daytime greeting.", 65, 3600),
+                    word("ありがとう", "thank you", "Useful after ordering.", 80, 7200),
+                    word("市場", "market", "Food shopping practice.", 45, 10800),
+                    word("左", "left", "Directions practice.", 30, 14400),
+                    word("右", "right", "Directions practice.", 55, 18000),
+                    word("お願いします", "please", "Polite requests.", 25, 21600),
+                    word("駅", "station", "Transport signs.", 35, 25200),
+                    word("水", "water", "Ordering drinks.", 58, 28800),
+                    word("珈琲", "coffee", "Cafe practice.", 72, 32400),
+                    word("明日", "tomorrow", "Planning practice.", 40, 36000));
             case "ko" -> List.of(
                     word("annyeong", "hello", "A casual greeting.", 65, 3600),
                     word("gamsa", "thanks", "Use after receiving help.", 80, 7200),
@@ -550,7 +624,7 @@ public class DemoLearningSeedService {
     private record DemoMessage(String opening, String reply, String followUp) {
     }
 
-    private record DemoPost(String content, List<String> imageUrls, Double latitude, Double longitude) {
+    private record DemoPost(String content, List<SeedImageSource> imageSources, Double latitude, Double longitude) {
     }
 
     private record DemoMeetup(String title, String description, String location, int daysFromNow, Double latitude,

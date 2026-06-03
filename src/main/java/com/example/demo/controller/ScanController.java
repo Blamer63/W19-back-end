@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.ScanResponse;
+import com.example.demo.dto.ScanPostImageRequest;
 import com.example.demo.dto.ScanSessionSummaryResponse;
 import com.example.demo.dto.SavedWordResponse;
 import com.example.demo.service.ObjectDetectionService;
@@ -14,6 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
@@ -42,8 +44,9 @@ public class ScanController {
     @PostMapping("/api/scan/post-image/{postId}")
     public ResponseEntity<ScanResponse> scanPostImage(
             @PathVariable UUID postId,
+            @RequestBody(required = false) ScanPostImageRequest request,
             Authentication authentication) {
-        return ResponseEntity.ok(postImageScanService.scanPostImage(postId, authentication.getName()));
+        return ResponseEntity.ok(postImageScanService.scanPostImage(postId, authentication.getName(), request));
     }
 
     @GetMapping("/api/scan/sessions")

@@ -9,8 +9,11 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
 import java.lang.reflect.Proxy;
@@ -58,6 +61,19 @@ class S3ServiceTest {
     }
 
     @Test
+    void uploadTrustedImageBytesUsesExplicitKey() {
+        String url = s3Service.uploadTrustedImageBytes(
+                "image-bytes".getBytes(),
+                "image/jpeg",
+                "images/seed/demo.jpg");
+
+        assertThat(capturingS3Client.putObjectRequest.bucket()).isEqualTo("test-bucket");
+        assertThat(capturingS3Client.putObjectRequest.key()).isEqualTo("images/seed/demo.jpg");
+        assertThat(capturingS3Client.putObjectRequest.contentType()).isEqualTo("image/jpeg");
+        assertThat(url).isEqualTo("https://cdn.example.test/images/seed/demo.jpg");
+    }
+
+    @Test
     void downloadFileReturnsObjectBytesAndContentType() {
         capturingS3Client.objectBytes = "image-bytes".getBytes();
         capturingS3Client.contentType = "image/png";
@@ -78,6 +94,29 @@ class S3ServiceTest {
         S3Service.StoredObject object = s3Service.downloadFile("images/post.webp");
 
         assertThat(object.contentType()).isEqualTo("image/webp");
+    }
+
+    @Test
+    void objectExistsReturnsTrueWhenHeadObjectSucceeds() {
+        assertThat(s3Service.objectExists("images/seed/demo.jpg")).isTrue();
+
+        assertThat(capturingS3Client.headObjectRequest.bucket()).isEqualTo("test-bucket");
+        assertThat(capturingS3Client.headObjectRequest.key()).isEqualTo("images/seed/demo.jpg");
+    }
+
+    @Test
+    void objectExistsReturnsFalseWhenHeadObjectReturns404() {
+        capturingS3Client.headObjectException = s3Exception(404, "Not found");
+
+        assertThat(s3Service.objectExists("images/seed/missing.jpg")).isFalse();
+    }
+
+    @Test
+    void objectExistsRethrowsUnexpectedS3Failures() {
+        capturingS3Client.headObjectException = s3Exception(500, "S3 unavailable");
+
+        assertThatThrownBy(() -> s3Service.objectExists("images/seed/demo.jpg"))
+                .isInstanceOf(S3Exception.class);
     }
 
     @Test
@@ -111,9 +150,18 @@ class S3ServiceTest {
         assertThat(s3Service.sanitizeOriginalFilename(null)).isEqualTo("file");
     }
 
+    private static S3Exception s3Exception(int statusCode, String message) {
+        return (S3Exception) S3Exception.builder()
+                .statusCode(statusCode)
+                .message(message)
+                .build();
+    }
+
     private static class CapturingS3Client {
         private PutObjectRequest putObjectRequest;
         private GetObjectRequest getObjectRequest;
+        private HeadObjectRequest headObjectRequest;
+        private S3Exception headObjectException;
         private byte[] objectBytes = new byte[0];
         private String contentType;
 
@@ -133,6 +181,13 @@ class S3ServiceTest {
                                     .contentType(contentType)
                                     .build();
                             return ResponseBytes.fromByteArray(response, objectBytes);
+                        }
+                        if (method.getName().equals("headObject")) {
+                            headObjectRequest = (HeadObjectRequest) args[0];
+                            if (headObjectException != null) {
+                                throw headObjectException;
+                            }
+                            return HeadObjectResponse.builder().build();
                         }
                         if (method.getName().equals("serviceName")) {
                             return "s3";

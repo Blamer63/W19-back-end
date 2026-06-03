@@ -9,7 +9,9 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
 import java.util.Set;
@@ -89,6 +91,59 @@ public class S3Service {
         s3Client.putObject(request, RequestBody.fromBytes(file.getBytes()));
 
         return "https://" + cloudfrontDomain + "/" + key;
+    }
+
+    public String uploadTrustedImageBytes(byte[] bytes, String contentType, String key) {
+        if (bytes == null || bytes.length == 0) {
+            throw new IllegalArgumentException("Image file must not be empty");
+        }
+        if (bytes.length > MAX_IMAGE_SIZE) {
+            throw new IllegalArgumentException("Image exceeds the 5 MB limit");
+        }
+        if (contentType == null || !ALLOWED_IMAGE_TYPES.contains(contentType)) {
+            throw new IllegalArgumentException("Invalid image type. Allowed: jpeg, png, gif, webp");
+        }
+        if (key == null || key.isBlank() || !key.startsWith("images/")) {
+            throw new IllegalArgumentException("Invalid S3 image key");
+        }
+
+        if (mockMode) {
+            return "https://mock-s3.local/" + key;
+        }
+
+        PutObjectRequest request = PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .contentType(contentType)
+                .build();
+
+        s3Client.putObject(request, RequestBody.fromBytes(bytes));
+
+        return getFileUrl(key);
+    }
+
+    public boolean objectExists(String key) {
+        if (key == null || key.isBlank()) {
+            throw new IllegalArgumentException("S3 key must not be empty");
+        }
+        if (mockMode) {
+            return false;
+        }
+
+        HeadObjectRequest request = HeadObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .build();
+
+        try {
+            s3Client.headObject(request);
+            return true;
+        } catch (S3Exception e) {
+            if (e.statusCode() == 404) {
+                return false;
+            }
+            throw e;
+        }
     }
 
     public StoredObject downloadFile(String key) {
