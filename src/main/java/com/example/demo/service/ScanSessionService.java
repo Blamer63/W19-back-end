@@ -30,6 +30,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ScanSessionService {
 
+    private static final double HIGH_CONFIDENCE_THRESHOLD = 0.060d;
+    private static final double GOOD_CONFIDENCE_THRESHOLD = 0.045d;
+
     private final ProfileRepository profileRepository;
     private final ScanSessionRepository scanSessionRepository;
     private final ScanDetectionRepository scanDetectionRepository;
@@ -91,10 +94,20 @@ public class ScanSessionService {
                 .languageCode(detection.getLanguageCode())
                 .source(SourceType.SCANNER)
                 .sourceId(detection.getId())
-                .sourceContext("Detected in photo with " + Math.round(detection.getConfidence() * 100) + "% confidence")
+                .sourceContext("Detected in photo with " + scannerConfidenceLabel(detection.getConfidence()))
                 .build();
 
         return savedWordService.saveWord(userEmail, request);
+    }
+
+    private String scannerConfidenceLabel(double confidence) {
+        if (confidence >= HIGH_CONFIDENCE_THRESHOLD) {
+            return "High confidence";
+        }
+        if (confidence >= GOOD_CONFIDENCE_THRESHOLD) {
+            return "Good confidence";
+        }
+        return "Needs review";
     }
 
     private Profile getUser(String userEmail) {

@@ -39,9 +39,19 @@ The generic `demo@locale.app` account is intentionally kept for development/test
 | Friends | Accepted friend relationships between users |
 | Reactions and Comments | Sample post activity |
 
+## New-User Starter Mock Data
+
+Local/demo environments also support one-time starter data for newly registered users. The feature is controlled by `app.starter-seed.enabled`, which defaults to `true` locally and `false` in production and tests.
+
+When enabled, registration creates a pending row in the unmanaged JDBC table `user_starter_seed_runs`. No mock content is created at registration time. The first authenticated language setup that includes at least one learning language consumes that pending marker and seeds starter data once.
+
+Starter data is supported for English, Spanish, French, Japanese, Korean, Portuguese, and Vietnamese. It creates demo peers near Sydney, accepted friendships, direct-message threads, feed posts with comments/reactions, upcoming meetups with attendees, and at least ten saved words per learning language. Each language pack includes one multi-image carousel post so feed/collection UIs can demonstrate multiple uploaded pictures.
+
+Existing accounts do not get a pending marker, and repeat language updates do not seed again after the marker is completed.
+
 ## Re-seeding / Fresh Reset
 
-The SQL seed uses `ON CONFLICT DO NOTHING` and is safe to run repeatedly. The startup demo-account seeder also skips existing Spanish/Japanese learner data.
+The SQL seed uses `ON CONFLICT DO NOTHING` and is safe to run repeatedly. The startup demo-account seeder also skips existing Spanish/Japanese learner data. New-user starter seeding uses the `user_starter_seed_runs` marker table to run once per newly registered profile.
 
 To wipe everything and start from scratch:
 
@@ -60,3 +70,4 @@ docker compose up -d --build
 | SQL script | `src/main/resources/data.sql` | Automatic Spring Boot seed script |
 | Manual reference | `seed.sql` | Mirrors `data.sql` for teammate visibility/manual DB loading |
 | Demo account seeder | `DemoAccountSeedService` | Ensures dedicated Spanish/Japanese demo accounts and cleans the generic demo user |
+| New-user starter seed | `app.starter-seed.enabled` | Enables one-time starter data after first learning-language setup |

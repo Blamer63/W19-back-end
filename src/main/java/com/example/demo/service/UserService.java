@@ -230,6 +230,7 @@ public class UserService {
                 long followersCount = followRepository.countByFollowingId(userId);
                 long followingCount = followRepository.countByFollowerId(userId);
                 long postsCount = postRepository.countByAuthorIdAndStatus(userId, PostStatus.APPROVED);
+                boolean canViewCoordinates = canViewProfileCoordinates(profile, currentUserId);
 
                 return PublicUserProfileDto.builder()
                                 .id(profile.getId())
@@ -238,6 +239,8 @@ public class UserService {
                                 .avatarUrl(profile.getAvatarUrl())
                                 .bio(profile.getBio())
                                 .location(profile.getLocation())
+                                .latitude(canViewCoordinates ? profile.getLatitude() : null)
+                                .longitude(canViewCoordinates ? profile.getLongitude() : null)
                                 .createdAt(profile.getCreatedAt() != null
                                                 ? profile.getCreatedAt().atZone(java.time.ZoneId.systemDefault())
                                                                 .toInstant()
@@ -268,6 +271,21 @@ public class UserService {
                                                 .locationVisibility(profile.getLocationVisibility())
                                                 .build())
                                 .build();
+        }
+
+        private boolean canViewProfileCoordinates(Profile profile, UUID currentUserId) {
+                if (currentUserId != null && currentUserId.equals(profile.getId())) {
+                        return true;
+                }
+
+                LocationVisibility visibility = profile.getLocationVisibility();
+                if (visibility == null || visibility == LocationVisibility.PUBLIC) {
+                        return true;
+                }
+
+                return visibility == LocationVisibility.FRIENDS_ONLY
+                                && currentUserId != null
+                                && friendRepository.areFriends(currentUserId, profile.getId());
         }
 
         @Transactional

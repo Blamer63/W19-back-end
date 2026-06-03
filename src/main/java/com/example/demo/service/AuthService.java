@@ -29,6 +29,7 @@ public class AuthService {
         private final RefreshTokenService refreshTokenService;
         private final com.example.demo.repository.PostRepository postRepository;
         private final com.example.demo.repository.FollowRepository followRepository;
+        private final StarterSeedRunService starterSeedRunService;
 
         @org.springframework.beans.factory.annotation.Value("${app.jwt.expiration-ms}")
         private Long jwtExpirationMs;
@@ -82,11 +83,8 @@ public class AuthService {
 
                 profile.addRole(com.example.demo.enums.AppRole.USER);
 
-                Profile savedProfile = profileRepository.save(profile);
-
-                // Note: RegisterRequest still has old language fields?
-                // Should probably update RegisterRequest or handle it here
-                // For now, just save the profile.
+                Profile savedProfile = profileRepository.saveAndFlush(profile);
+                starterSeedRunService.createPendingForNewUser(savedProfile);
 
                 String jwtToken = jwtUtils.generateToken(savedProfile.getEmail());
                 com.example.demo.entity.RefreshToken refreshToken = refreshTokenService

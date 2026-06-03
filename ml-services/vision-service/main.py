@@ -76,8 +76,8 @@ YOLO_CONF_THRESHOLD  = float(os.getenv("YOLO_CONF",    "0.10"))
 YOLO_IOU_THRESHOLD   = float(os.getenv("YOLO_IOU",     "0.50"))
 YOLO_MAX_DET         = int(os.getenv("YOLO_MAX_DET",   "10"))
 
-MAX_OUTPUT_LABELS    = int(os.getenv("MAX_LABELS",     "6"))
-MIN_OUTPUT_CONFIDENCE = float(os.getenv("MIN_OUTPUT_CONF", "0.02"))
+MAX_OUTPUT_LABELS    = int(os.getenv("MAX_LABELS",     "2"))
+MIN_OUTPUT_CONFIDENCE = float(os.getenv("MIN_OUTPUT_CONF", "0.045"))
 MIN_BOX_AREA_RATIO    = float(os.getenv("MIN_BOX_AREA",   "0.0015"))
 MAX_BOX_ASPECT_RATIO  = float(os.getenv("MAX_BOX_ASPECT", "8.0"))
 

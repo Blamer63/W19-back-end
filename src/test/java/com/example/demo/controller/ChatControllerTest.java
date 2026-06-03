@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.entity.Profile;
+import com.example.demo.entity.Conversation;
 import com.example.demo.repository.ConversationRepository;
 import com.example.demo.repository.MessageRepository;
 import com.example.demo.repository.ProfileRepository;
@@ -11,13 +12,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -122,13 +127,7 @@ class ChatControllerTest {
         @Test
         @WithMockUser(username = "sender@example.com")
         void shouldCreateGroupConversation() throws Exception {
-                Profile member2 = Profile.builder()
-                                .username("member2")
-                                .email("member2@example.com")
-                                .passwordHash("password")
-                                .displayName("Member Two")
-                                .build();
-                member2 = profileRepository.save(member2);
+                Profile member2 = createProfile("member2", "member2@example.com", "Member Two");
 
                 String body = """
                                 {
@@ -147,6 +146,40 @@ class ChatControllerTest {
 
         @Test
         @WithMockUser(username = "sender@example.com")
+        void shouldCreateGroupConversationWithMultipart() throws Exception {
+                Profile member2 = createProfile("member2", "member2@example.com", "Member Two");
+
+                mockMvc.perform(multipart("/api/conversations/group")
+                                .param("groupName", "Multipart Study Group")
+                                .param("participantIds", recipient.getId().toString(), member2.getId().toString()))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.isGroup").value(true))
+                                .andExpect(jsonPath("$.groupName").value("Multipart Study Group"));
+        }
+
+        @Test
+        @WithMockUser(username = "sender@example.com")
+        void shouldCreateGroupConversationWithMultipartAvatar() throws Exception {
+                Profile member2 = createProfile("member2", "member2@example.com", "Member Two");
+                MockMultipartFile avatar = new MockMultipartFile(
+                                "groupAvatar",
+                                "group.png",
+                                "image/png",
+                                "avatar-bytes".getBytes());
+
+                mockMvc.perform(multipart("/api/conversations/group")
+                                .file(avatar)
+                                .param("groupName", "Avatar Group")
+                                .param("participantIds", recipient.getId().toString(), member2.getId().toString()))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.isGroup").value(true))
+                                .andExpect(jsonPath("$.groupName").value("Avatar Group"))
+                                .andExpect(jsonPath("$.groupAvatar").value(org.hamcrest.Matchers.startsWith(
+                                                "https://mock-s3.local/images/")));
+        }
+
+        @Test
+        @WithMockUser(username = "sender@example.com")
         void shouldRejectGroupConversationWithBlankName() throws Exception {
                 String body = """
                                 {
@@ -159,5 +192,125 @@ class ChatControllerTest {
                                 .contentType("application/json")
                                 .content(body))
                                 .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @WithMockUser(username = "sender@example.com")
+        void shouldRejectMultipartGroupConversationWithBlankName() throws Exception {
+                Profile member2 = createProfile("member2", "member2@example.com", "Member Two");
+
+                mockMvc.perform(multipart("/api/conversations/group")
+                                .param("groupName", "   ")
+                                .param("participantIds", recipient.getId().toString(), member2.getId().toString()))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @WithMockUser(username = "sender@example.com")
+        void shouldUpdateGroupConversationWithJson() throws Exception {
+                Conversation conversation = createGroupConversation("Old Name", null);
+                String body = """
+                                {
+                                  "groupName": "New Name"
+                                }
+                                """;
+
+                mockMvc.perform(patch("/api/conversations/{id}", conversation.getId())
+                                .contentType("application/json")
+                                .content(body))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.groupName").value("New Name"));
+        }
+
+        @Test
+        @WithMockUser(username = "sender@example.com")
+        void shouldUpdateGroupConversationNameWithMultipart() throws Exception {
+                Conversation conversation = createGroupConversation("Old Name", null);
+
+                mockMvc.perform(multipart("/api/conversations/{id}", conversation.getId())
+                                .param("groupName", "Multipart New Name")
+                                .with(request -> {
+                                        request.setMethod("PATCH");
+                                        return request;
+                                }))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.groupName").value("Multipart New Name"));
+        }
+
+        @Test
+        @WithMockUser(username = "sender@example.com")
+        void shouldUpdateGroupConversationAvatarWithMultipart() throws Exception {
+                Conversation conversation = createGroupConversation("Avatar Update", null);
+                MockMultipartFile avatar = new MockMultipartFile(
+                                "groupAvatar",
+                                "new-group.webp",
+                                "image/webp",
+                                "new-avatar-bytes".getBytes());
+
+                mockMvc.perform(multipart("/api/conversations/{id}", conversation.getId())
+                                .file(avatar)
+                                .with(request -> {
+                                        request.setMethod("PATCH");
+                                        return request;
+                                }))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.groupAvatar").value(org.hamcrest.Matchers.startsWith(
+                                                "https://mock-s3.local/images/")));
+        }
+
+        @Test
+        @WithMockUser(username = "sender@example.com")
+        void shouldRejectGroupAvatarWithInvalidImageType() throws Exception {
+                Conversation conversation = createGroupConversation("Invalid Avatar", null);
+                MockMultipartFile avatar = new MockMultipartFile(
+                                "groupAvatar",
+                                "avatar.txt",
+                                "text/plain",
+                                "not-an-image".getBytes());
+
+                mockMvc.perform(multipart("/api/conversations/{id}", conversation.getId())
+                                .file(avatar)
+                                .with(request -> {
+                                        request.setMethod("PATCH");
+                                        return request;
+                                }))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @WithMockUser(username = "intruder@example.com")
+        void shouldRejectGroupUpdateFromNonParticipant() throws Exception {
+                createProfile("intruder", "intruder@example.com", "Intruder");
+                Conversation conversation = createGroupConversation("Private Group", null);
+
+                mockMvc.perform(multipart("/api/conversations/{id}", conversation.getId())
+                                .param("groupName", "Sneaky Rename")
+                                .with(request -> {
+                                        request.setMethod("PATCH");
+                                        return request;
+                                }))
+                                .andExpect(status().isBadRequest());
+        }
+
+        private Profile createProfile(String username, String email, String displayName) {
+                Profile profile = Profile.builder()
+                                .username(username)
+                                .email(email)
+                                .passwordHash("password")
+                                .displayName(displayName)
+                                .build();
+                return profileRepository.save(profile);
+        }
+
+        private Conversation createGroupConversation(String groupName, String groupAvatar) {
+                Profile member2 = createProfile("member2-" + UUID.randomUUID(), UUID.randomUUID() + "@example.com",
+                                "Member Two");
+                Conversation conversation = Conversation.builder()
+                                .isGroup(true)
+                                .groupName(groupName)
+                                .groupAvatar(groupAvatar)
+                                .participants(new ArrayList<>(List.of(sender, recipient, member2)))
+                                .build();
+                return conversationRepository.save(conversation);
         }
 }

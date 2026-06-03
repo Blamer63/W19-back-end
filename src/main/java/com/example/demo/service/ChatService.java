@@ -164,6 +164,16 @@ public class ChatService {
 
     @Transactional
     public ConversationResponse createGroupConversation(String creatorEmail, GroupCreateRequest request) {
+        try {
+            return createGroupConversation(creatorEmail, request, null);
+        } catch (IOException e) {
+            throw new IllegalStateException("Unexpected failure creating group conversation", e);
+        }
+    }
+
+    @Transactional
+    public ConversationResponse createGroupConversation(String creatorEmail, GroupCreateRequest request,
+            MultipartFile groupAvatar) throws IOException {
         if (request.getGroupName() == null || request.getGroupName().isBlank()) {
             throw new IllegalArgumentException("Group name must not be blank");
         }
@@ -183,15 +193,22 @@ public class ChatService {
             participants.add(participant);
         }
 
-        Conversation conversation = Conversation.builder()
-                .isGroup(true)
-                .groupName(request.getGroupName())
-                .groupAvatar(request.getGroupAvatar())
-                .participants(participants)
-                .build();
+        String uploadedAvatarUrl = null;
+        try {
+            uploadedAvatarUrl = uploadGroupAvatar(groupAvatar);
+            Conversation conversation = Conversation.builder()
+                    .isGroup(true)
+                    .groupName(request.getGroupName())
+                    .groupAvatar(uploadedAvatarUrl != null ? uploadedAvatarUrl : request.getGroupAvatar())
+                    .participants(participants)
+                    .build();
 
-        conversation = conversationRepository.save(conversation);
-        return mapToConversationResponse(conversation, creator.getId());
+            conversation = conversationRepository.save(conversation);
+            return mapToConversationResponse(conversation, creator.getId());
+        } catch (Exception e) {
+            cleanupUploadedFile(uploadedAvatarUrl, "failed group creation");
+            throw e;
+        }
     }
 
     @Transactional
@@ -257,6 +274,16 @@ public class ChatService {
 
     @Transactional
     public ConversationResponse updateGroup(UUID conversationId, GroupUpdateRequest request, String requesterEmail) {
+        try {
+            return updateGroup(conversationId, request, requesterEmail, null);
+        } catch (IOException e) {
+            throw new IllegalStateException("Unexpected failure updating group conversation", e);
+        }
+    }
+
+    @Transactional
+    public ConversationResponse updateGroup(UUID conversationId, GroupUpdateRequest request, String requesterEmail,
+            MultipartFile groupAvatar) throws IOException {
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Conversation not found"));
 
@@ -270,18 +297,31 @@ public class ChatService {
             throw new IllegalArgumentException("Access denied");
         }
 
-        if (request.getGroupName() != null && !request.getGroupName().isBlank()) {
-            conversation.setGroupName(request.getGroupName());
-        }
-        if (request.getGroupAvatar() != null) {
-            conversation.setGroupAvatar(request.getGroupAvatar());
-        }
-
         UUID requesterId = conversation.getParticipants().stream()
                 .filter(p -> p.getEmail().equals(requesterEmail))
                 .findFirst().map(Profile::getId).orElse(null);
-        conversation = conversationRepository.save(conversation);
-        return mapToConversationResponse(conversation, requesterId);
+        String oldAvatarUrl = conversation.getGroupAvatar();
+        String uploadedAvatarUrl = null;
+
+        try {
+            if (request.getGroupName() != null && !request.getGroupName().isBlank()) {
+                conversation.setGroupName(request.getGroupName());
+            }
+
+            uploadedAvatarUrl = uploadGroupAvatar(groupAvatar);
+            if (uploadedAvatarUrl != null) {
+                conversation.setGroupAvatar(uploadedAvatarUrl);
+            } else if (request.getGroupAvatar() != null) {
+                conversation.setGroupAvatar(request.getGroupAvatar());
+            }
+
+            conversation = conversationRepository.save(conversation);
+            cleanupReplacedAvatar(oldAvatarUrl, conversation.getGroupAvatar());
+            return mapToConversationResponse(conversation, requesterId);
+        } catch (Exception e) {
+            cleanupUploadedFile(uploadedAvatarUrl, "failed group update");
+            throw e;
+        }
     }
 
     @Transactional(readOnly = true)
@@ -400,6 +440,36 @@ public class ChatService {
                         title,
                         body,
                         targetUrl));
+    }
+
+    private String uploadGroupAvatar(MultipartFile groupAvatar) throws IOException {
+        if (groupAvatar == null || groupAvatar.isEmpty()) {
+            return null;
+        }
+
+        s3Service.validateImageFile(groupAvatar);
+        return s3Service.uploadFile(groupAvatar, "images");
+    }
+
+    private void cleanupReplacedAvatar(String oldAvatarUrl, String newAvatarUrl) {
+        if (newAvatarUrl == null || oldAvatarUrl == null || oldAvatarUrl.equals(newAvatarUrl)) {
+            return;
+        }
+
+        cleanupUploadedFile(oldAvatarUrl, "replaced group avatar");
+    }
+
+    private void cleanupUploadedFile(String url, String reason) {
+        String key = s3Service.extractKey(url);
+        if (key == null) {
+            return;
+        }
+
+        try {
+            s3Service.deleteFile(key);
+        } catch (Exception e) {
+            log.warn("Failed to clean up S3 file after {}: {}", reason, key, e);
+        }
     }
 
     private void enforceDirectMessagePrivacy(Profile sender, Profile recipient) {
