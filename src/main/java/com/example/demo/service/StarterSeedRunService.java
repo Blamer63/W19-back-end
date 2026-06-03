@@ -128,7 +128,8 @@ public class StarterSeedRunService {
         if (!starterSeedEnabled) {
             return Optional.empty();
         }
-        ensureSeedTable();
+        // No ensureSeedTable() here: this runs in read-only transactions (admin reads), where
+        // DDL is rejected by Postgres. The table is created at startup by init() and in write paths.
         return jdbcTemplate.query("""
                 select profile_id, seed_key, status, created_at, completed_at
                 from user_starter_seed_runs
@@ -141,7 +142,6 @@ public class StarterSeedRunService {
         if (!starterSeedEnabled) {
             return List.of();
         }
-        ensureSeedTable();
         return jdbcTemplate.query("""
                 select profile_id, seed_key, status, created_at, completed_at
                 from user_starter_seed_runs
@@ -153,7 +153,6 @@ public class StarterSeedRunService {
         if (!starterSeedEnabled) {
             return 0L;
         }
-        ensureSeedTable();
         Integer count = jdbcTemplate.queryForObject("""
                 select count(*) from user_starter_seed_runs where seed_key = ? and status = ?
                 """, Integer.class, SEED_KEY, status);

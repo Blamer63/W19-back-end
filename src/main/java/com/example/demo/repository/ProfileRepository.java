@@ -13,8 +13,10 @@ import java.util.Optional;
 public interface ProfileRepository extends JpaRepository<Profile, java.util.UUID> {
         Optional<Profile> findByUsername(String username);
 
-        @org.springframework.data.jpa.repository.Query("SELECT p FROM Profile p WHERE :q IS NULL "
-                        + "OR LOWER(p.email) LIKE LOWER(CONCAT('%', :q, '%')) "
+        // Caller must pass a non-null, non-blank query. A null :q would be bound as an untyped
+        // parameter (bytea on Postgres) and break LOWER(); use findAll(Pageable) for the no-filter case.
+        @org.springframework.data.jpa.repository.Query("SELECT p FROM Profile p WHERE "
+                        + "LOWER(p.email) LIKE LOWER(CONCAT('%', :q, '%')) "
                         + "OR LOWER(p.username) LIKE LOWER(CONCAT('%', :q, '%')) "
                         + "OR LOWER(p.displayName) LIKE LOWER(CONCAT('%', :q, '%'))")
         Page<Profile> searchForAdmin(@Param("q") String q, Pageable pageable);

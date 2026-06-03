@@ -33,7 +33,9 @@ public class AdminUserService {
     @Transactional(readOnly = true)
     public AdminUserPageResponse listUsers(String query, Pageable pageable) {
         String normalized = (query == null || query.isBlank()) ? null : query.trim();
-        Page<Profile> page = profileRepository.searchForAdmin(normalized, pageable);
+        Page<Profile> page = (normalized == null)
+                ? profileRepository.findAll(pageable)
+                : profileRepository.searchForAdmin(normalized, pageable);
         List<AdminUserResponse> content = page.getContent().stream()
                 .map(this::toResponse)
                 .toList();
