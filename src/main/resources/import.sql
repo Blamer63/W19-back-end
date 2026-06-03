@@ -153,7 +153,7 @@ INSERT INTO posts (id, author_id, content, original_language, latitude, longitud
 
 -- Wei posts
 ('30000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000004',
- '今日は天気がよくて、東京を散歩しました。Have you ever visited Tokyo?', 'ja', 35.6762, 139.6503, 'ACTIVE', NOW() - INTERVAL '4 hours', NOW())
+ '今日は天気がよくて、東京を散歩しました。駅までの道を日本語で聞いてみました。', 'ja', 35.6762, 139.6503, 'ACTIVE', NOW() - INTERVAL '4 hours', NOW())
 ON CONFLICT DO NOTHING;
 
 
@@ -166,7 +166,7 @@ INSERT INTO post_translations (id, post_id, language_code, translated_content, c
 ('80000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000004', 'en',
  'Pho is the best food in the world. Can''t deny it! 🍜', NOW(), NOW()),
 ('80000000-0000-0000-0000-000000000004', '30000000-0000-0000-0000-000000000005', 'en',
- 'Great weather today, walking through Tokyo. Have you ever visited Tokyo?', NOW(), NOW())
+ 'The weather was nice today, so I walked through Tokyo and tried asking for directions to the station in Japanese.', NOW(), NOW())
 ON CONFLICT DO NOTHING;
 
 
@@ -222,9 +222,9 @@ INSERT INTO meetups (id, organizer_id, title, description, language_code, meetup
  'vi', NOW() + INTERVAL '1 week', 'Old Quarter, Hanoi', 21.0335, 105.8506, 5, 'UPCOMING', NOW(), NOW()),
 
 ('40000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000004',
- 'Tokyo Japanese Practice Session',
- 'Open for all learners wanting to practice Japanese. ようこそ！',
- 'ja', NOW() + INTERVAL '2 days', 'Shibuya, Tokyo', 35.6595, 139.7005, 8, 'UPCOMING', NOW(), NOW()),
+ '東京の日本語練習会',
+ '日本語を練習したい人なら誰でも歓迎です。あいさつと道案内を練習しましょう。ようこそ！',
+ 'ja', NOW() + INTERVAL '2 days', '渋谷、東京', 35.6595, 139.7005, 8, 'UPCOMING', NOW(), NOW()),
 
 ('40000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000002',
  'London Korean Study Group',
@@ -281,7 +281,7 @@ ON CONFLICT DO NOTHING;
 -- Conversation 2: Wei ↔ Emma
 INSERT INTO conversations (id, last_message_preview, last_message_at, created_at, updated_at) VALUES
 ('b0000000-0000-0000-0000-000000000002',
- '谢谢！你的中文很好！', NOW() - INTERVAL '30 minutes', NOW() - INTERVAL '1 day', NOW())
+ '大丈夫です。とても自然に言えています！', NOW() - INTERVAL '30 minutes', NOW() - INTERVAL '1 day', NOW())
 ON CONFLICT DO NOTHING;
 
 INSERT INTO conversation_participants (conversation_id, profile_id) VALUES
@@ -291,13 +291,13 @@ ON CONFLICT DO NOTHING;
 
 INSERT INTO messages (id, conversation_id, sender_id, content, is_read, created_at, updated_at) VALUES
 ('c0000000-0000-0000-0000-000000000005', 'b0000000-0000-0000-0000-000000000002',
- '10000000-0000-0000-0000-000000000002', 'Hi Wei! I saw your offer to help with Japanese. Can we practice?', true, NOW() - INTERVAL '1 day', NOW()),
+ '10000000-0000-0000-0000-000000000002', 'こんにちは、ウェイさん！日本語の練習を手伝ってもらえますか？', true, NOW() - INTERVAL '1 day', NOW()),
 ('c0000000-0000-0000-0000-000000000006', 'b0000000-0000-0000-0000-000000000002',
- '10000000-0000-0000-0000-000000000004', '当然可以！Let''s start. 你会说多少中文？', true, NOW() - INTERVAL '23 hours', NOW()),
+ '10000000-0000-0000-0000-000000000004', 'もちろんです！まずは自己紹介から始めましょう。', true, NOW() - INTERVAL '23 hours', NOW()),
 ('c0000000-0000-0000-0000-000000000007', 'b0000000-0000-0000-0000-000000000002',
- '10000000-0000-0000-0000-000000000002', '日本語を勉強するのが好きです！(I hope that means I like learning Japanese 😂)', true, NOW() - INTERVAL '22 hours', NOW()),
+ '10000000-0000-0000-0000-000000000002', '日本語を勉強するのが好きです！でも、まだゆっくり話したいです。', true, NOW() - INTERVAL '22 hours', NOW()),
 ('c0000000-0000-0000-0000-000000000008', 'b0000000-0000-0000-0000-000000000002',
- '10000000-0000-0000-0000-000000000004', '谢谢！你的中文很好！', false, NOW() - INTERVAL '30 minutes', NOW())
+ '10000000-0000-0000-0000-000000000004', '大丈夫です。とても自然に言えています！', false, NOW() - INTERVAL '30 minutes', NOW())
 ON CONFLICT DO NOTHING;
 
 

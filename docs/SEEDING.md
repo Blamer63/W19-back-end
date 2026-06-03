@@ -47,6 +47,8 @@ When enabled, registration creates a pending row in the unmanaged JDBC table `us
 
 Starter data is supported for English, Spanish, French, Japanese, Korean, Portuguese, and Vietnamese. It creates demo peers near Sydney, accepted friendships, direct-message threads, feed posts with comments/reactions, upcoming meetups with attendees, and at least ten saved words per learning language. Each language pack includes one multi-image carousel post so feed/collection UIs can demonstrate multiple uploaded pictures.
 
+Japanese starter content uses native Japanese script for user-facing Japanese text, including hiragana, kanji, and common kana/kanji vocabulary rather than romaji.
+
 Existing accounts do not get a pending marker, and repeat language updates do not seed again after the marker is completed.
 
 ## Re-seeding / Fresh Reset
