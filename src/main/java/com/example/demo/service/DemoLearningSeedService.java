@@ -104,6 +104,12 @@ public class DemoLearningSeedService {
     }
 
     private void seedLanguage(Profile learner, Language language) {
+        if (!isActiveLearningLanguage(learner, language)) {
+            log.info("starter-seed: skipping {} for profile {} because it is not an active learning language",
+                    language.getCode(), learner.getId());
+            return;
+        }
+
         log.info("starter-seed: seeding {} — peers", language.getCode());
         List<Profile> peerProfiles = demoPeers(language).stream()
                 .map(peer -> createPeer(language, peer))
@@ -374,8 +380,9 @@ public class DemoLearningSeedService {
                         .word(word.word())
                         .translation(word.translation())
                         .languageCode(language.getCode())
-                        .source(SourceType.MANUAL)
+                        .source(SourceType.STARTER)
                         .context(word.context())
+                        .topic(word.topic())
                         .masteryLevel(word.masteryLevel())
                         .nextReview(Instant.now().plusSeconds(word.reviewOffsetSeconds()))
                         .build()));
@@ -402,6 +409,15 @@ public class DemoLearningSeedService {
         return "demo.japanese@locale.app".equals(email)
                 || "demo@locale.app".equals(email)
                 || email.endsWith("@locale.demo");
+    }
+
+    private boolean isActiveLearningLanguage(Profile learner, Language language) {
+        boolean inCurrentProfile = learner.getLanguages().stream()
+                .anyMatch(userLanguage -> userLanguage.isLearning()
+                        && userLanguage.getLanguage() != null
+                        && language.getCode().equals(userLanguage.getLanguage().getCode()));
+        return inCurrentProfile
+                || userLanguageRepository.existsLearningLanguage(learner.getId(), language.getCode());
     }
 
     private String normalize(String code) {
@@ -533,88 +549,113 @@ public class DemoLearningSeedService {
     private List<DemoWord> demoWords(String languageCode) {
         return switch (languageCode) {
             case "en" -> List.of(
-                    word("hello", "a greeting", "Start a casual conversation.", 65, 3600),
-                    word("thanks", "gratitude", "Use after someone helps you.", 80, 7200),
-                    word("market", "place to buy food", "Useful on a grocery walk.", 45, 10800),
-                    word("left", "direction", "Practise giving directions.", 30, 14400),
-                    word("right", "direction", "Practise giving directions.", 55, 18000),
-                    word("please", "polite request", "Use while ordering.", 25, 21600),
-                    word("station", "transport place", "Ask for directions.", 35, 25200),
-                    word("water", "drink", "Read labels or order a drink.", 58, 28800),
-                    word("coffee", "drink", "Cafe practice.", 72, 32400),
-                    word("tomorrow", "next day", "Planning a meetup.", 40, 36000));
+                    greetingWord("hello", "a greeting", "Start a casual conversation.", 65, 3600),
+                    greetingWord("thanks", "gratitude", "Use after someone helps you.", 80, 7200),
+                    shoppingWord("market", "place to buy food", "Useful on a grocery walk.", 45, 10800),
+                    travelWord("left", "direction", "Practise giving directions.", 30, 14400),
+                    travelWord("right", "direction", "Practise giving directions.", 55, 18000),
+                    greetingWord("please", "polite request", "Use while ordering.", 25, 21600),
+                    travelWord("station", "transport place", "Ask for directions.", 35, 25200),
+                    foodWord("water", "drink", "Read labels or order a drink.", 58, 28800),
+                    foodWord("coffee", "drink", "Cafe practice.", 72, 32400),
+                    travelWord("tomorrow", "next day", "Planning a meetup.", 40, 36000));
             case "fr" -> List.of(
-                    word("bonjour", "hello", "Start a daytime conversation.", 65, 3600),
-                    word("merci", "thank you", "Use after receiving help.", 80, 7200),
-                    word("marche", "market", "Food shopping practice.", 45, 10800),
-                    word("gauche", "left", "Directions practice.", 30, 14400),
-                    word("droite", "right", "Directions practice.", 55, 18000),
-                    word("s il vous plait", "please", "Polite requests.", 25, 21600),
-                    word("gare", "station", "Transport signs.", 35, 25200),
-                    word("eau", "water", "Ordering drinks.", 58, 28800),
-                    word("cafe", "coffee", "Cafe practice.", 72, 32400),
-                    word("demain", "tomorrow", "Planning practice.", 40, 36000));
+                    greetingWord("bonjour", "hello", "Start a daytime conversation.", 65, 3600),
+                    greetingWord("merci", "thank you", "Use after receiving help.", 80, 7200),
+                    shoppingWord("marche", "market", "Food shopping practice.", 45, 10800),
+                    travelWord("gauche", "left", "Directions practice.", 30, 14400),
+                    travelWord("droite", "right", "Directions practice.", 55, 18000),
+                    greetingWord("s il vous plait", "please", "Polite requests.", 25, 21600),
+                    travelWord("gare", "station", "Transport signs.", 35, 25200),
+                    foodWord("eau", "water", "Ordering drinks.", 58, 28800),
+                    foodWord("cafe", "coffee", "Cafe practice.", 72, 32400),
+                    travelWord("demain", "tomorrow", "Planning practice.", 40, 36000));
             case "ja" -> List.of(
-                    word("こんにちは", "hello", "A friendly daytime greeting.", 65, 3600),
-                    word("ありがとう", "thank you", "Useful after ordering.", 80, 7200),
-                    word("市場", "market", "Food shopping practice.", 45, 10800),
-                    word("左", "left", "Directions practice.", 30, 14400),
-                    word("右", "right", "Directions practice.", 55, 18000),
-                    word("お願いします", "please", "Polite requests.", 25, 21600),
-                    word("駅", "station", "Transport signs.", 35, 25200),
-                    word("水", "water", "Ordering drinks.", 58, 28800),
-                    word("珈琲", "coffee", "Cafe practice.", 72, 32400),
-                    word("明日", "tomorrow", "Planning practice.", 40, 36000));
+                    greetingWord("こんにちは", "hello", "A friendly daytime greeting.", 65, 3600),
+                    greetingWord("ありがとう", "thank you", "Useful after ordering.", 80, 7200),
+                    shoppingWord("市場", "market", "Food shopping practice.", 45, 10800),
+                    travelWord("左", "left", "Directions practice.", 30, 14400),
+                    travelWord("右", "right", "Directions practice.", 55, 18000),
+                    greetingWord("お願いします", "please", "Polite requests.", 25, 21600),
+                    travelWord("駅", "station", "Transport signs.", 35, 25200),
+                    foodWord("水", "water", "Ordering drinks.", 58, 28800),
+                    foodWord("珈琲", "coffee", "Cafe practice.", 72, 32400),
+                    travelWord("明日", "tomorrow", "Planning practice.", 40, 36000));
             case "ko" -> List.of(
-                    word("annyeong", "hello", "A casual greeting.", 65, 3600),
-                    word("gamsa", "thanks", "Use after receiving help.", 80, 7200),
-                    word("sijang", "market", "Food shopping practice.", 45, 10800),
-                    word("oenjjok", "left", "Directions practice.", 30, 14400),
-                    word("oreunjjok", "right", "Directions practice.", 55, 18000),
-                    word("juseyo", "please give me", "Polite requests.", 25, 21600),
-                    word("yeok", "station", "Transport signs.", 35, 25200),
-                    word("mul", "water", "Ordering drinks.", 58, 28800),
-                    word("keopi", "coffee", "Cafe practice.", 72, 32400),
-                    word("naeil", "tomorrow", "Planning practice.", 40, 36000));
+                    greetingWord("annyeong", "hello", "A casual greeting.", 65, 3600),
+                    greetingWord("gamsa", "thanks", "Use after receiving help.", 80, 7200),
+                    shoppingWord("sijang", "market", "Food shopping practice.", 45, 10800),
+                    travelWord("oenjjok", "left", "Directions practice.", 30, 14400),
+                    travelWord("oreunjjok", "right", "Directions practice.", 55, 18000),
+                    greetingWord("juseyo", "please give me", "Polite requests.", 25, 21600),
+                    travelWord("yeok", "station", "Transport signs.", 35, 25200),
+                    foodWord("mul", "water", "Ordering drinks.", 58, 28800),
+                    foodWord("keopi", "coffee", "Cafe practice.", 72, 32400),
+                    travelWord("naeil", "tomorrow", "Planning practice.", 40, 36000));
             case "pt" -> List.of(
-                    word("ola", "hello", "Start a casual conversation.", 65, 3600),
-                    word("obrigado", "thank you", "Use after receiving help.", 80, 7200),
-                    word("mercado", "market", "Food shopping practice.", 45, 10800),
-                    word("esquerda", "left", "Directions practice.", 30, 14400),
-                    word("direita", "right", "Directions practice.", 55, 18000),
-                    word("por favor", "please", "Polite requests.", 25, 21600),
-                    word("estacao", "station", "Transport signs.", 35, 25200),
-                    word("agua", "water", "Ordering drinks.", 58, 28800),
-                    word("cafe", "coffee", "Cafe practice.", 72, 32400),
-                    word("amanha", "tomorrow", "Planning practice.", 40, 36000));
+                    greetingWord("ola", "hello", "Start a casual conversation.", 65, 3600),
+                    greetingWord("obrigado", "thank you", "Use after receiving help.", 80, 7200),
+                    shoppingWord("mercado", "market", "Food shopping practice.", 45, 10800),
+                    travelWord("esquerda", "left", "Directions practice.", 30, 14400),
+                    travelWord("direita", "right", "Directions practice.", 55, 18000),
+                    greetingWord("por favor", "please", "Polite requests.", 25, 21600),
+                    travelWord("estacao", "station", "Transport signs.", 35, 25200),
+                    foodWord("agua", "water", "Ordering drinks.", 58, 28800),
+                    foodWord("cafe", "coffee", "Cafe practice.", 72, 32400),
+                    travelWord("amanha", "tomorrow", "Planning practice.", 40, 36000));
             case "vi" -> List.of(
-                    word("xin chao", "hello", "Start a casual conversation.", 65, 3600),
-                    word("cam on", "thank you", "Use after receiving help.", 80, 7200),
-                    word("cho", "market", "Food shopping practice.", 45, 10800),
-                    word("trai", "left", "Directions practice.", 30, 14400),
-                    word("phai", "right", "Directions practice.", 55, 18000),
-                    word("lam on", "please", "Polite requests.", 25, 21600),
-                    word("nha ga", "station", "Transport signs.", 35, 25200),
-                    word("nuoc", "water", "Ordering drinks.", 58, 28800),
-                    word("ca phe", "coffee", "Cafe practice.", 72, 32400),
-                    word("ngay mai", "tomorrow", "Planning practice.", 40, 36000));
+                    greetingWord("xin chao", "hello", "Start a casual conversation.", 65, 3600),
+                    greetingWord("cam on", "thank you", "Use after receiving help.", 80, 7200),
+                    shoppingWord("cho", "market", "Food shopping practice.", 45, 10800),
+                    travelWord("trai", "left", "Directions practice.", 30, 14400),
+                    travelWord("phai", "right", "Directions practice.", 55, 18000),
+                    greetingWord("lam on", "please", "Polite requests.", 25, 21600),
+                    travelWord("nha ga", "station", "Transport signs.", 35, 25200),
+                    foodWord("nuoc", "water", "Ordering drinks.", 58, 28800),
+                    foodWord("ca phe", "coffee", "Cafe practice.", 72, 32400),
+                    travelWord("ngay mai", "tomorrow", "Planning practice.", 40, 36000));
             default -> List.of(
-                    word("hola", "hello", "Start a casual conversation.", 65, 3600),
-                    word("gracias", "thank you", "Use after someone helps you.", 80, 7200),
-                    word("mercado", "market", "Useful on a grocery walk.", 45, 10800),
-                    word("izquierda", "left", "Practise giving directions.", 30, 14400),
-                    word("derecha", "right", "Practise giving directions.", 55, 18000),
-                    word("por favor", "please", "Ordering politely.", 25, 21600),
-                    word("estacion", "station", "Transport signs.", 35, 25200),
-                    word("agua", "water", "Ordering drinks.", 58, 28800),
-                    word("cafe", "coffee", "Cafe practice.", 72, 32400),
-                    word("manana", "tomorrow", "Planning practice.", 40, 36000));
+                    greetingWord("hola", "hello", "Start a casual conversation.", 65, 3600),
+                    greetingWord("gracias", "thank you", "Use after someone helps you.", 80, 7200),
+                    shoppingWord("mercado", "market", "Useful on a grocery walk.", 45, 10800),
+                    travelWord("izquierda", "left", "Practise giving directions.", 30, 14400),
+                    travelWord("derecha", "right", "Practise giving directions.", 55, 18000),
+                    greetingWord("por favor", "please", "Ordering politely.", 25, 21600),
+                    travelWord("estacion", "station", "Transport signs.", 35, 25200),
+                    foodWord("agua", "water", "Ordering drinks.", 58, 28800),
+                    foodWord("cafe", "coffee", "Cafe practice.", 72, 32400),
+                    travelWord("manana", "tomorrow", "Planning practice.", 40, 36000));
         };
+    }
+
+    private DemoWord greetingWord(String word, String translation, String context, int masteryLevel,
+            long reviewOffsetSeconds) {
+        return word(word, translation, context, "greetings", masteryLevel, reviewOffsetSeconds);
+    }
+
+    private DemoWord shoppingWord(String word, String translation, String context, int masteryLevel,
+            long reviewOffsetSeconds) {
+        return word(word, translation, context, "shopping", masteryLevel, reviewOffsetSeconds);
+    }
+
+    private DemoWord travelWord(String word, String translation, String context, int masteryLevel,
+            long reviewOffsetSeconds) {
+        return word(word, translation, context, "travel", masteryLevel, reviewOffsetSeconds);
+    }
+
+    private DemoWord foodWord(String word, String translation, String context, int masteryLevel,
+            long reviewOffsetSeconds) {
+        return word(word, translation, context, "food", masteryLevel, reviewOffsetSeconds);
     }
 
     private DemoWord word(String word, String translation, String context, int masteryLevel,
             long reviewOffsetSeconds) {
-        return new DemoWord(word, translation, context, masteryLevel, reviewOffsetSeconds);
+        return word(word, translation, context, "other", masteryLevel, reviewOffsetSeconds);
+    }
+
+    private DemoWord word(String word, String translation, String context, String topic, int masteryLevel,
+            long reviewOffsetSeconds) {
+        return new DemoWord(word, translation, context, topic, masteryLevel, reviewOffsetSeconds);
     }
 
     private record DemoPeer(String usernameSlug, String displayName, String bio, String avatarUrl, Double latitude,
@@ -631,7 +672,7 @@ public class DemoLearningSeedService {
             Double longitude) {
     }
 
-    private record DemoWord(String word, String translation, String context, int masteryLevel,
+    private record DemoWord(String word, String translation, String context, String topic, int masteryLevel,
             long reviewOffsetSeconds) {
     }
 }

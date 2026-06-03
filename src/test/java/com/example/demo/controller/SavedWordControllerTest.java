@@ -122,6 +122,7 @@ public class SavedWordControllerTest {
         request.setTranslation("cherry blossom");
         request.setLanguageCode("ja");
         request.setSource(SourceType.MANUAL);
+        request.setTopic("nature");
 
         mockMvc.perform(post("/api/words")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -130,6 +131,7 @@ public class SavedWordControllerTest {
                 .andExpect(jsonPath("$.word").value("さくら"))
                 .andExpect(jsonPath("$.translation").value("cherry blossom"))
                 .andExpect(jsonPath("$.language_code").value("ja"))
+                .andExpect(jsonPath("$.topic").value("nature"))
                 .andExpect(jsonPath("$.mastery_level").value(0));
     }
 
@@ -319,12 +321,14 @@ public class SavedWordControllerTest {
 
         UpdateWordRequest request = new UpdateWordRequest();
         request.setTranslation("sakura flower");
+        request.setTopic("greetings");
 
         mockMvc.perform(patch("/api/words/" + saved.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.translation").value("sakura flower"));
+                .andExpect(jsonPath("$.translation").value("sakura flower"))
+                .andExpect(jsonPath("$.topic").value("greetings"));
     }
 
     @Test

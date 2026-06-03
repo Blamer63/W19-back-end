@@ -4,6 +4,7 @@ import com.example.demo.dto.AuthResponse;
 import com.example.demo.dto.RegisterRequest;
 import com.example.demo.entity.Language;
 import com.example.demo.entity.Profile;
+import com.example.demo.enums.SourceType;
 import com.example.demo.repository.ConversationRepository;
 import com.example.demo.repository.FriendRepository;
 import com.example.demo.repository.LanguageRepository;
@@ -167,6 +168,36 @@ class UserLanguageControllerTest {
     }
 
     @Test
+    void firstLanguageUpdateSeedsOnlyFrenchForEnglishNativeFrenchLearner() throws Exception {
+        AuthResponse response = register("frenchlearner@example.com", "frenchlearner");
+        Profile registered = profileRepository.findById(response.getUserId()).orElseThrow();
+
+        mockMvc.perform(put("/api/users/me/languages")
+                .header("Authorization", "Bearer " + response.getAccessToken())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        [
+                          {"code":"en","proficiency":"NATIVE","is_learning":false},
+                          {"code":"fr","proficiency":"BEGINNER","is_learning":true}
+                        ]
+                        """))
+                .andExpect(status().isOk());
+
+        assertThat(markerStatus(registered.getId())).isEqualTo("COMPLETED");
+        assertThat(savedWordRepository.countByUserIdAndLanguageCode(registered.getId(), "fr"))
+                .isGreaterThanOrEqualTo(10);
+        assertThat(savedWordRepository.countByUserIdAndLanguageCode(registered.getId(), "ja")).isZero();
+        assertThat(savedWordRepository.countByUserIdAndLanguageCode(registered.getId(), "en")).isZero();
+        assertThat(savedWordRepository.findByUserId(
+                        registered.getId(), org.springframework.data.domain.Pageable.unpaged()).getContent())
+                .allSatisfy(word -> {
+                    assertThat(word.getLanguageCode()).isEqualTo("fr");
+                    assertThat(word.getSource()).isEqualTo(SourceType.STARTER);
+                    assertThat(word.getTopic()).isNotBlank();
+                });
+    }
+
+    @Test
     void firstLanguageUpdateSeedsAllStarterDataOnceForRegisteredUser() throws Exception {
         AuthResponse response = register("starter@example.com", "starteruser");
         Profile registered = profileRepository.findById(response.getUserId()).orElseThrow();
@@ -194,6 +225,12 @@ class UserLanguageControllerTest {
                 .doesNotContain("konnichiwa", "arigato", "ichiba", "hidari", "migi", "onegaishimasu",
                         "eki", "mizu", "koohii", "ashita");
         assertThat(japaneseWords).allMatch(this::containsJapaneseScript);
+        assertThat(savedWordRepository.findByUserId(
+                        registered.getId(), org.springframework.data.domain.Pageable.unpaged()).getContent())
+                .allSatisfy(word -> {
+                    assertThat(word.getSource()).isEqualTo(SourceType.STARTER);
+                    assertThat(word.getTopic()).isNotBlank();
+                });
 
         assertThat(friendRepository.findAcceptedFriendIds(registered.getId())).hasSize(21);
         assertThat(conversationRepository.count()).isEqualTo(21);

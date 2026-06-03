@@ -5,5 +5,6 @@ public enum SourceType {
     AR_SCAN,
     MANUAL,
     CHAT,
-    SCANNER
+    SCANNER,
+    STARTER
 }

@@ -36,7 +36,7 @@ public class PracticeService {
         }
 
         // Get words for practice
-        List<SavedWord> availableWords = getAvailableWords(user.getId(), request.getLanguageCode());
+        List<SavedWord> availableWords = getAvailableWords(user, request.getLanguageCode());
 
         if (availableWords.size() < request.getSessionSize()) {
             throw new IllegalArgumentException("Not enough saved words for requested session size");
@@ -219,13 +219,28 @@ public class PracticeService {
         return selected;
     }
 
-    private List<SavedWord> getAvailableWords(UUID userId, String languageCode) {
+    private List<SavedWord> getAvailableWords(Profile user, String languageCode) {
+        UUID userId = user.getId();
+        Set<String> learningLanguageCodes = user.getLanguages().stream()
+                .filter(UserLanguage::isLearning)
+                .map(userLanguage -> userLanguage.getLanguage().getCode())
+                .collect(Collectors.toSet());
+
         if (languageCode != null && !languageCode.isEmpty()) {
+            if (!learningLanguageCodes.isEmpty() && !learningLanguageCodes.contains(languageCode)) {
+                return List.of();
+            }
             return savedWordRepository.findByUserIdAndLanguageCode(
                     userId, languageCode, Pageable.unpaged()).getContent();
-        } else {
-            return savedWordRepository.findByUserId(userId, Pageable.unpaged()).getContent();
         }
+
+        List<SavedWord> words = savedWordRepository.findByUserId(userId, Pageable.unpaged()).getContent();
+        if (learningLanguageCodes.isEmpty()) {
+            return words;
+        }
+        return words.stream()
+                .filter(word -> learningLanguageCodes.contains(word.getLanguageCode()))
+                .toList();
     }
 
     private PracticeWordDTO mapToPracticeWord(SavedWord word) {

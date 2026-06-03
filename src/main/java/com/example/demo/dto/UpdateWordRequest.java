@@ -9,4 +9,6 @@ public class UpdateWordRequest {
 
     @JsonProperty("context")
     private String sourceContext;
+
+    private String topic;
 }

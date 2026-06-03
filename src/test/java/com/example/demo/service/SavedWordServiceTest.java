@@ -71,6 +71,7 @@ class SavedWordServiceTest {
                 .translation("cherry blossom")
                 .languageCode("ja")
                 .source(SourceType.POST)
+                .topic("nature")
                 .masteryLevel(50)
                 .createdAt(Instant.now())
                 .nextReview(Instant.now())
@@ -84,6 +85,7 @@ class SavedWordServiceTest {
                 .translation("cherry blossom")
                 .languageCode("ja")
                 .source(SourceType.POST)
+                .topic("nature")
                 .build();
 
         when(profileRepository.findByEmail("test@example.com"))
@@ -103,6 +105,7 @@ class SavedWordServiceTest {
         assertEquals("ja", response.getLanguageCode());
         assertEquals("Japanese", response.getLanguageName());
         assertEquals("🇯🇵", response.getLanguageFlag());
+        assertEquals("nature", response.getTopic());
         verify(savedWordRepository).save(any(SavedWord.class));
     }
 
@@ -114,6 +117,7 @@ class SavedWordServiceTest {
                 .languageCode("ko")
                 .source(SourceType.SCANNER)
                 .sourceContext("Detected in photo with 94% confidence")
+                .topic("food")
                 .build();
 
         Language korean = Language.builder()
@@ -129,6 +133,7 @@ class SavedWordServiceTest {
                 .languageCode("ko")
                 .source(SourceType.SCANNER)
                 .context("Detected in photo with 94% confidence")
+                .topic("food")
                 .masteryLevel(0)
                 .createdAt(Instant.now())
                 .nextReview(Instant.now())
@@ -154,6 +159,7 @@ class SavedWordServiceTest {
         assertEquals("ko", savedWord.getLanguageCode());
         assertEquals(SourceType.SCANNER, savedWord.getSource());
         assertEquals("Detected in photo with 94% confidence", savedWord.getContext());
+        assertEquals("food", savedWord.getTopic());
         assertNull(savedWord.getSourceId());
 
         assertEquals("apple", response.getWord());
@@ -162,6 +168,7 @@ class SavedWordServiceTest {
         assertEquals("Korean", response.getLanguageName());
         assertEquals(SourceType.SCANNER, response.getSource());
         assertEquals("Detected in photo with 94% confidence", response.getSourceContext());
+        assertEquals("food", response.getTopic());
     }
 
     @Test
@@ -208,6 +215,7 @@ class SavedWordServiceTest {
     void updateWord_Success() {
         UpdateWordRequest request = new UpdateWordRequest();
         request.setTranslation("sakura flower");
+        request.setTopic("greetings");
 
         when(profileRepository.findByEmail("test@example.com"))
                 .thenReturn(Optional.of(testUser));
@@ -222,6 +230,8 @@ class SavedWordServiceTest {
                 "test@example.com", testWord.getId(), request);
 
         assertNotNull(response);
+        assertEquals("greetings", testWord.getTopic());
+        assertEquals("greetings", response.getTopic());
         verify(savedWordRepository).save(any(SavedWord.class));
     }
 

@@ -34,4 +34,6 @@ public class CreateWordRequest {
 
     @JsonProperty("context")
     private String sourceContext;
+
+    private String topic;
 }

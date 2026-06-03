@@ -13,4 +13,13 @@ public interface UserLanguageRepository extends JpaRepository<UserLanguage, UUID
     @Transactional
     @Query("DELETE FROM UserLanguage ul WHERE ul.profile.id = :profileId")
     void deleteByProfileId(UUID profileId);
+
+    @Query("""
+            SELECT CASE WHEN COUNT(ul) > 0 THEN true ELSE false END
+            FROM UserLanguage ul
+            WHERE ul.profile.id = :profileId
+              AND ul.language.code = :languageCode
+              AND ul.isLearning = true
+            """)
+    boolean existsLearningLanguage(UUID profileId, String languageCode);
 }

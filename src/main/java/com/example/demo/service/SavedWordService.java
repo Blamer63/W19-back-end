@@ -49,6 +49,7 @@ public class SavedWordService {
                 .source(request.getSource())
                 .sourceId(request.getSourceId())
                 .context(request.getSourceContext())
+                .topic(request.getTopic())
                 .build();
 
         SavedWord saved = savedWordRepository.save(savedWord);
@@ -119,6 +120,9 @@ public class SavedWordService {
         if (request.getSourceContext() != null) {
             word.setContext(request.getSourceContext());
         }
+        if (request.getTopic() != null) {
+            word.setTopic(request.getTopic());
+        }
 
         SavedWord updated = savedWordRepository.save(word);
         return mapToResponse(updated);
@@ -159,6 +163,7 @@ public class SavedWordService {
                 .source(word.getSource())
                 .sourceId(word.getSourceId())
                 .sourceContext(word.getContext())
+                .topic(word.getTopic())
                 .masteryLevel(word.getMasteryLevel())
                 .nextReview(word.getNextReview())
                 .createdAt(word.getCreatedAt())

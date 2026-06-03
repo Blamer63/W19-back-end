@@ -36,6 +36,8 @@ public class SavedWordResponse {
     @JsonProperty("context")
     private String sourceContext;
 
+    private String topic;
+
     @JsonProperty("mastery_level")
     private Integer masteryLevel;
 

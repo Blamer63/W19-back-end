@@ -40,6 +40,8 @@ public class SavedWord {
 
     private String context;
 
+    private String topic;
+
     @Column(name = "mastery_level")
     @Builder.Default
     private Integer masteryLevel = 0;

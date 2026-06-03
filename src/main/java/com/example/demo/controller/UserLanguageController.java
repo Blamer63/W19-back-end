@@ -89,6 +89,8 @@ public class UserLanguageController {
                 }).collect(Collectors.toList());
 
                 List<UserLanguage> saved = userLanguageRepository.saveAll(newLanguages);
+                profile.getLanguages().clear();
+                profile.getLanguages().addAll(saved);
                 List<String> learningLanguageCodes = saved.stream()
                                 .filter(UserLanguage::isLearning)
                                 .map(userLanguage -> userLanguage.getLanguage().getCode())
