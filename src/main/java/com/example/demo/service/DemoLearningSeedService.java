@@ -33,6 +33,7 @@ import com.example.demo.repository.ProfileRepository;
 import com.example.demo.repository.SavedWordRepository;
 import com.example.demo.repository.UserLanguageRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +44,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DemoLearningSeedService {
@@ -89,15 +91,22 @@ public class DemoLearningSeedService {
     }
 
     private void seedLanguage(Profile learner, Language language) {
+        log.info("starter-seed: seeding {} — peers", language.getCode());
         List<Profile> peerProfiles = demoPeers(language).stream()
                 .map(peer -> createPeer(language, peer))
                 .toList();
 
+        log.info("starter-seed: seeding {} — friendships", language.getCode());
         seedFriendships(learner, peerProfiles);
+        log.info("starter-seed: seeding {} — conversations", language.getCode());
         seedConversations(learner, peerProfiles, language);
+        log.info("starter-seed: seeding {} — posts", language.getCode());
         seedPosts(peerProfiles, language);
+        log.info("starter-seed: seeding {} — meetups", language.getCode());
         seedMeetups(peerProfiles, language);
+        log.info("starter-seed: seeding {} — saved words", language.getCode());
         seedWords(learner, language);
+        log.info("starter-seed: seeding {} — done", language.getCode());
     }
 
     private Profile createPeer(Language language, DemoPeer peer) {
