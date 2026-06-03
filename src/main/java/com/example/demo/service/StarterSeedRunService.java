@@ -10,10 +10,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -113,6 +117,89 @@ public class StarterSeedRunService {
                   and status = ?
                 """, STATUS_COMPLETED, Timestamp.from(Instant.now()), profile.getId(), SEED_KEY, STATUS_RUNNING);
         log.info("starter-seed: completed for profile {}", profile.getId());
+    }
+
+    public boolean isEnabled() {
+        return starterSeedEnabled;
+    }
+
+    /** Returns the starter-seed run record for a single profile, if one exists. */
+    public Optional<SeedRunStatus> findStatus(UUID profileId) {
+        if (!starterSeedEnabled) {
+            return Optional.empty();
+        }
+        ensureSeedTable();
+        return jdbcTemplate.query("""
+                select profile_id, seed_key, status, created_at, completed_at
+                from user_starter_seed_runs
+                where profile_id = ? and seed_key = ?
+                """, this::mapRow, profileId, SEED_KEY).stream().findFirst();
+    }
+
+    /** Returns every starter-seed run record, newest first — for the admin dashboard. */
+    public List<SeedRunStatus> findAllStatuses() {
+        if (!starterSeedEnabled) {
+            return List.of();
+        }
+        ensureSeedTable();
+        return jdbcTemplate.query("""
+                select profile_id, seed_key, status, created_at, completed_at
+                from user_starter_seed_runs
+                order by created_at desc
+                """, this::mapRow);
+    }
+
+    public long countByStatus(String status) {
+        if (!starterSeedEnabled) {
+            return 0L;
+        }
+        ensureSeedTable();
+        Integer count = jdbcTemplate.queryForObject("""
+                select count(*) from user_starter_seed_runs where seed_key = ? and status = ?
+                """, Integer.class, SEED_KEY, status);
+        return count == null ? 0L : count;
+    }
+
+    public long countPending() {
+        return countByStatus(STATUS_PENDING);
+    }
+
+    // REQUIRES_NEW so the PENDING reset commits independently of the caller's transaction.
+    // A subsequent seedIfPending() call (also REQUIRES_NEW) then sees the committed PENDING row.
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void resetToPending(UUID profileId) {
+        if (!starterSeedEnabled) {
+            return;
+        }
+        ensureSeedTable();
+        int updated = jdbcTemplate.update("""
+                update user_starter_seed_runs
+                set status = ?, completed_at = null
+                where profile_id = ? and seed_key = ?
+                """, STATUS_PENDING, profileId, SEED_KEY);
+        if (updated == 0) {
+            jdbcTemplate.update("""
+                    insert into user_starter_seed_runs
+                        (profile_id, seed_key, status, created_at, completed_at)
+                    values (?, ?, ?, ?, null)
+                    """, profileId, SEED_KEY, STATUS_PENDING, Timestamp.from(Instant.now()));
+        }
+        log.info("starter-seed: reset to PENDING for profile {}", profileId);
+    }
+
+    private SeedRunStatus mapRow(ResultSet rs, int rowNum) throws SQLException {
+        Timestamp created = rs.getTimestamp("created_at");
+        Timestamp completed = rs.getTimestamp("completed_at");
+        return new SeedRunStatus(
+                (UUID) rs.getObject("profile_id"),
+                rs.getString("seed_key"),
+                rs.getString("status"),
+                created == null ? null : created.toInstant(),
+                completed == null ? null : completed.toInstant());
+    }
+
+    public record SeedRunStatus(UUID profileId, String seedKey, String status, Instant createdAt,
+            Instant completedAt) {
     }
 
     private void ensureSeedTable() {

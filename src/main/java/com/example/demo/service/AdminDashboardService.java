@@ -32,6 +32,7 @@ public class AdminDashboardService {
     private final ScanSessionRepository scanSessionRepository;
     private final NotificationRepository notificationRepository;
     private final ContentReportRepository contentReportRepository;
+    private final StarterSeedRunService starterSeedRunService;
 
     @Transactional(readOnly = true)
     public AdminSummaryResponse getSummary() {
@@ -46,9 +47,12 @@ public class AdminDashboardService {
                         metric("saved_words", "Saved Words", savedWordRepository.count(), "Learner vocabulary entries"),
                         metric("scan_sessions", "Scan Sessions", scanSessionRepository.count(), "Completed scanner sessions"),
                         metric("notifications", "Notifications", notificationRepository.count(), "Persisted notification records"),
-                        metric("reports", "Reports", contentReportRepository.count(), "Submitted content reports")))
+                        metric("reports", "Reports", contentReportRepository.count(), "Submitted content reports"),
+                        metric("starter_seed_pending", "Pending Seeds", starterSeedRunService.countPending(),
+                                "New users awaiting starter data")))
                 .futureFeatures(List.of(
-                        plannedFeature("user-management", "User Management", "Search, review, suspend, or update users."),
+                        availableFeature("user-management", "User Management",
+                                "Search and review users, inspect starter-seed status, and re-trigger seeding."),
                         plannedFeature("role-management", "Role Management", "Assign moderator and admin responsibilities."),
                         plannedFeature("content-moderation", "Content Moderation", "Review posts, comments, and user reports."),
                         plannedFeature("meetup-moderation", "Meetup Moderation", "Review, hide, or cancel unsafe meetups."),
@@ -75,6 +79,16 @@ public class AdminDashboardService {
                 .status("PLANNED")
                 .description(description)
                 .enabled(false)
+                .build();
+    }
+
+    private AdminFeatureStatusResponse availableFeature(String key, String label, String description) {
+        return AdminFeatureStatusResponse.builder()
+                .key(key)
+                .label(label)
+                .status("AVAILABLE")
+                .description(description)
+                .enabled(true)
                 .build();
     }
 }
