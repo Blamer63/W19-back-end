@@ -286,7 +286,7 @@ Main inference endpoint. Accepts a base64-encoded image and a target language co
 
 - YOLO class predictions are **ignored** — only bounding boxes are used.
 - If YOLO produces no boxes, the full image is treated as one crop.
-- Up to `MAX_LABELS` (default: 3) canonical labels are returned per image.
+- Up to `MAX_LABELS` (default: 2) canonical labels are returned per image.
 - Detections that fail the confidence gate return `"unknown object"` rather than a wrong label.
 
 ---
@@ -354,13 +354,14 @@ All variables have safe defaults and can be overridden in `compose.yaml` or via 
 |---|---|---|
 | `YOLO_CONF` | `0.10` | Minimum YOLO box confidence to consider a proposal |
 | `YOLO_IOU` | `0.50` | NMS IoU threshold |
-| `YOLO_MAX_DET` | `5` | Maximum region proposals per image |
+| `YOLO_MAX_DET` | `10` | Maximum region proposals per image |
 
 ### Output
 
 | Variable | Default | Effect |
 |---|---|---|
-| `MAX_LABELS` | `3` | Maximum number of canonical labels returned per image |
+| `MAX_LABELS` | `2` | Maximum number of canonical labels returned per image |
+| `MIN_OUTPUT_CONF` | `0.045` | Final SigLIP/FAISS score floor before returning labels |
 
 ### Confidence filtering
 

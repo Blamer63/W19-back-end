@@ -100,7 +100,8 @@ class ObjectDetectionServiceTest {
                 visionDetection("chair", "chair", 0.07d),
                 visionDetection(" Chair ", "chair", 0.11d),
                 visionDetection("CHAIR", "chair", 0.06d),
-                visionDetection("apple", "apple", 0.09d)));
+                visionDetection("apple", "apple", 0.09d),
+                visionDetection("banana", "banana", 0.08d)));
 
         List<DetectedObjectDTO> detectedObjects = objectDetectionService.detect(image(), "test@example.com");
 
@@ -109,7 +110,39 @@ class ObjectDetectionServiceTest {
         assertThat(detectedObjects.get(0).getConfidence()).isEqualTo(0.11d);
         assertThat(detectedObjects.get(1).getLabel()).isEqualTo("apple");
         assertThat(detectedObjects.get(1).getConfidence()).isEqualTo(0.09d);
+        assertThat(detectedObjects)
+                .extracting(DetectedObjectDTO::getLabel)
+                .doesNotContain("banana");
         verify(translationClient, never()).translate(any(), any(), any());
+    }
+
+    @Test
+    void detectFiltersUnknownObjectDetections() throws IOException {
+        Profile profile = profileWithLearningLanguage("test@example.com", "es");
+        when(profileRepository.findByEmail("test@example.com")).thenReturn(Optional.of(profile));
+        whenVisionReturns("es", List.of(
+                visionDetection("unknown object", "unknown object", 0.0d),
+                visionDetection(" UNKNOWN OBJECT ", "unknown object", 0.09d),
+                visionDetection("lamp", "lampara", 0.055d)));
+
+        List<DetectedObjectDTO> detectedObjects = objectDetectionService.detect(image(), "test@example.com");
+
+        assertThat(detectedObjects).hasSize(1);
+        assertThat(detectedObjects.get(0).getLabel()).isEqualTo("lamp");
+        assertThat(detectedObjects.get(0).getConfidence()).isEqualTo(0.055d);
+    }
+
+    @Test
+    void detectAcceptsSiglipScaleConfidenceScores() throws IOException {
+        Profile profile = profileWithLearningLanguage("test@example.com", "es");
+        when(profileRepository.findByEmail("test@example.com")).thenReturn(Optional.of(profile));
+        whenVisionReturns("es", List.of(visionDetection("apple", "manzana", 0.05d)));
+
+        List<DetectedObjectDTO> detectedObjects = objectDetectionService.detect(image(), "test@example.com");
+
+        assertThat(detectedObjects).hasSize(1);
+        assertThat(detectedObjects.get(0).getLabel()).isEqualTo("apple");
+        assertThat(detectedObjects.get(0).getConfidence()).isEqualTo(0.05d);
     }
 
     @Test
@@ -135,7 +168,7 @@ class ObjectDetectionServiceTest {
     }
 
     @Test
-    void detectSortsByConfidenceAndLimitsResultsWithoutPostFilteringLowVisionScores() throws IOException {
+    void detectSortsByConfidenceAndLimitsResultsToTwoWithoutPostFilteringLowVisionScores() throws IOException {
         Profile profile = Profile.builder()
                 .email("test@example.com")
                 .languages(new ArrayList<>())
@@ -157,14 +190,14 @@ class ObjectDetectionServiceTest {
 
         List<DetectedObjectDTO> detectedObjects = objectDetectionService.detect(image(), "test@example.com");
 
-        assertThat(detectedObjects).hasSize(10);
+        assertThat(detectedObjects).hasSize(2);
         assertThat(detectedObjects.get(0).getLabel()).isEqualTo("object 11");
         assertThat(detectedObjects.get(0).getConfidence()).isEqualTo(0.160d);
-        assertThat(detectedObjects.get(9).getLabel()).isEqualTo("object 02");
-        assertThat(detectedObjects.get(9).getConfidence()).isEqualTo(0.070d);
+        assertThat(detectedObjects.get(1).getLabel()).isEqualTo("object 10");
+        assertThat(detectedObjects.get(1).getConfidence()).isEqualTo(0.150d);
         assertThat(detectedObjects)
                 .extracting(DetectedObjectDTO::getLabel)
-                .doesNotContain("object 00", "object 01");
+                .doesNotContain("object 00", "object 01", "object 09");
         verify(translationClient, never()).translate(any(), any(), any());
     }
 

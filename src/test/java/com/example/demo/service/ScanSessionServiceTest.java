@@ -159,6 +159,6 @@ class ScanSessionServiceTest {
                         && request.getLanguageCode().equals("ko")
                         && request.getSource() == SourceType.SCANNER
                         && request.getSourceId().equals(detectionId)
-                        && request.getSourceContext().equals("Detected in photo with 94% confidence")));
+                        && request.getSourceContext().equals("Detected in photo with High confidence")));
     }
 }

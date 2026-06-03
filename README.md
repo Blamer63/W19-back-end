@@ -98,6 +98,14 @@ Useful scanner settings:
 | `VISION_SUPPORTED_LANGUAGES` | `.env` / Spring config | Languages that use vision-service taxonomy translations directly |
 | `VISION_YOLO_MODEL` | `.env` / compose | YOLO proposal model used by vision-service |
 | `VISION_SIGLIP_MODEL` | `.env` / compose | SigLIP model used for retrieval/reranking and indexes |
+| `VISION_MAX_LABELS` | `.env` / compose | Caps user-facing scanner labels; default `2` |
+| `VISION_MIN_OUTPUT_CONF` | `.env` / compose | Final SigLIP/FAISS score floor; default `0.045` |
+| `VISION_CONF_PRIMARY` | `.env` / compose | Per-crop primary confidence gate; default `0.05` |
+| `VISION_CONF_AMBIGUITY` | `.env` / compose | Top-result ambiguity ratio; default `1.02` |
+| `VISION_YOLO_CONF` | `.env` / compose | YOLO proposal confidence; default `0.10` |
+| `VISION_YOLO_MAX_DET` | `.env` / compose | Maximum YOLO proposal boxes; default `10` |
+| `VISION_MIN_BOX_AREA` | `.env` / compose | Minimum normalized proposal box area; default `0.0015` |
+| `VISION_MAX_BOX_ASPECT` | `.env` / compose | Maximum proposal box aspect ratio; default `8.0` |
 
 The vision-service exposes `GET /health`. The backend exposes Actuator `GET /actuator/health` for Docker healthchecks.
 Vision-service confidence scores are SigLIP/FAISS similarity scores, not classic YOLO confidence. Do not restore the old `0.60` Java post-filter for scanner results.

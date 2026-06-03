@@ -32,7 +32,8 @@ public class ObjectDetectionService {
 
     private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
     private static final long MAX_SCAN_SIZE = 5L * 1024 * 1024;
-    private static final int MAX_DETECTED_OBJECTS = 10;
+    private static final int MAX_DETECTED_OBJECTS = 2;
+    private static final String UNKNOWN_OBJECT_LABEL = "unknown object";
 
     private static final String DEFAULT_LANGUAGE_CODE = "en";
 
@@ -88,6 +89,7 @@ public class ObjectDetectionService {
         return detections.stream()
                 .filter(detection -> detection.getCanonicalLabel() != null)
                 .filter(detection -> !normalizeLabel(detection.getCanonicalLabel()).isBlank())
+                .filter(detection -> !UNKNOWN_OBJECT_LABEL.equals(normalizeLabel(detection.getCanonicalLabel())))
                 .collect(Collectors.toMap(
                         detection -> normalizeLabel(detection.getCanonicalLabel()),
                         Function.identity(),
