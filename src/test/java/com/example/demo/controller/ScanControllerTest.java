@@ -6,6 +6,7 @@ import com.example.demo.dto.SavedWordResponse;
 import com.example.demo.dto.ScanPostImageRequest;
 import com.example.demo.dto.ScanResponse;
 import com.example.demo.dto.ScanSessionSummaryResponse;
+import com.example.demo.enums.ScanMode;
 import com.example.demo.enums.ScannerTranslationSource;
 import com.example.demo.enums.SourceType;
 import com.example.demo.exception.ObjectDetectionUnavailableException;
@@ -68,7 +69,7 @@ public class ScanControllerTest {
         UUID scanSessionId = UUID.randomUUID();
         UUID detectionId = UUID.randomUUID();
 
-        when(objectDetectionService.detect(any(), eq("test@example.com")))
+        when(objectDetectionService.detect(any(), eq("test@example.com"), any(ScanMode.class)))
                 .thenReturn(List.of(DetectedObjectDTO.builder()
                         .label("apple")
                         .confidence(0.94)
@@ -119,8 +120,54 @@ public class ScanControllerTest {
                 .andExpect(jsonPath("$.detected_objects[0].box.width").value(0.40))
                 .andExpect(jsonPath("$.detected_objects[0].box.height").value(0.50));
 
-        verify(objectDetectionService).detect(any(), eq("test@example.com"));
+        verify(objectDetectionService).detect(any(), eq("test@example.com"), eq(ScanMode.PRECISION));
         verify(scanSessionService).recordScan(eq("test@example.com"), any());
+    }
+
+    @Test
+    @WithMockUser(username = "test@example.com")
+    void scan_AcceptsSceneMode() throws Exception {
+        MockMultipartFile image = new MockMultipartFile(
+                "image",
+                "cafe.jpg",
+                "image/jpeg",
+                "fake-image".getBytes());
+        UUID scanSessionId = UUID.randomUUID();
+
+        when(objectDetectionService.detect(any(), eq("test@example.com"), any(ScanMode.class)))
+                .thenReturn(List.of());
+        when(scanSessionService.recordScan(eq("test@example.com"), any()))
+                .thenReturn(ScanResponse.builder()
+                        .scanSessionId(scanSessionId)
+                        .detectedObjects(List.of())
+                        .build());
+
+        mockMvc.perform(multipart("/api/scan")
+                        .file(image)
+                        .param("scan_mode", "scene"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.scan_session_id").value(scanSessionId.toString()));
+
+        verify(objectDetectionService).detect(any(), eq("test@example.com"), eq(ScanMode.SCENE));
+    }
+
+    @Test
+    @WithMockUser(username = "test@example.com")
+    void scan_InvalidScanMode_ReturnsBadRequest() throws Exception {
+        MockMultipartFile image = new MockMultipartFile(
+                "image",
+                "apple.jpg",
+                "image/jpeg",
+                "fake-image".getBytes());
+
+        mockMvc.perform(multipart("/api/scan")
+                        .file(image)
+                        .param("scan_mode", "panorama"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Invalid scan_mode. Allowed: precision, scene"));
+
+        verifyNoInteractions(objectDetectionService);
+        verifyNoInteractions(scanSessionService);
     }
 
     @Test
@@ -132,14 +179,14 @@ public class ScanControllerTest {
                 "text/plain",
                 "not-an-image".getBytes());
 
-        when(objectDetectionService.detect(any(), eq("test@example.com")))
+        when(objectDetectionService.detect(any(), eq("test@example.com"), any(ScanMode.class)))
                 .thenThrow(new IllegalArgumentException("Unsupported image type. Allowed: jpeg, png, webp"));
 
         mockMvc.perform(multipart("/api/scan").file(image))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Unsupported image type. Allowed: jpeg, png, webp"));
 
-        verify(objectDetectionService).detect(any(), eq("test@example.com"));
+        verify(objectDetectionService).detect(any(), eq("test@example.com"), eq(ScanMode.PRECISION));
     }
 
     @Test
@@ -151,7 +198,7 @@ public class ScanControllerTest {
                 "image/jpeg",
                 "fake-image".getBytes());
 
-        when(objectDetectionService.detect(any(), eq("test@example.com")))
+        when(objectDetectionService.detect(any(), eq("test@example.com"), any(ScanMode.class)))
                 .thenThrow(new ObjectDetectionUnavailableException("Object detection service unavailable"));
 
         mockMvc.perform(multipart("/api/scan").file(image))
@@ -224,7 +271,8 @@ public class ScanControllerTest {
                 .content("""
                         {
                           "image_url": "https://cdn.example.test/images/second.jpg",
-                          "image_index": 1
+                          "image_index": 1,
+                          "scan_mode": "scene"
                         }
                         """))
                 .andExpect(status().isOk())
@@ -235,7 +283,8 @@ public class ScanControllerTest {
                 eq("test@example.com"),
                 argThat(request -> request != null
                         && Integer.valueOf(1).equals(request.getImageIndex())
-                        && "https://cdn.example.test/images/second.jpg".equals(request.getImageUrl())));
+                        && "https://cdn.example.test/images/second.jpg".equals(request.getImageUrl())
+                        && "scene".equals(request.getScanMode())));
     }
 
     @Test

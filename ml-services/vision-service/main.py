@@ -78,14 +78,23 @@ YOLO_MAX_DET         = int(os.getenv("YOLO_MAX_DET",   "10"))
 
 MAX_OUTPUT_LABELS    = int(os.getenv("MAX_LABELS",     "2"))
 MIN_OUTPUT_CONFIDENCE = float(os.getenv("MIN_OUTPUT_CONF", "0.045"))
+SCENE_MAX_OUTPUT_LABELS = int(os.getenv("SCENE_MAX_LABELS", "4"))
+SCENE_YOLO_MAX_DET      = int(os.getenv("SCENE_YOLO_MAX_DET", "20"))
+SCENE_MIN_OUTPUT_CONFIDENCE = float(os.getenv("SCENE_MIN_OUTPUT_CONF", "0.05"))
 MIN_BOX_AREA_RATIO    = float(os.getenv("MIN_BOX_AREA",   "0.0015"))
 MAX_BOX_ASPECT_RATIO  = float(os.getenv("MAX_BOX_ASPECT", "8.0"))
+
+SCAN_MODE_PRECISION = "precision"
+SCAN_MODE_SCENE = "scene"
+VALID_SCAN_MODES = {SCAN_MODE_PRECISION, SCAN_MODE_SCENE}
 
 # Some fine-grained taxonomy concepts are too specific for noisy YOLO crops.
 # Return user-facing, general vocabulary unless the app later adds stronger
 # context-aware disambiguation for these subclasses.
 CANONICAL_LABEL_OVERRIDES = {
+    "console table": "table",
     "piano stool": "stool",
+    "recliner": "chair",
 }
 
 
@@ -152,6 +161,31 @@ print("Service ready.\n")
 class AnalyzeRequest(BaseModel):
     image: str  # base64-encoded image
     language: str = "en"  # optional target language (en, es, fr, ja)
+    mode: str = SCAN_MODE_PRECISION  # precision (default) or scene
+
+
+def normalize_scan_mode(value: str | None) -> str:
+    mode = (value or SCAN_MODE_PRECISION).strip().lower()
+    if mode not in VALID_SCAN_MODES:
+        raise ValueError("Invalid scan mode. Allowed: precision, scene")
+    return mode
+
+
+def scan_mode_settings(mode: str) -> dict[str, int | float | bool]:
+    if mode == SCAN_MODE_SCENE:
+        return {
+            "max_labels": SCENE_MAX_OUTPUT_LABELS,
+            "yolo_max_det": SCENE_YOLO_MAX_DET,
+            "min_output_confidence": SCENE_MIN_OUTPUT_CONFIDENCE,
+            "use_raw_confidence": True,
+        }
+
+    return {
+        "max_labels": MAX_OUTPUT_LABELS,
+        "yolo_max_det": YOLO_MAX_DET,
+        "min_output_confidence": MIN_OUTPUT_CONFIDENCE,
+        "use_raw_confidence": False,
+    }
 
 
 def normalize_box(
@@ -232,24 +266,33 @@ def build_detection_metadata(
     raw_box_coords: list[tuple[float, float, float, float]],
     crop_importances: list[float],
     image_size: tuple[int, int],
+    use_raw_confidence: bool = False,
 ) -> dict[str, dict]:
     best_reranked_score = {}
     for label, score, _ in reranked:
         best_reranked_score.setdefault(label, float(score))
 
+    best_raw_score = {}
     metadata: dict[str, dict] = {}
     for crop_index, crop_results in enumerate(per_crop_results):
         importance = crop_importances[crop_index] if crop_index < len(crop_importances) else 1.0
         box = normalize_box(raw_box_coords[crop_index], image_size)
         for label, score, _ in crop_results:
-            weighted_score = float(score) * max(0.0, float(importance))
+            raw_score = float(score)
+            best_raw_score[label] = max(best_raw_score.get(label, 0.0), raw_score)
+            weighted_score = raw_score * max(0.0, float(importance))
             current = metadata.get(label)
             if current is None or weighted_score > current["source_score"]:
                 metadata[label] = {
                     "source_score": weighted_score,
-                    "confidence": best_reranked_score.get(label, weighted_score),
+                    "confidence": raw_score if use_raw_confidence else best_reranked_score.get(label, weighted_score),
                     "box": box,
                 }
+
+    if use_raw_confidence:
+        for label, raw_score in best_raw_score.items():
+            if label in metadata:
+                metadata[label]["confidence"] = raw_score
 
     full_image_box = normalize_box(
         (0.0, 0.0, float(image_size[0]), float(image_size[1])),
@@ -268,11 +311,12 @@ def build_detection_metadata(
 def filter_final_labels(
     final_labels: list[str],
     detection_metadata: dict[str, dict],
+    min_confidence: float = MIN_OUTPUT_CONFIDENCE,
 ) -> list[str]:
     return [
         label
         for label in final_labels
-        if float(detection_metadata.get(label, {}).get("confidence", 0.0)) >= MIN_OUTPUT_CONFIDENCE
+        if float(detection_metadata.get(label, {}).get("confidence", 0.0)) >= min_confidence
     ]
 
 
@@ -299,6 +343,20 @@ def embed_crop(crop: Image.Image) -> "torch.Tensor":
 
 @app.post("/analyze")
 def analyze_image(req: AnalyzeRequest):
+    try:
+        scan_mode = normalize_scan_mode(req.mode)
+    except ValueError as e:
+        return JSONResponse(
+            status_code=400,
+            content={"error": str(e), "detections": [], "description": "", "language": req.language},
+        )
+
+    settings = scan_mode_settings(scan_mode)
+    max_labels = int(settings["max_labels"])
+    yolo_max_det = int(settings["yolo_max_det"])
+    min_output_confidence = float(settings["min_output_confidence"])
+    use_raw_confidence = bool(settings["use_raw_confidence"])
+
     # ── Decode image ──────────────────────────────────────────────────────────
     try:
         image_bytes = base64.b64decode(req.image)
@@ -317,7 +375,7 @@ def analyze_image(req: AnalyzeRequest):
             image,
             conf=YOLO_CONF_THRESHOLD,
             iou=YOLO_IOU_THRESHOLD,
-            max_det=YOLO_MAX_DET,
+            max_det=yolo_max_det,
             verbose=False,
         )
 
@@ -467,7 +525,7 @@ def analyze_image(req: AnalyzeRequest):
         # ── Step 8: Deduplicate → canonical labels ────────────────────────────
         # Tags are METADATA only — not in output.
         # Canonical labels only — never aliases.
-        final_labels = deduplicate_labels(reranked, max_labels=MAX_OUTPUT_LABELS)
+        final_labels = deduplicate_labels(reranked, max_labels=max_labels)
 
         detection_metadata = build_detection_metadata(
             final_labels,
@@ -476,13 +534,14 @@ def analyze_image(req: AnalyzeRequest):
             raw_box_coords,
             crop_importances,
             image_wh,
+            use_raw_confidence=use_raw_confidence,
         )
-        final_labels = filter_final_labels(final_labels, detection_metadata)
+        final_labels = filter_final_labels(final_labels, detection_metadata, min_output_confidence)
 
         if not final_labels:
             logger.warning(
                 "  Final labels fell below MIN_OUTPUT_CONF=%.3f — returning UNKNOWN_LABEL.",
-                MIN_OUTPUT_CONFIDENCE,
+                min_output_confidence,
             )
             final_labels = [UNKNOWN_LABEL]
             detection_metadata = build_detection_metadata(
@@ -492,6 +551,7 @@ def analyze_image(req: AnalyzeRequest):
                 raw_box_coords,
                 crop_importances,
                 image_wh,
+                use_raw_confidence=use_raw_confidence,
             )
 
         logger.debug(f"  FINAL labels (pre-translation): {final_labels}")

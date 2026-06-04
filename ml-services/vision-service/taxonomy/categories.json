@@ -10,7 +10,7 @@
     ],
     "vocab_file": "taxonomy/furniture.csv",
     "phase": 1,
-    "concept_count_phase1": 40
+    "concept_count_phase1": 41
   },
   "electronics": {
     "l1_domain": "physical_objects",
@@ -36,7 +36,7 @@
     ],
     "vocab_file": "taxonomy/kitchenware.csv",
     "phase": 1,
-    "concept_count_phase1": 49
+    "concept_count_phase1": 52
   },
   "clothing": {
     "l1_domain": "physical_objects",
@@ -62,7 +62,7 @@
     ],
     "vocab_file": "taxonomy/office.csv",
     "phase": 1,
-    "concept_count_phase1": 35
+    "concept_count_phase1": 37
   },
   "bathroom": {
     "l1_domain": "physical_objects",
@@ -101,7 +101,7 @@
     ],
     "vocab_file": "taxonomy/household.csv",
     "phase": 1,
-    "concept_count_phase1": 50
+    "concept_count_phase1": 53
   },
   "food": {
     "l1_domain": "consumables",

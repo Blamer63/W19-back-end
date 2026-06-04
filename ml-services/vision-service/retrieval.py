@@ -334,7 +334,11 @@ def context_rerank(
         label, score, category = result
         return score * (boost if category == dominant_category else 1.0)
 
-    return sorted(all_results, key=boosted_score, reverse=True)
+    boosted_results = [
+        (label, boosted_score((label, score, category)), category)
+        for label, score, category in all_results
+    ]
+    return sorted(boosted_results, key=lambda x: x[1], reverse=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

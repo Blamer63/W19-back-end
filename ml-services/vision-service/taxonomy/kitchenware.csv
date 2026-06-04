@@ -1,6 +1,8 @@
 concept_id,canonical_label,aliases,parent,category,tags,visual_description
 acbad370-4e9c-5e80-b256-3b295f23dbc9,ceramic mug,coffee mug|tea mug,kitchenware,kitchenware,drinkware,ceramic drinking mug with handle
 a794ce67-9156-59eb-86c1-d1090996516e,drinking glass,water glass|glass,kitchenware,kitchenware,drinkware,clear cylindrical drinking glass
+fb01831f-314c-5b7b-827c-34e68f680440,bottle,glass bottle|empty bottle|corked bottle|plastic bottle,kitchenware,kitchenware,drinkware|container,clear narrow-neck everyday bottle
+f6434ad5-1bca-5d80-a3be-48972336a9c0,water bottle,drink bottle|reusable bottle|sports bottle,kitchenware,kitchenware,drinkware|portable,portable capped water bottle
 60aed765-03fe-5c2b-ab2d-1fa2f8d220c2,wine glass,red wine glass|white wine glass,kitchenware,kitchenware,drinkware,stemmed bowl-shaped wine glass
 88cc1c11-64ce-58ee-9957-fbb0bd179323,champagne flute,flute glass,kitchenware,kitchenware,drinkware,tall narrow champagne flute glass
 6ce01df6-44e5-5264-b7c9-692a7ab9411f,shot glass,,kitchenware,kitchenware,drinkware,small thick-walled shot glass
@@ -39,6 +41,7 @@ e2fd1c1c-8670-52ed-95c1-3cd071181787,toaster,bread toaster|pop-up toaster,kitche
 dbc87ff3-70a4-5dbd-90ae-32d1aa8803e2,microwave oven,microwave,kitchenware,kitchenware,appliances|electronics,countertop rectangular microwave oven
 5fdcd3bd-9abc-5d91-8c60-027931c99e4d,electric kettle,kettle|jug kettle,kitchenware,kitchenware,appliances|electronics,electric water-boiling plastic kettle
 275edca4-13f5-5ef3-9958-1fcba29bca15,coffee maker,drip coffee maker|coffee machine,kitchenware,kitchenware,appliances,automatic drip coffee machine
+4e7a0bce-4e0c-52f2-a5a3-28dc488a5e8b,espresso machine,coffee espresso machine|commercial espresso machine,kitchenware,kitchenware,appliances,shiny commercial espresso coffee machine
 305b14a8-fcc6-5f89-9a91-219ae26e55ea,blender,smoothie blender|jug blender,kitchenware,kitchenware,appliances|electronics,tall jug blender with blade
 f011d54b-e22f-57aa-a9b5-b5153747b501,food processor,,kitchenware,kitchenware,appliances|electronics,wide-bowl electric food processor
 be6a91a3-876e-5d70-af41-4ab504365cdc,stand mixer,kitchen mixer,kitchenware,kitchenware,appliances|electronics,countertop tilt-head stand mixer

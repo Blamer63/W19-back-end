@@ -4,6 +4,7 @@ import com.example.demo.dto.ScanResponse;
 import com.example.demo.dto.ScanPostImageRequest;
 import com.example.demo.dto.ScanSessionSummaryResponse;
 import com.example.demo.dto.SavedWordResponse;
+import com.example.demo.enums.ScanMode;
 import com.example.demo.service.ObjectDetectionService;
 import com.example.demo.service.PostImageScanService;
 import com.example.demo.service.ScanSessionService;
@@ -35,10 +36,11 @@ public class ScanController {
     @PostMapping(value = "/api/scan", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ScanResponse> scan(
             @RequestPart("image") MultipartFile image,
+            @RequestParam(name = "scan_mode", required = false) String scanMode,
             Authentication authentication) throws IOException {
         return ResponseEntity.ok(scanSessionService.recordScan(
                 authentication.getName(),
-                objectDetectionService.detect(image, authentication.getName())));
+                objectDetectionService.detect(image, authentication.getName(), ScanMode.fromRequest(scanMode))));
     }
 
     @PostMapping("/api/scan/post-image/{postId}")

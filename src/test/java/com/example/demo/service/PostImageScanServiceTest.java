@@ -7,6 +7,7 @@ import com.example.demo.entity.Post;
 import com.example.demo.entity.PostImage;
 import com.example.demo.entity.Profile;
 import com.example.demo.enums.PostStatus;
+import com.example.demo.enums.ScanMode;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.PostRepository;
 import com.example.demo.repository.ProfileRepository;
@@ -23,6 +24,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -65,14 +67,14 @@ class PostImageScanServiceTest {
         when(s3Service.extractKey("https://cdn.example.test/images/post.jpg")).thenReturn("images/post.jpg");
         when(s3Service.downloadFile("images/post.jpg"))
                 .thenReturn(new S3Service.StoredObject("image-bytes".getBytes(), "image/jpeg"));
-        when(objectDetectionService.detect(any(byte[].class), any(), any()))
+        when(objectDetectionService.detect(any(byte[].class), any(), any(), any(ScanMode.class)))
                 .thenReturn(detections);
         when(scanSessionService.recordScan("viewer@example.com", detections)).thenReturn(response);
 
         ScanResponse result = postImageScanService.scanPostImage(postId, "viewer@example.com");
 
         assertThat(result).isSameAs(response);
-        verify(objectDetectionService).detect(any(byte[].class), any(), any());
+        verify(objectDetectionService).detect(any(byte[].class), any(), any(), eq(ScanMode.PRECISION));
         verify(scanSessionService).recordScan("viewer@example.com", detections);
     }
 
@@ -86,7 +88,7 @@ class PostImageScanServiceTest {
         when(s3Service.extractKey("https://cdn.example.test/images/post.jpg")).thenReturn("images/post.jpg");
         when(s3Service.downloadFile("images/post.jpg"))
                 .thenReturn(new S3Service.StoredObject("image-bytes".getBytes(), "image/jpeg"));
-        when(objectDetectionService.detect(any(byte[].class), any(), any()))
+        when(objectDetectionService.detect(any(byte[].class), any(), any(), any(ScanMode.class)))
                 .thenReturn(List.of());
         when(scanSessionService.recordScan("author@example.com", List.of()))
                 .thenReturn(ScanResponse.builder().detectedObjects(List.of()).build());
@@ -108,7 +110,7 @@ class PostImageScanServiceTest {
         when(s3Service.extractKey("https://cdn.example.test/images/second.jpg")).thenReturn("images/second.jpg");
         when(s3Service.downloadFile("images/second.jpg"))
                 .thenReturn(new S3Service.StoredObject("image-bytes".getBytes(), "image/jpeg"));
-        when(objectDetectionService.detect(any(byte[].class), any(), any()))
+        when(objectDetectionService.detect(any(byte[].class), any(), any(), any(ScanMode.class)))
                 .thenReturn(List.of());
         when(scanSessionService.recordScan("viewer@example.com", List.of()))
                 .thenReturn(ScanResponse.builder().detectedObjects(List.of()).build());
@@ -122,6 +124,54 @@ class PostImageScanServiceTest {
                         .build());
 
         verify(s3Service).downloadFile("images/second.jpg");
+        verify(objectDetectionService).detect(any(byte[].class), any(), any(), eq(ScanMode.PRECISION));
+    }
+
+    @Test
+    void scanPostImagePassesSceneModeToObjectDetection() {
+        UUID postId = UUID.randomUUID();
+        Post post = post("author@example.com", PostStatus.ACTIVE, "https://cdn.example.test/images/post.jpg");
+
+        when(profileRepository.findByEmail("viewer@example.com")).thenReturn(Optional.of(profile("viewer@example.com")));
+        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(s3Service.extractKey("https://cdn.example.test/images/post.jpg")).thenReturn("images/post.jpg");
+        when(s3Service.downloadFile("images/post.jpg"))
+                .thenReturn(new S3Service.StoredObject("image-bytes".getBytes(), "image/jpeg"));
+        when(objectDetectionService.detect(any(byte[].class), any(), any(), any(ScanMode.class)))
+                .thenReturn(List.of());
+        when(scanSessionService.recordScan("viewer@example.com", List.of()))
+                .thenReturn(ScanResponse.builder().detectedObjects(List.of()).build());
+
+        postImageScanService.scanPostImage(
+                postId,
+                "viewer@example.com",
+                ScanPostImageRequest.builder()
+                        .scanMode("scene")
+                        .build());
+
+        verify(objectDetectionService).detect(any(byte[].class), any(), any(), eq(ScanMode.SCENE));
+    }
+
+    @Test
+    void scanPostImageRejectsInvalidScanMode() {
+        UUID postId = UUID.randomUUID();
+        Post post = post("author@example.com", PostStatus.ACTIVE, "https://cdn.example.test/images/post.jpg");
+
+        when(profileRepository.findByEmail("viewer@example.com")).thenReturn(Optional.of(profile("viewer@example.com")));
+        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> postImageScanService.scanPostImage(
+                postId,
+                "viewer@example.com",
+                ScanPostImageRequest.builder()
+                        .scanMode("panorama")
+                        .build()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Invalid scan_mode. Allowed: precision, scene");
+
+        verifyNoInteractions(s3Service);
+        verifyNoInteractions(objectDetectionService);
+        verifyNoInteractions(scanSessionService);
     }
 
     @Test

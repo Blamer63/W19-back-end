@@ -17,4 +17,7 @@ public class ScanPostImageRequest {
 
     @JsonProperty("image_index")
     private Integer imageIndex;
+
+    @JsonProperty("scan_mode")
+    private String scanMode;
 }

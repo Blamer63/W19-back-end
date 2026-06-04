@@ -1,5 +1,6 @@
 package com.example.demo.service.scanner;
 
+import com.example.demo.enums.ScanMode;
 import com.example.demo.exception.ObjectDetectionUnavailableException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,7 +45,11 @@ public class VisionServiceClient {
     }
 
     public List<VisionDetection> analyze(String imageBase64, String languageCode) {
-        VisionAnalyzeResponse response = requestAnalysis(imageBase64, languageCode);
+        return analyze(imageBase64, languageCode, ScanMode.PRECISION);
+    }
+
+    public List<VisionDetection> analyze(String imageBase64, String languageCode, ScanMode scanMode) {
+        VisionAnalyzeResponse response = requestAnalysis(imageBase64, languageCode, scanMode);
         if (response.getError() != null && !response.getError().isBlank()) {
             log.warn("Vision service returned error: {}", response.getError());
         }
@@ -52,13 +57,19 @@ public class VisionServiceClient {
     }
 
     public VisionAnalyzeResponse requestAnalysis(String imageBase64, String languageCode) {
+        return requestAnalysis(imageBase64, languageCode, ScanMode.PRECISION);
+    }
+
+    public VisionAnalyzeResponse requestAnalysis(String imageBase64, String languageCode, ScanMode scanMode) {
         String language = (languageCode == null || languageCode.isBlank()) ? "en" : languageCode;
+        ScanMode mode = scanMode == null ? ScanMode.PRECISION : scanMode;
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         Map<String, Object> requestBody = Map.of(
                 "image", imageBase64,
-                "language", language);
+                "language", language,
+                "mode", mode.getWireValue());
 
         try {
             ResponseEntity<VisionAnalyzeResponse> response = restTemplate.postForEntity(

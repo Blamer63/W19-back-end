@@ -1,5 +1,6 @@
 package com.example.demo.service.scanner;
 
+import com.example.demo.enums.ScanMode;
 import com.example.demo.exception.ObjectDetectionUnavailableException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -33,6 +34,7 @@ class VisionServiceClientTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.image").value("base64-image"))
                 .andExpect(jsonPath("$.language").value("es"))
+                .andExpect(jsonPath("$.mode").value("precision"))
                 .andRespond(withSuccess("""
                         {
                           "language": "es",
@@ -73,6 +75,7 @@ class VisionServiceClientTest {
 
         server.expect(requestTo(ENDPOINT))
                 .andExpect(method(POST))
+                .andExpect(jsonPath("$.mode").value("precision"))
                 .andRespond(withSuccess("""
                         {
                           "language": "en",
@@ -95,6 +98,7 @@ class VisionServiceClientTest {
         server.expect(requestTo(ENDPOINT))
                 .andExpect(method(POST))
                 .andExpect(jsonPath("$.language").value("en"))
+                .andExpect(jsonPath("$.mode").value("precision"))
                 .andRespond(withSuccess("""
                         {
                           "language": "en",
@@ -104,6 +108,32 @@ class VisionServiceClientTest {
 
         client.requestAnalysis("base64-image", " ");
 
+        server.verify();
+    }
+
+    @Test
+    void requestAnalysisPostsSceneMode() {
+        RestTemplate restTemplate = new RestTemplate();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        VisionServiceClient client = new VisionServiceClient(restTemplate, ENDPOINT);
+
+        server.expect(requestTo(ENDPOINT))
+                .andExpect(method(POST))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.image").value("base64-image"))
+                .andExpect(jsonPath("$.language").value("ja"))
+                .andExpect(jsonPath("$.mode").value("scene"))
+                .andRespond(withSuccess("""
+                        {
+                          "language": "ja",
+                          "detections": []
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        VisionAnalyzeResponse response = client.requestAnalysis("base64-image", "ja", ScanMode.SCENE);
+
+        assertThat(response.getLanguage()).isEqualTo("ja");
+        assertThat(response.getDetections()).isEmpty();
         server.verify();
     }
 

@@ -4,6 +4,7 @@ import com.example.demo.dto.DetectedObjectDTO;
 import com.example.demo.entity.Profile;
 import com.example.demo.entity.UserLanguage;
 import com.example.demo.enums.ProficiencyLevel;
+import com.example.demo.enums.ScanMode;
 import com.example.demo.enums.ScannerTranslationSource;
 import com.example.demo.repository.ProfileRepository;
 import com.example.demo.service.scanner.VisionDetection;
@@ -33,7 +34,6 @@ public class ObjectDetectionService {
 
     private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
     private static final long MAX_SCAN_SIZE = 5L * 1024 * 1024;
-    private static final int MAX_DETECTED_OBJECTS = 2;
     private static final String UNKNOWN_OBJECT_LABEL = "unknown object";
 
     private static final String DEFAULT_LANGUAGE_CODE = "en";
@@ -75,18 +75,30 @@ public class ObjectDetectionService {
 
     @Transactional(readOnly = true)
     public List<DetectedObjectDTO> detect(MultipartFile image, String currentUserEmail) throws IOException {
+        return detect(image, currentUserEmail, ScanMode.PRECISION);
+    }
+
+    @Transactional(readOnly = true)
+    public List<DetectedObjectDTO> detect(MultipartFile image, String currentUserEmail, ScanMode scanMode) throws IOException {
         validateImage(image);
-        return detect(image.getBytes(), image.getContentType(), currentUserEmail);
+        return detect(image.getBytes(), image.getContentType(), currentUserEmail, scanMode);
     }
 
     @Transactional(readOnly = true)
     public List<DetectedObjectDTO> detect(byte[] imageBytes, String contentType, String currentUserEmail) {
+        return detect(imageBytes, contentType, currentUserEmail, ScanMode.PRECISION);
+    }
+
+    @Transactional(readOnly = true)
+    public List<DetectedObjectDTO> detect(byte[] imageBytes, String contentType, String currentUserEmail, ScanMode scanMode) {
         validateImage(imageBytes, contentType);
+        ScanMode mode = scanMode == null ? ScanMode.PRECISION : scanMode;
         ScannerLanguagePreference languagePreference = resolveScannerLanguagePreference(currentUserEmail);
         String imageBase64 = Base64.getEncoder().encodeToString(imageBytes);
         List<VisionDetection> detections = visionServiceClient.analyze(
                 imageBase64,
-                languagePreference.learningLanguageCode());
+                languagePreference.learningLanguageCode(),
+                mode);
         Map<String, ScannerVocabularyService.VocabularyMatch> vocabularyCache = new HashMap<>();
 
         return detections.stream()
@@ -102,7 +114,7 @@ public class ObjectDetectionService {
                 .values()
                 .stream()
                 .sorted(Comparator.comparingDouble(VisionDetection::getConfidence).reversed())
-                .limit(MAX_DETECTED_OBJECTS)
+                .limit(mode.getMaxDetectedObjects())
                 .map(detection -> toDetectedObject(detection, languagePreference, vocabularyCache))
                 .toList();
     }

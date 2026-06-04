@@ -4,6 +4,7 @@ concept_id,canonical_label,aliases,parent,category,tags,visual_description
 4fd8622b-14f7-5273-bd31-8085aad667a2,desk lamp,reading lamp|adjustable lamp,household,household,lighting|electronics,adjustable arm LED desk lamp
 0b892b0c-608d-5f07-9d18-8a79441de17d,wall lamp,wall sconce|sconce light,household,household,lighting,wall-mounted decorative light sconce
 c9174c4c-0fbc-5325-ad20-2602e82ce7c0,chandelier,ceiling chandelier,household,household,lighting,hanging multi-arm ceiling chandelier
+eaca13ba-31f0-5e36-8d22-745744aaab9e,pendant light,hanging light|ceiling pendant light,household,household,lighting,hanging pendant ceiling light
 73e044d5-5ac3-5f07-bdb5-479ed26b3143,lamp shade,light shade,household,household,lighting,fabric or glass lampshade cover
 9f217034-f718-543e-b4a2-f57338f7f120,lightbulb,light bulb|bulb,household,household,lighting|electronics,glass screw-base light bulb
 6b1bc931-c801-581d-b884-a8492b3f314d,candle,wax candle|pillar candle,household,household,lighting|decor,cylindrical wax pillar candle
@@ -19,6 +20,7 @@ aa646373-e7c8-51ea-8c29-73b1995b2cbd,wall clock,wall hanging clock,household,hou
 3b874fdc-4678-5b6a-bd7b-e9eb538d9658,bedside clock,bedside alarm clock|sleep clock,household,household,timekeeping,small analog or digital bedside clock
 23c996bb-dfc2-5908-9fe7-c4af6320f50c,hourglass,sand timer|egg timer,household,household,timekeeping,glass hourglass with wooden frame
 3b3f8dc9-d230-5089-afd9-e7c5ccbd3ddb,picture frame,photo frame,household,household,decor,rectangular glass-front picture frame
+5806a08f-43e8-5103-9c0d-c27e35cc1e3d,menu board,cafe menu board|wall menu,household,household,decor|display,wall mounted cafe menu board
 a382d086-964a-5395-b9ef-d4f33f41d72e,vase,flower vase|ceramic vase,household,household,decor,tall ceramic or glass flower vase
 334c54b5-9e99-5b0d-852f-2dedfe2a4633,flower pot,flowerpot|planter pot,household,household,decor,terracotta or plastic plant pot
 8c59620c-7082-51a4-bb02-3251572f791d,painting,framed painting|wall art,household,household,decor,canvas framed wall painting
@@ -36,6 +38,7 @@ a02ec9a6-ad39-58c3-a138-0cc0484a55e9,pillow,throw pillow|bed pillow,household,ho
 3ce83ba6-f286-503d-ab3b-bfe2565ddeec,laundry basket,clothes hamper|laundry hamper,household,household,storage,woven or plastic laundry basket
 15000071-0f2e-57c7-bdde-98bc4a3163f7,clothes hanger,coat hanger|wire hanger,household,household,storage|clothing,curved plastic or wooden clothes hanger
 43b8f418-eb4e-540b-86fd-014ae262359b,umbrella,rain umbrella,household,household,accessories,folding or full-size rain umbrella
+0fcbf246-1ce3-5bca-b8cd-4682c6efc8d0,keys,key ring|house keys|keychain,household,household,accessories|personal,small metal keys on key ring
 67b2d385-8994-5492-8cdc-d27c8585607d,indoor trash can,waste bin|rubbish bin|indoor bin,household,household,cleaning,round plastic indoor trash bin
 dc740c74-17b1-58c1-bd7f-8b513d271a25,fire extinguisher,extinguisher,household,household,safety,red cylinder fire extinguisher
 a1870931-ba66-5048-ae5e-5f75ab3370d0,smoke alarm,fire alarm|smoke detector,household,household,safety,round white ceiling smoke detector

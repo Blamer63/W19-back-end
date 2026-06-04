@@ -6,6 +6,7 @@ import com.example.demo.entity.Language;
 import com.example.demo.entity.Profile;
 import com.example.demo.entity.UserLanguage;
 import com.example.demo.enums.ProficiencyLevel;
+import com.example.demo.enums.ScanMode;
 import com.example.demo.enums.ScannerTranslationSource;
 import com.example.demo.exception.ObjectDetectionUnavailableException;
 import com.example.demo.repository.ProfileRepository;
@@ -92,7 +93,7 @@ class ObjectDetectionServiceTest {
         assertThat(detectedObjects.get(0).getLearningWord()).isEqualTo("\u308A\u3093\u3054");
         assertThat(detectedObjects.get(0).getLanguageCode()).isEqualTo("ja");
         assertThat(detectedObjects.get(0).getTranslationSource()).isEqualTo(ScannerTranslationSource.TAXONOMY);
-        verify(visionServiceClient).analyze(anyString(), eq("ja"));
+        verify(visionServiceClient).analyze(anyString(), eq("ja"), eq(ScanMode.PRECISION));
         verify(translationClient, never()).translate(any(), any(), any());
     }
 
@@ -221,6 +222,32 @@ class ObjectDetectionServiceTest {
     }
 
     @Test
+    void detectSceneModeSortsByConfidenceAndLimitsResultsToFour() throws IOException {
+        Profile profile = Profile.builder()
+                .email("test@example.com")
+                .languages(new ArrayList<>())
+                .build();
+        when(profileRepository.findByEmail("test@example.com")).thenReturn(Optional.of(profile));
+        whenVisionReturns("en", List.of(
+                visionDetection("object_00", "object 00", 0.050d),
+                visionDetection("object_01", "object 01", 0.060d),
+                visionDetection("object_02", "object 02", 0.070d),
+                visionDetection("object_03", "object 03", 0.080d),
+                visionDetection("object_04", "object 04", 0.090d),
+                visionDetection("object_05", "object 05", 0.100d)));
+
+        List<DetectedObjectDTO> detectedObjects =
+                objectDetectionService.detect(image(), "test@example.com", ScanMode.SCENE);
+
+        assertThat(detectedObjects).hasSize(4);
+        assertThat(detectedObjects)
+                .extracting(DetectedObjectDTO::getLabel)
+                .containsExactly("object 05", "object 04", "object 03", "object 02");
+        verify(visionServiceClient).analyze(anyString(), eq("en"), eq(ScanMode.SCENE));
+        verify(translationClient, never()).translate(any(), any(), any());
+    }
+
+    @Test
     void detectFallsBackToEnglishTaxonomyWhenProfileHasNoLearningLanguage() throws IOException {
         Profile profile = Profile.builder()
                 .email("test@example.com")
@@ -300,7 +327,7 @@ class ObjectDetectionServiceTest {
     void detectThrowsUnavailableExceptionWhenVisionRequestFails() {
         Profile profile = profileWithLearningLanguage("test@example.com", "ko");
         when(profileRepository.findByEmail("test@example.com")).thenReturn(Optional.of(profile));
-        when(visionServiceClient.analyze(anyString(), eq("ko")))
+        when(visionServiceClient.analyze(anyString(), eq("ko"), eq(ScanMode.PRECISION)))
                 .thenThrow(new ObjectDetectionUnavailableException("Object detection service unavailable"));
 
         assertThatThrownBy(() -> objectDetectionService.detect(image(), "test@example.com"))
@@ -338,7 +365,7 @@ class ObjectDetectionServiceTest {
     }
 
     private void whenVisionReturns(String languageCode, List<VisionDetection> detections) {
-        when(visionServiceClient.analyze(anyString(), eq(languageCode))).thenReturn(detections);
+        when(visionServiceClient.analyze(anyString(), eq(languageCode), any(ScanMode.class))).thenReturn(detections);
     }
 
     private VisionDetection visionDetection(String canonicalLabel, String translatedLabel, double confidence) {

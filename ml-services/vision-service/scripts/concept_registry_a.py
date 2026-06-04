@@ -27,6 +27,7 @@ CONCEPTS_A = {
         ("desk","writing desk|work desk","table","surfaces|office","flat work surface with legs"),
         ("side table","end table|accent table","table","surfaces|living_room","small table placed beside sofa"),
         ("console table","hallway table","table","surfaces|entryway","narrow wall-side hallway table"),
+        ("counter","cafe counter|service counter|bar counter","furniture","surfaces|commercial","long service counter work surface"),
         ("bed","double bed|queen bed|king bed","furniture","sleeping|bedroom","full-size bed frame with headboard"),
         ("bunk bed","stacked bed","bed","sleeping|bedroom|children","two-tier stacked metal bed frame"),
         ("crib","baby cot|infant bed","bed","sleeping|baby","enclosed slatted baby sleeping crib"),
@@ -46,7 +47,7 @@ CONCEPTS_A = {
         ("piano stool","music stool","stool","seating|music","small height-adjustable piano stool"),
     ],
     "electronics": [
-        ("smartphone","cell phone|mobile phone|cellphone","electronics","portable|personal","slim touchscreen smartphone device"),
+        ("smartphone","phone|cell phone|mobile phone|cellphone","electronics","portable|personal","slim touchscreen smartphone device"),
         ("laptop","notebook computer|laptop computer","electronics","portable|personal","slim portable computer with keyboard"),
         ("tablet","tablet computer|ipad","electronics","portable|personal","flat touchscreen tablet device"),
         ("smartwatch","smart watch","electronics","wearable|personal","digital smartwatch with touchscreen display"),
@@ -90,6 +91,8 @@ CONCEPTS_A = {
     "kitchenware": [
         ("ceramic mug","coffee mug|tea mug","kitchenware","drinkware","ceramic drinking mug with handle"),
         ("drinking glass","water glass|glass","kitchenware","drinkware","clear cylindrical drinking glass"),
+        ("bottle","glass bottle|empty bottle|corked bottle|plastic bottle","kitchenware","drinkware|container","clear narrow-neck everyday bottle"),
+        ("water bottle","drink bottle|reusable bottle|sports bottle","kitchenware","drinkware|portable","portable capped water bottle"),
         ("wine glass","red wine glass|white wine glass","kitchenware","drinkware","stemmed bowl-shaped wine glass"),
         ("champagne flute","flute glass","kitchenware","drinkware","tall narrow champagne flute glass"),
         ("shot glass","","kitchenware","drinkware","small thick-walled shot glass"),
@@ -128,6 +131,7 @@ CONCEPTS_A = {
         ("microwave oven","microwave","kitchenware","appliances|electronics","countertop rectangular microwave oven"),
         ("electric kettle","kettle|jug kettle","kitchenware","appliances|electronics","electric water-boiling plastic kettle"),
         ("coffee maker","drip coffee maker|coffee machine","kitchenware","appliances","automatic drip coffee machine"),
+        ("espresso machine","coffee espresso machine|commercial espresso machine","kitchenware","appliances","shiny commercial espresso coffee machine"),
         ("blender","smoothie blender|jug blender","kitchenware","appliances|electronics","tall jug blender with blade"),
         ("food processor","","kitchenware","appliances|electronics","wide-bowl electric food processor"),
         ("stand mixer","kitchen mixer","kitchenware","appliances|electronics","countertop tilt-head stand mixer"),
@@ -213,6 +217,7 @@ CONCEPTS_A = {
         ("sticky note","post-it note","office","paper","small self-adhesive square sticky note"),
         ("folder","document folder|file folder","office","paper","cardboard A4 document folder"),
         ("binder","ring binder|lever arch file","office","paper","wide D-ring document binder"),
+        ("book","textbook|paperback book|novel","office","paper|study","open or closed printed book"),
         ("clipboard","","office","paper","rigid clip-back writing support board"),
         ("scissors","craft scissors|office scissors","office","desk_tools","pair of steel blade scissors"),
         ("ruler","measuring ruler|straight edge","office","desk_tools","transparent or wooden flat ruler"),
@@ -237,5 +242,6 @@ CONCEPTS_A = {
         ("label maker","labeler|label printer","office","technology|electronics","handheld label printing device"),
         ("stamp","rubber stamp","office","desk_tools","wooden-handled rubber ink stamp"),
         ("staple remover","staple puller","office","desk_tools","claw-grip metal staple remover"),
+        ("glue stick","glue|school glue","office","desk_tools|craft","small capped glue stick tube"),
     ],
 }

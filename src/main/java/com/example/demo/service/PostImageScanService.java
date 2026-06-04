@@ -5,6 +5,7 @@ import com.example.demo.dto.ScanResponse;
 import com.example.demo.entity.Post;
 import com.example.demo.entity.PostImage;
 import com.example.demo.enums.PostStatus;
+import com.example.demo.enums.ScanMode;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.ProfileRepository;
 import com.example.demo.repository.PostRepository;
@@ -46,6 +47,7 @@ public class PostImageScanService {
             throw new ResourceNotFoundException("Post not found");
         }
 
+        ScanMode scanMode = ScanMode.fromRequest(request == null ? null : request.getScanMode());
         String imageUrl = selectImageUrl(post, request);
         if (imageUrl == null || imageUrl.isBlank()) {
             throw new IllegalArgumentException("Post has no image to scan");
@@ -59,7 +61,7 @@ public class PostImageScanService {
         S3Service.StoredObject image = s3Service.downloadFile(key);
         return scanSessionService.recordScan(
                 currentUserEmail,
-                objectDetectionService.detect(image.bytes(), image.contentType(), currentUserEmail));
+                objectDetectionService.detect(image.bytes(), image.contentType(), currentUserEmail, scanMode));
     }
 
     private String selectImageUrl(Post post, ScanPostImageRequest request) {

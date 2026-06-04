@@ -1,5 +1,5 @@
 concept_id,canonical_label,aliases,parent,category,tags,visual_description
-5e939c19-1860-54eb-88d7-1046f8d58eae,smartphone,cell phone|mobile phone|cellphone,electronics,electronics,portable|personal,slim touchscreen smartphone device
+5e939c19-1860-54eb-88d7-1046f8d58eae,smartphone,phone|cell phone|mobile phone|cellphone,electronics,electronics,portable|personal,slim touchscreen smartphone device
 1bf994d7-60c6-58f8-b824-2cbeb72f91c7,laptop,notebook computer|laptop computer,electronics,electronics,portable|personal,slim portable computer with keyboard
 84ce1b6f-003e-53a9-b669-d12239a20f0f,tablet,tablet computer|ipad,electronics,electronics,portable|personal,flat touchscreen tablet device
 7e5fa1d4-18ce-5bf6-adc1-f8050158c7ea,smartwatch,smart watch,electronics,electronics,wearable|personal,digital smartwatch with touchscreen display
